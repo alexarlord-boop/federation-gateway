@@ -2,11 +2,76 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import EntitiesPage from "./pages/EntitiesPage";
+import EntityDetailPage from "./pages/EntityDetailPage";
+import EntityRegisterPage from "./pages/EntityRegisterPage";
+import TrustAnchorsPage from "./pages/TrustAnchorsPage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import TrustMarksPage from "./pages/TrustMarksPage";
+import UsersPage from "./pages/UsersPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+  const { isAuthenticated, isAdmin } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/login" element={<LoginPage />} />
+      
+      <Route element={
+        <ProtectedRoute>
+          <AppLayout />
+        </ProtectedRoute>
+      }>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/entities" element={<EntitiesPage />} />
+        <Route path="/entities/register" element={<EntityRegisterPage />} />
+        <Route path="/entities/:id" element={<EntityDetailPage />} />
+        <Route path="/trust-anchors" element={
+          <ProtectedRoute adminOnly>
+            <TrustAnchorsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/approvals" element={
+          <ProtectedRoute adminOnly>
+            <ApprovalsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/trust-marks" element={<TrustMarksPage />} />
+        <Route path="/users" element={
+          <ProtectedRoute adminOnly>
+            <UsersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -14,11 +79,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
