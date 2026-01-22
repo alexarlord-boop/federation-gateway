@@ -58,9 +58,9 @@ export default function EntitiesPage() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div className="page-header mb-0">
-          <h1 className="page-title">Entities</h1>
+          <h1 className="page-title">Leaf Entities</h1>
           <p className="page-description">
-            Manage registered entities in the federation
+            Manage registered RPs and OPs in the federation
           </p>
         </div>
         <Button asChild>

@@ -4,6 +4,7 @@ import type { EntityType } from '@/types/registry';
 interface EntityTypeBadgeProps {
   type: EntityType;
   className?: string;
+  showFederationEntity?: boolean;
 }
 
 const typeConfig: Record<EntityType, { label: string; short: string; className: string }> = {
@@ -39,7 +40,12 @@ const typeConfig: Record<EntityType, { label: string; short: string; className: 
   },
 };
 
-export function EntityTypeBadge({ type, className }: EntityTypeBadgeProps) {
+export function EntityTypeBadge({ type, className, showFederationEntity = false }: EntityTypeBadgeProps) {
+  // Hide FE badges by default since every entity in the registry is a Federation Entity
+  if (type === 'federation_entity' && !showFederationEntity) {
+    return null;
+  }
+  
   const config = typeConfig[type];
   
   return (
