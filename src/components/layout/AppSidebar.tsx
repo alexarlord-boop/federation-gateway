@@ -35,9 +35,14 @@ interface SidebarSection {
 
 const sidebarSections: SidebarSection[] = [
   {
-    label: 'Federation',
+    label: 'Main',
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Federation',
+    items: [
       { 
         title: 'TAs and IAs', 
         href: '/trust-anchors', 
