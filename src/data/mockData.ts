@@ -3,7 +3,7 @@ import type { TrustAnchor, Entity, ApprovalRequest, DashboardStats } from '@/typ
 export const mockTrustAnchors: TrustAnchor[] = [
   {
     id: 'ta-1',
-    name: 'GÉANT Federation',
+    name: 'My NREN Federation',
     entityId: 'https://federation.geant.org',
     description: 'Production federation for European research and education',
     type: 'federation',
@@ -32,7 +32,7 @@ export const mockEntities: Entity[] = [
     displayName: 'Example University IdP',
     entityTypes: ['openid_provider'],
     trustAnchorId: 'ta-1',
-    trustAnchorName: 'GÉANT Federation',
+    trustAnchorName: 'My NREN Federation',
     status: 'active',
     organizationName: 'Example University',
     contacts: [
@@ -48,7 +48,7 @@ export const mockEntities: Entity[] = [
     displayName: 'EU Research Portal',
     entityTypes: ['openid_relying_party'],
     trustAnchorId: 'ta-1',
-    trustAnchorName: 'GÉANT Federation',
+    trustAnchorName: 'My NREN Federation',
     status: 'active',
     organizationName: 'European Research Council',
     contacts: [
@@ -64,7 +64,7 @@ export const mockEntities: Entity[] = [
     displayName: 'Nordic University IdP',
     entityTypes: ['openid_provider', 'federation_entity'],
     trustAnchorId: 'ta-1',
-    trustAnchorName: 'GÉANT Federation',
+    trustAnchorName: 'My NREN Federation',
     status: 'pending',
     organizationName: 'Nordic University',
     contacts: [
