@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="space-y-6">
           <div className="max-w-md">
             <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-              Manage your federation with confidence
+              Manage your federation
             </h2>
             <p className="text-primary-foreground/80 leading-relaxed">
               Register entities, manage trust anchors, and streamline approval workflows 

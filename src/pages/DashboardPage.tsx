@@ -30,12 +30,7 @@ function StatCard({
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold mt-1">{value}</p>
             <p className="text-sm text-muted-foreground mt-1">{description}</p>
-            {trend && (
-              <div className={`flex items-center gap-1 mt-2 text-sm ${trend.positive ? 'text-success' : 'text-destructive'}`}>
-                <TrendingUp className={`w-4 h-4 ${!trend.positive && 'rotate-180'}`} />
-                <span>{trend.value}% from last month</span>
-              </div>
-            )}
+            
           </div>
           <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
             <Icon className="w-6 h-6 text-accent" />
