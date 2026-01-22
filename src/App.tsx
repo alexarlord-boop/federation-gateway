@@ -43,7 +43,9 @@ function AppRoutes() {
       
       <Route element={
         <ProtectedRoute>
-          <AppLayout />
+          <TrustAnchorProvider>
+            <AppLayout />
+          </TrustAnchorProvider>
         </ProtectedRoute>
       }>
         <Route path="/dashboard" element={<DashboardPage />} />
@@ -81,9 +83,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <TrustAnchorProvider>
-            <AppRoutes />
-          </TrustAnchorProvider>
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
