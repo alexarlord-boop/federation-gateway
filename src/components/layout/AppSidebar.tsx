@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Building2, 
   Shield, 
   Users, 
   ClipboardCheck, 
@@ -9,7 +8,8 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Network
+  Network,
+  Leaf
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -28,46 +28,61 @@ interface NavItem {
   children?: { title: string; href: string }[];
 }
 
-const navItems: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { 
-    title: 'Trust Anchors', 
-    href: '/trust-anchors', 
-    icon: Shield,
-    adminOnly: true,
+interface SidebarSection {
+  label: string;
+  items: NavItem[];
+}
+
+const sidebarSections: SidebarSection[] = [
+  {
+    label: 'Federation',
+    items: [
+      { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { 
+        title: 'TAs and IAs', 
+        href: '/trust-anchors', 
+        icon: Shield,
+        adminOnly: true,
+      },
+      { 
+        title: 'Leaf Entities', 
+        href: '/entities', 
+        icon: Leaf,
+        children: [
+          { title: 'All Entities', href: '/entities' },
+          { title: 'Register New', href: '/entities/register' },
+        ]
+      },
+      { 
+        title: 'Trust Marks', 
+        href: '/trust-marks', 
+        icon: Award,
+      },
+    ],
   },
-  { 
-    title: 'Entities', 
-    href: '/entities', 
-    icon: Building2,
-    children: [
-      { title: 'All Entities', href: '/entities' },
-      { title: 'Register New', href: '/entities/register' },
-    ]
-  },
-  { 
-    title: 'Approvals', 
-    href: '/approvals', 
-    icon: ClipboardCheck,
-    adminOnly: true,
-  },
-  { 
-    title: 'Trust Marks', 
-    href: '/trust-marks', 
-    icon: Award,
-  },
-  { 
-    title: 'Users', 
-    href: '/users', 
-    icon: Users,
-    adminOnly: true,
+  {
+    label: 'Organization',
+    items: [
+      { 
+        title: 'Approvals', 
+        href: '/approvals', 
+        icon: ClipboardCheck,
+        adminOnly: true,
+      },
+      { 
+        title: 'Users', 
+        href: '/users', 
+        icon: Users,
+        adminOnly: true,
+      },
+    ],
   },
 ];
 
 export function AppSidebar() {
   const { user, isAdmin, logout } = useAuth();
   const location = useLocation();
-  const [openSections, setOpenSections] = useState<string[]>(['Entities']);
+  const [openSections, setOpenSections] = useState<string[]>(['Leaf Entities']);
 
   const toggleSection = (title: string) => {
     setOpenSections(prev => 
@@ -77,7 +92,74 @@ export function AppSidebar() {
     );
   };
 
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+  const renderNavItem = (item: NavItem) => {
+    const isActive = location.pathname === item.href || 
+      location.pathname.startsWith(item.href + '/');
+    const hasChildren = item.children && item.children.length > 0;
+    const isOpen = openSections.includes(item.title);
+
+    if (hasChildren) {
+      return (
+        <Collapsible 
+          key={item.href} 
+          open={isOpen}
+          onOpenChange={() => toggleSection(item.title)}
+        >
+          <CollapsibleTrigger className="w-full">
+            <div className={cn(
+              "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              isActive 
+                ? "bg-sidebar-accent text-sidebar-primary" 
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            )}>
+              <div className="flex items-center gap-3">
+                <item.icon className="w-5 h-5" />
+                <span>{item.title}</span>
+              </div>
+              <ChevronDown className={cn(
+                "w-4 h-4 transition-transform",
+                isOpen && "rotate-180"
+              )} />
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="ml-8 mt-1 space-y-1">
+              {item.children?.map((child) => (
+                <NavLink
+                  key={child.href}
+                  to={child.href}
+                  className={({ isActive }) => cn(
+                    "block px-3 py-2 rounded-lg text-sm transition-colors",
+                    isActive 
+                      ? "text-sidebar-primary font-medium" 
+                      : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  )}
+                >
+                  {child.title}
+                </NavLink>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    return (
+      <NavLink
+        key={item.href}
+        to={item.href}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+          isActive 
+            ? "bg-sidebar-accent text-sidebar-primary" 
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        )}
+      >
+        <item.icon className="w-5 h-5" />
+        <span>{item.title}</span>
+      </NavLink>
+    );
+  };
 
   return (
     <aside className="w-64 min-h-screen bg-sidebar flex flex-col">
@@ -95,73 +177,22 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {filteredNavItems.map((item) => {
-          const isActive = location.pathname === item.href || 
-            location.pathname.startsWith(item.href + '/');
-          const hasChildren = item.children && item.children.length > 0;
-          const isOpen = openSections.includes(item.title);
-
-          if (hasChildren) {
-            return (
-              <Collapsible 
-                key={item.href} 
-                open={isOpen}
-                onOpenChange={() => toggleSection(item.title)}
-              >
-                <CollapsibleTrigger className="w-full">
-                  <div className={cn(
-                    "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
-                      ? "bg-sidebar-accent text-sidebar-primary" 
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  )}>
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
-                    </div>
-                    <ChevronDown className={cn(
-                      "w-4 h-4 transition-transform",
-                      isOpen && "rotate-180"
-                    )} />
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="ml-8 mt-1 space-y-1">
-                    {item.children.map((child) => (
-                      <NavLink
-                        key={child.href}
-                        to={child.href}
-                        className={({ isActive }) => cn(
-                          "block px-3 py-2 rounded-lg text-sm transition-colors",
-                          isActive 
-                            ? "text-sidebar-primary font-medium" 
-                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
-                        )}
-                      >
-                        {child.title}
-                      </NavLink>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          }
-
+      <nav className="flex-1 p-4 space-y-6">
+        {sidebarSections.map((section) => {
+          const filteredItems = section.items.filter(item => !item.adminOnly || isAdmin);
+          if (filteredItems.length === 0) return null;
+          
           return (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                isActive 
-                  ? "bg-sidebar-accent text-sidebar-primary" 
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.title}</span>
-            </NavLink>
+            <div key={section.label}>
+              <div className="px-3 mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+                  {section.label}
+                </span>
+              </div>
+              <div className="space-y-1">
+                {filteredItems.map(renderNavItem)}
+              </div>
+            </div>
           );
         })}
       </nav>
