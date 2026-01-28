@@ -19,7 +19,7 @@ class MockDB {
   private loadState(): MockDBState {
     const stored = localStorage.getItem(STORAGE_KEY_SUBORDINATES);
     if (stored) {
-      return JSON.parse(stored);
+      return { subordinates: JSON.parse(stored) };
     }
     return this.initializeFromMocks();
   }
