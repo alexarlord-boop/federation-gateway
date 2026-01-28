@@ -165,7 +165,7 @@ export default function EntityRegisterPage() {
                   <SelectValue placeholder="Select a trust anchor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockTrustAnchors.map((ta) => (
+                  {trustAnchors.map((ta) => (
                     <SelectItem key={ta.id} value={ta.id}>
                       <div>
                         <p>{ta.name}</p>
@@ -331,7 +331,7 @@ export default function EntityRegisterPage() {
         );
 
       case 3:
-        const selectedTA = mockTrustAnchors.find(ta => ta.id === formData.trustAnchorId);
+        const selectedTA = trustAnchors.find(ta => ta.id === formData.trustAnchorId);
         return (
           <div className="space-y-6">
             <div className="p-4 bg-muted rounded-lg">
