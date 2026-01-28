@@ -35,7 +35,11 @@ const mockUsers: Record<string, User & { password: string }> = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // Initialize from localStorage on mount
+    const storedUser = localStorage.getItem('auth_user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -48,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (mockUser && mockUser.password === password) {
       const { password: _, ...userData } = mockUser;
       setUser(userData);
+      localStorage.setItem('auth_user', JSON.stringify(userData));
     } else {
       throw new Error('Invalid email or password');
     }
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
+    localStorage.removeItem('auth_user');
   }, []);
 
   const value: AuthContextType = {
