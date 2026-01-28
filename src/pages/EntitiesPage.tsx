@@ -183,7 +183,7 @@ export default function EntitiesPage() {
 
       {/* Pagination placeholder */}
       <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-        <p>Showing {filteredEntities.length} of {mockEntities.length} entities</p>
+        <p>Showing {filteredEntities.length} of {entities.length} entities</p>
       </div>
     </div>
   );
