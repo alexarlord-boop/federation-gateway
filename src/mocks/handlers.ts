@@ -31,6 +31,63 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // Update Subordinate Status
+  http.put(`${BASE_URL}/api/v1/admin/subordinates/:id/status`, async ({ params, request }) => {
+    const { id } = params;
+    const body = await request.json() as { status: string };
+    
+    const sub = mockDB.getSubordinate(id as string);
+    if (!sub) return new HttpResponse(null, { status: 404 });
+
+    mockDB.updateSubordinate(id as string, { status: body.status });
+    
+    // Return updated subordinate (simplified, usually returns full object)
+    const updated = mockDB.getSubordinate(id as string);
+    return HttpResponse.json(updated);
+  }),
+
+  // Update Subordinate Metadata (Full replacement)
+  http.put(`${BASE_URL}/api/v1/admin/subordinates/:id/metadata`, async ({ params, request }) => {
+    const { id } = params;
+    const body = await request.json() as any;
+    
+    const sub = mockDB.getSubordinate(id as string);
+    if (!sub) return new HttpResponse(null, { status: 404 });
+
+    mockDB.updateSubordinate(id as string, { metadata: body });
+    return HttpResponse.json(body);
+  }),
+
+  // Add JWK
+  http.post(`${BASE_URL}/api/v1/admin/subordinates/:id/jwks`, async ({ params, request }) => {
+    const { id } = params;
+    const body = await request.json() as any;
+    
+    const sub = mockDB.getSubordinate(id as string);
+    if (!sub) return new HttpResponse(null, { status: 404 });
+
+    const currentKeys = sub.jwks?.keys || [];
+    const newKeys = [...currentKeys, body];
+    
+    mockDB.updateSubordinate(id as string, { 
+        jwks: { ...sub.jwks, keys: newKeys } 
+    });
+    
+    return HttpResponse.json({ keys: newKeys });
+  }),
+
+  // Set JWKS
+  http.put(`${BASE_URL}/api/v1/admin/subordinates/:id/jwks`, async ({ params, request }) => {
+    const { id } = params;
+    const body = await request.json() as any;
+    
+    const sub = mockDB.getSubordinate(id as string);
+    if (!sub) return new HttpResponse(null, { status: 404 });
+
+    mockDB.updateSubordinate(id as string, { jwks: body });
+    return HttpResponse.json(body);
+  }),
+
     // Create Subordinate (Mock implementation - simplified)
   http.post(`${BASE_URL}/api/v1/admin/subordinates`, async ({ request }) => {
     const body = await request.json() as any;
@@ -53,5 +110,30 @@ export const handlers = [
         id: newId,
         ...newSub
     }, { status: 201 });
+  }),
+
+  // List Authority Hints
+  http.get(`${BASE_URL}/api/v1/admin/entity-configuration/authority-hints`, () => {
+    return HttpResponse.json(mockDB.getAuthorityHints());
+  }),
+
+  // Add Authority Hint
+  http.post(`${BASE_URL}/api/v1/admin/entity-configuration/authority-hints`, async ({ request }) => {
+    const body = await request.json() as { entity_id: string };
+    
+    const newHint = {
+        id: `ah-${Date.now()}`,
+        entity_id: body.entity_id,
+    };
+
+    mockDB.addAuthorityHint(newHint);
+    
+    return HttpResponse.json(newHint, { status: 201 });
+  }),
+
+  // Delete Authority Hint
+  http.delete(`${BASE_URL}/api/v1/admin/entity-configuration/authority-hints/:id`, ({ params }) => {
+    mockDB.deleteAuthorityHint(params.id as string);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

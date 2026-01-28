@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,12 +6,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useAuthorityHints } from '@/hooks/useAuthorityHints';
+import { Loader2, Trash2, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { hints, isLoading, addHint, deleteHint } = useAuthorityHints();
+  const { toast } = useToast();
+  const [newHint, setNewHint] = useState('');
+
+  const handleAddHint = async () => {
+    if (!newHint) return;
+    try {
+        await addHint.mutateAsync(newHint);
+        setNewHint('');
+        toast({ title: "Success", description: "Authority hint added" });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Error", description: "Failed to add hint" });
+    }
+  };
+
+  const handleDeleteHint = async (id: string) => {
+      try {
+          await deleteHint.mutateAsync(id);
+          toast({ title: "Deleted", description: "Authority hint removed" });
+      } catch(e) {
+          toast({ variant: "destructive", title: "Error", description: "Failed to remove hint" });
+      }
+  };
 
   return (
-    <div className="animate-fade-in max-w-3xl">
+    <div className="animate-fade-in max-w-3xl space-y-6">
       <div className="page-header">
         <h1 className="page-title">Settings</h1>
         <p className="page-description">
@@ -19,6 +46,51 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* Federation Settings - New Section */}
+        <Card>
+           <CardHeader>
+               <CardTitle>Federation Configuration</CardTitle>
+               <CardDescription>Manage authority hints and trust configuration</CardDescription>
+           </CardHeader>
+           <CardContent className="space-y-4">
+              <div>
+                  <h3 className="text-sm font-medium mb-2">Authority Hints</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                      List of superiors (intermediaries) this federation operator points to.
+                  </p>
+                  
+                  {isLoading ? (
+                      <Loader2 className="animate-spin w-4 h-4" />
+                  ) : (
+                      <div className="space-y-2 mb-4">
+                          {hints?.map((hint: any) => (
+                              <div key={hint.id} className="flex items-center justify-between p-2 rounded bg-muted">
+                                  <span className="text-sm font-mono">{hint.entity_id}</span>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteHint(hint.id)}>
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                              </div>
+                          ))}
+                          {hints?.length === 0 && <p className="text-sm text-muted-foreground italic">No authority hints configured.</p>}
+                      </div>
+                  )}
+
+                  <div className="flex gap-2">
+                      <Input 
+                        placeholder="https://superior-federation.example.org" 
+                        value={newHint}
+                        onChange={(e) => setNewHint(e.target.value)}
+                      />
+                      <Button onClick={handleAddHint} disabled={!newHint || addHint.isPending}>
+                          {addHint.isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4 mr-2" />}
+                          Add
+                      </Button>
+                  </div>
+              </div>
+           </CardContent>
+        </Card>
+
+        {/* Existing Sections */}
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
@@ -51,61 +123,10 @@ export default function SettingsPage() {
             <CardDescription>Manage your password and security settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input id="current-password" type="password" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input id="confirm-password" type="password" />
-              </div>
-            </div>
-            <Button>Update Password</Button>
+            <Button variant="outline">Update Password</Button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Configure how you receive notifications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">Email notifications</p>
-                <p className="text-sm text-muted-foreground">
-                  Receive emails about registration approvals
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">Entity updates</p>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when your entities are updated
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">Federation announcements</p>
-                <p className="text-sm text-muted-foreground">
-                  Important updates about the federation
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

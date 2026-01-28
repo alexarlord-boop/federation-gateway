@@ -1,12 +1,15 @@
 import { mockTrustAnchors, mockEntities } from '../data/mockData';
 import type { Subordinate } from '../client/models/Subordinate';
 import type { SubordinateDetails } from '../client/models/SubordinateDetails';
+import type { AuthorityHint } from '../client/models/AuthorityHint';
 import type { TrustAnchor, Entity } from '../types/registry';
 
 const STORAGE_KEY_SUBORDINATES = 'mock_subordinates';
+const STORAGE_KEY_HINTS = 'mock_hints';
 
 interface MockDBState {
   subordinates: SubordinateDetails[];
+  authorityHints: AuthorityHint[];
 }
 
 class MockDB {
@@ -17,15 +20,24 @@ class MockDB {
   }
 
   private loadState(): MockDBState {
-    const stored = localStorage.getItem(STORAGE_KEY_SUBORDINATES);
-    if (stored) {
-      return { subordinates: JSON.parse(stored) };
+    const subs = localStorage.getItem(STORAGE_KEY_SUBORDINATES);
+    const hints = localStorage.getItem(STORAGE_KEY_HINTS);
+
+    let subordinates: SubordinateDetails[];
+    if (subs) {
+      subordinates = JSON.parse(subs);
+    } else {
+      subordinates = this.initializeFromMocks().subordinates;
     }
-    return this.initializeFromMocks();
+
+    const authorityHints = hints ? JSON.parse(hints) : [];
+
+    return { subordinates, authorityHints };
   }
 
   private saveState() {
     localStorage.setItem(STORAGE_KEY_SUBORDINATES, JSON.stringify(this.state.subordinates));
+    localStorage.setItem(STORAGE_KEY_HINTS, JSON.stringify(this.state.authorityHints));
   }
 
   private initializeFromMocks(): MockDBState {
@@ -61,7 +73,7 @@ class MockDB {
     }));
 
     const all = [...taSubordinates, ...entitySubordinates];
-    return { subordinates: all };
+    return { subordinates: all, authorityHints: [] };
   }
 
   public getSubordinates(entityType?: string): Subordinate[] {
@@ -98,6 +110,20 @@ class MockDB {
 
   public deleteSubordinate(id: string): void {
     this.state.subordinates = this.state.subordinates.filter(s => s.id !== id);
+    this.saveState();
+  }
+
+  public getAuthorityHints(): AuthorityHint[] {
+    return this.state.authorityHints;
+  }
+
+  public addAuthorityHint(hint: AuthorityHint): void {
+    this.state.authorityHints.push(hint);
+    this.saveState();
+  }
+
+  public deleteAuthorityHint(id: string): void {
+    this.state.authorityHints = this.state.authorityHints.filter(h => h.id !== id);
     this.saveState();
   }
 
