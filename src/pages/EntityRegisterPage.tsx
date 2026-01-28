@@ -14,7 +14,8 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockTrustAnchors } from '@/data/mockData';
+import { useTrustAnchors } from '@/hooks/useTrustAnchors';
+import { useCreateSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
 import type { EntityType } from '@/types/registry';
 
@@ -42,6 +43,9 @@ export default function EntityRegisterPage() {
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const { trustAnchors } = useTrustAnchors();
+  const createSubordinate = useCreateSubordinate();
 
   const handleFetchConfig = async () => {
     if (!formData.entityId) return;
@@ -83,14 +87,35 @@ export default function EntityRegisterPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'Registration Submitted',
-      description: 'Your entity registration is pending approval.',
-    });
-    
-    navigate('/entities');
+    try {
+        await createSubordinate.mutateAsync({
+             entity_id: formData.entityId,
+             registered_entity_types: formData.entityTypes,
+             status: 'active', // Default to active for simpler demo, or 'pending'
+             metadata: {
+                 openid_provider: { 
+                     organization_name: formData.organizationName,
+                     homepage_uri: formData.entityId 
+                 }
+             },
+             description: formData.displayName // Use description for display name mapping
+        } as any);
+
+        toast({
+          title: 'Registration Submitted',
+          description: 'Your entity registration has been successfully created.',
+        });
+        
+        navigate('/entities');
+    } catch (e) {
+        toast({
+          title: 'Error',
+          description: 'Failed to register entity.',
+          variant: 'destructive',
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const canProceed = () => {

@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-import { mockDashboardStats, mockEntities, mockApprovalRequests } from '@/data/mockData';
+import { mockDashboardStats, mockApprovalRequests } from '@/data/mockData';
+import { useEntities } from '@/hooks/useEntities';
 
 function StatCard({ 
   title, 
@@ -48,9 +49,17 @@ function StatCard({
 
 export default function DashboardPage() {
   const { user, isAdmin } = useAuth();
-  const stats = mockDashboardStats;
-  const recentEntities = mockEntities.slice(0, 5);
+  const { entities, isLoading } = useEntities();
+  
   const pendingApprovals = mockApprovalRequests.filter(r => r.status === 'pending');
+  
+  // Calculate stats from real data
+  const totalEntities = entities.length;
+  const activeEntities = entities.filter(e => e.status === 'active').length;
+  const opCount = entities.filter(e => e.entityTypes.includes('openid_provider')).length;
+  const rpCount = entities.filter(e => e.entityTypes.includes('openid_relying_party')).length;
+  
+  const recentEntities = entities.slice(0, 5);
 
   return (
     <div className="animate-fade-in">
@@ -65,22 +74,22 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Entities"
-          value={stats.totalEntities}
-          description={`${stats.activeEntities} active`}
+          value={isLoading ? "-" : totalEntities}
+          description={`${isLoading ? "-" : activeEntities} active`}
           icon={Building2}
           trend={{ value: 8, positive: true }}
           href="/entities"
         />
         <StatCard
           title="OpenID Providers"
-          value={stats.opCount}
+          value={isLoading ? "-" : opCount}
           description="Identity providers"
           icon={Shield}
           href="/entities?type=op"
         />
         <StatCard
           title="Relying Parties"
-          value={stats.rpCount}
+          value={isLoading ? "-" : rpCount}
           description="Service providers"
           icon={Users}
           href="/entities?type=rp"
@@ -88,7 +97,7 @@ export default function DashboardPage() {
         {isAdmin && (
           <StatCard
             title="Pending Approvals"
-            value={stats.pendingApprovals}
+            value={pendingApprovals.length}
             description="Awaiting review"
             icon={ClipboardCheck}
             href="/approvals"
@@ -97,53 +106,55 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent entities */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent Entities</CardTitle>
-              <CardDescription>Latest registered entities in the federation</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/entities">
-                View all <ArrowUpRight className="w-4 h-4 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentEntities.map((entity) => (
-                <Link
-                  key={entity.id}
-                  to={`/entities/${entity.id}`}
-                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-accent" />
+         {/* Recent entities */}
+         <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Entities</CardTitle>
+                  <CardDescription>Recently registered or updated entities</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/entities">View All</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {isLoading ? (
+                   <p className="text-muted-foreground text-sm">Loading...</p>
+                ) : recentEntities.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No entities found.</p>
+                ) : (
+                  recentEntities.map((entity) => (
+                    <div key={entity.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border border-border">
+                          <Building2 className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{entity.displayName}</p>
+                          <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span className="truncate max-w-[200px]">{entity.entityId}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="hidden sm:flex gap-1">
+                          {entity.entityTypes.map(type => (
+                             <EntityTypeBadge key={type} type={type as any} />
+                          ))}
+                        </div>
+                        <StatusBadge status={entity.status as any} />
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium group-hover:text-accent transition-colors">
-                        {entity.displayName || entity.entityId}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {entity.organizationName}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      {entity.entityTypes.map((type) => (
-                        <EntityTypeBadge key={type} type={type} />
-                      ))}
-                    </div>
-                    <StatusBadge status={entity.status} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Pending approvals (admin only) */}
         {isAdmin && (

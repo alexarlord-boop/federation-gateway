@@ -34,25 +34,35 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-import { mockEntities, mockTrustAnchors } from '@/data/mockData';
 import type { EntityStatus, EntityType } from '@/types/registry';
+import { useEntities } from '@/hooks/useEntities';
+import { Loader2 } from 'lucide-react';
 
 export default function EntitiesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus | 'all'>('all');
-  const [taFilter, setTaFilter] = useState<string>('all');
+  
+  const { entities, isLoading } = useEntities();
 
-  const filteredEntities = mockEntities.filter(entity => {
+  const filteredEntities = entities.filter(entity => {
     const matchesSearch = 
       entity.entityId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entity.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entity.organizationName?.toLowerCase().includes(searchQuery.toLowerCase());
     
+    // Status in OAS might be strict string, assume mapping matches or is string
     const matchesStatus = statusFilter === 'all' || entity.status === statusFilter;
-    const matchesTA = taFilter === 'all' || entity.trustAnchorId === taFilter;
     
-    return matchesSearch && matchesStatus && matchesTA;
+    return matchesSearch && matchesStatus;
   });
+
+  if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -96,17 +106,6 @@ export default function EntitiesPage() {
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={taFilter} onValueChange={setTaFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Trust Anchor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Trust Anchors</SelectItem>
-            {mockTrustAnchors.map((ta) => (
-              <SelectItem key={ta.id} value={ta.id}>{ta.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Table */}
@@ -116,16 +115,14 @@ export default function EntitiesPage() {
             <TableRow>
               <TableHead className="w-[300px]">Entity</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Trust Anchor</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Updated</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredEntities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={4} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Building2 className="w-10 h-10 mb-2 opacity-30" />
                     <p>No entities found</p>
@@ -157,15 +154,7 @@ export default function EntitiesPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{entity.trustAnchorName}</span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={entity.status} />
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(entity.updatedAt).toLocaleDateString()}
-                    </span>
+                    <StatusBadge status={entity.status as EntityStatus} />
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -177,9 +166,6 @@ export default function EntitiesPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <Link to={`/entities/${entity.id}`}>View Details</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={`/entities/${entity.id}/edit`}>Edit</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <ExternalLink className="w-4 h-4 mr-2" />

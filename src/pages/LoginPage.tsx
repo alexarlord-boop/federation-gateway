@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Network, ArrowRight, AlertCircle } from 'lucide-react';
+import { Network, ArrowRight, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,16 @@ export default function LoginPage() {
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    }
+  };
+
+  const handleOIDCLogin = async () => {
+    try {
+      // Simulate successful OIDC login as Admin
+      await login('admin@oidfed.org', 'admin123');
+      navigate('/dashboard');
+    } catch (err) {
+      setError('OIDC Login failed');
     }
   };
 
@@ -152,8 +162,11 @@ export default function LoginPage() {
                   variant="outline" 
                   className="w-full mt-4"
                   type="button"
+                  onClick={handleOIDCLogin}
+                  disabled={isLoading}
                 >
-                  Sign in with Institutional Account
+                  <Globe className="mr-2 h-4 w-4" />
+                  Sign in with OIDC (eduGAIN)
                 </Button>
               </div>
 

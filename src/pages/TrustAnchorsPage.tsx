@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ChevronUp, Server, Globe, ArrowDownToLine } from 'lucide-react';
+import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ChevronUp, Server, Globe, ArrowDownToLine, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,9 +16,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { mockTrustAnchors } from '@/data/mockData';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { cn } from '@/lib/utils';
+import { useTrustAnchors } from '@/hooks/useTrustAnchors';
+import { useCreateSubordinate } from '@/hooks/useSubordinates';
+import { useToast } from '@/hooks/use-toast';
 
 const typeLabels: Record<string, { label: string; className: string }> = {
   federation: { label: 'Federation', className: 'bg-info/10 text-info border-info/30' },
@@ -163,6 +165,35 @@ function TrustAnchorCard({
 
 function AddTrustAnchorDialog() {
   const [open, setOpen] = useState(false);
+  const createSubordinate = useCreateSubordinate();
+  const { toast } = useToast();
+
+  const handleCreateLocal = async () => {
+    try {
+        await createSubordinate.mutateAsync({
+            // Mock payload for a new TA
+            entity_id: 'https://new-federation.example.org',
+            registered_entity_types: ['federation_entity'],
+            status: 'active',
+            metadata: {
+                federation_entity: {
+                    organization_name: 'New Local Federation'
+                }
+            }
+        } as any);
+        toast({
+            title: "Success",
+            description: "New Trust Anchor created successfully",
+        });
+        setOpen(false);
+    } catch (e) {
+        toast({
+            title: "Error",
+            description: "Failed to create Trust Anchor",
+            variant: "destructive"
+        });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -182,7 +213,7 @@ function AddTrustAnchorDialog() {
         <div className="grid gap-4 py-4">
           <button 
             className="flex items-start gap-4 p-4 rounded-lg border border-border hover:border-accent hover:bg-accent/5 transition-colors text-left group"
-            onClick={() => setOpen(false)}
+            onClick={handleCreateLocal}
           >
             <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors shrink-0">
               <Server className="w-5 h-5 text-accent" />
@@ -217,7 +248,15 @@ function AddTrustAnchorDialog() {
 
 export default function TrustAnchorsPage() {
   // Filter local TAs (ones we manage)
-  const localTAs = mockTrustAnchors;
+  const { trustAnchors: localTAs, isLoading } = useTrustAnchors();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">

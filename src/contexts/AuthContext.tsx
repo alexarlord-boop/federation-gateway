@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User, UserRole } from '@/types/registry';
+import { OpenAPI } from '@/client';
 
 interface AuthContextType {
   user: User | null;
@@ -38,7 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     // Initialize from localStorage on mount
     const storedUser = localStorage.getItem('auth_user');
-    return storedUser ? JSON.parse(storedUser) : null;
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+    if (parsedUser) {
+        OpenAPI.TOKEN = 'mock-jwt-token';
+    }
+    return parsedUser;
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { password: _, ...userData } = mockUser;
       setUser(userData);
       localStorage.setItem('auth_user', JSON.stringify(userData));
+      OpenAPI.TOKEN = 'mock-jwt-token';
     } else {
       throw new Error('Invalid email or password');
     }
@@ -63,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('auth_user');
+    OpenAPI.TOKEN = undefined;
   }, []);
 
   const value: AuthContextType = {
