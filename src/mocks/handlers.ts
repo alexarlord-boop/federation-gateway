@@ -136,4 +136,15 @@ export const handlers = [
     mockDB.deleteAuthorityHint(params.id as string);
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // --- Context Switching (Debug/Demo API) ---
+  http.get(`${BASE_URL}/api/debug/context`, () => {
+      return HttpResponse.json({ contextId: mockDB.getContext() });
+  }),
+
+  http.post(`${BASE_URL}/api/debug/context`, async ({ request }) => {
+      const body = await request.json() as { contextId: string };
+      mockDB.setContext(body.contextId);
+      return HttpResponse.json({ contextId: body.contextId });
+  }),
 ];

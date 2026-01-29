@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 const typeLabels: Record<string, { label: string; className: string }> = {
   federation: { label: 'Federation', className: 'bg-info/10 text-info border-info/30' },
@@ -64,21 +65,21 @@ function TrustAnchorCard({
   ta, 
   isLocal = false, 
   isExternal = false,
-  isSubordinate = false 
+  isSubordinate = false,
+  isActive = false 
 }: { 
   ta: any; 
   isLocal?: boolean;
   isExternal?: boolean;
   isSubordinate?: boolean;
+  isActive?: boolean;
 }) {
   const typeConfig = typeLabels[ta.type];
-  const { activeTrustAnchor } = useTrustAnchor();
-  const isActive = activeTrustAnchor?.id === ta.id;
 
   return (
     <Card className={cn(
       "group hover:shadow-md transition-all",
-      isActive && "ring-2 ring-accent",
+      isActive && "ring-2 ring-primary",
       isExternal && "opacity-75 bg-muted/30"
     )}>
       <CardHeader className="pb-3">
@@ -247,8 +248,23 @@ function AddTrustAnchorDialog() {
 }
 
 export default function TrustAnchorsPage() {
+  // Sync the context state with the debug API
+  const { data: currentCtxData } = useQuery({
+    queryKey: ['debug-context'],
+    queryFn: async () => {
+        const res = await fetch('http://localhost:8765/api/debug/context');
+        return res.json();
+    }
+  });
+
   // Filter local TAs (ones we manage)
-  const { trustAnchors: localTAs, isLoading } = useTrustAnchors();
+  const { trustAnchors: allAnchors, isLoading } = useTrustAnchors();
+  const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'test' || ta.type === 'training');
+
+  // Determine active TA from debug context
+  const activeTrustAnchor = allAnchors.find(ta => ta.id === currentCtxData?.contextId) || null;
+
+  const [open, setOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -278,9 +294,12 @@ export default function TrustAnchorsPage() {
           <span className="text-sm text-muted-foreground">(Local - Full CRUD)</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {localTAs.map((ta) => (
-            <TrustAnchorCard key={ta.id} ta={ta} isLocal />
-          ))}
+          {localTAs.map((ta) => {
+             const isActive = activeTrustAnchor?.id === ta.id;
+             return (
+                <TrustAnchorCard key={ta.id} ta={ta} isLocal isActive={isActive} />
+             );
+          })}
         </div>
       </section>
 

@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
+import { ContextSwitcher } from './ContextSwitcher';
+
 interface NavItem {
   title: string;
   href: string;
@@ -179,6 +181,10 @@ export function AppSidebar() {
             <p className="text-xs text-sidebar-foreground/60">Registry</p>
           </div>
         </div>
+      </div>
+
+      <div className="pt-4 px-2">
+        <ContextSwitcher />
       </div>
 
       {/* Navigation */}

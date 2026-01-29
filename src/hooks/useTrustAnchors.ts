@@ -1,10 +1,10 @@
-import { useSubordinates } from './useSubordinates';
-import { Subordinate } from '@/client/models/Subordinate';
+import { useQuery } from '@tanstack/react-query';
+import { mockTrustAnchors } from '@/data/mockData';
 
 export interface TrustAnchorDisplay {
     id: string;
     entityId: string;
-    name: string; // derived from description or metadata
+    name: string;
     type: string;
     status: string;
     description?: string;
@@ -12,24 +12,30 @@ export interface TrustAnchorDisplay {
 }
 
 export const useTrustAnchors = () => {
-    // Filter by federation_entity to get Trust Anchors
-    const { data: subordinates, isLoading, error } = useSubordinates('federation_entity');
+    // Current requirement: "Status Quo" view of available instances regardless of active context
+    // We mix the static mock data (simulating registry configuration) with dynamic status if needed.
+    
+    // We use a query to allow invalidation if we ever add dynamic TAs, but for now it returns static data
+    // to ensure visibility even when logged in as a leaf-node context.
+    const { data, isLoading } = useQuery({
+        queryKey: ['trust-anchors-list'],
+        queryFn: async () => {
+             // In a real app this would call an endpoint like /api/admin/system/tenants 
+             // that is available to the system operator.
+             // For now, we return our mock set.
+             return mockTrustAnchors;
+        }
+    });
 
-    const trustAnchors: TrustAnchorDisplay[] = subordinates?.map((sub: Subordinate) => {
-        // Simple heuristic to determine "type" from metadata or registered_entity_types
-        // For now, assume 'federation' if it has federation_entity
-        const type = 'federation'; 
-        
-        return {
-            id: sub.id.toString(), // InternalID could be number or string
-            entityId: sub.entity_id,
-            name: sub.description || sub.entity_id, // Fallback
-            type,
-            status: sub.status,
-            description: sub.description,
-            subordinateCount: 0 // Not available in OAS list response yet
-        };
-    }) || [];
+    const trustAnchors: TrustAnchorDisplay[] = data?.map(ta => ({
+        id: ta.id,
+        entityId: ta.entityId,
+        name: ta.name,
+        type: ta.type,
+        status: ta.status,
+        description: ta.description,
+        subordinateCount: ta.subordinateCount
+    })) || [];
 
-    return { trustAnchors, isLoading, error };
+    return { trustAnchors, isLoading, error: null };
 };

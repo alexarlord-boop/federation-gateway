@@ -62,7 +62,7 @@ export const mockEntities: Entity[] = [
     id: 'ent-3',
     entityId: 'https://idp.nordic-university.no',
     displayName: 'Nordic University IdP',
-    entityTypes: ['openid_provider', 'federation_entity'],
+    entityTypes: ['openid_provider'],
     trustAnchorId: 'ta-1',
     trustAnchorName: 'My NREN Federation',
     status: 'pending',

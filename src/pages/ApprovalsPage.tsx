@@ -23,10 +23,10 @@ export default function ApprovalsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch lists
+  // Fetch lists for each tab
   const { data: pendingEntities, isLoading: isLoadingPending } = useSubordinates(undefined, 'pending');
-  // Ideally we fetch 'history' or 'all' for completed tabs, but let's just show active for 'Approved'
-  const { data: activeEntities, isLoading: isLoadingActive } = useSubordinates(undefined, 'active');
+  const { data: approvedEntities, isLoading: isLoadingApproved } = useSubordinates(undefined, 'active');
+  const { data: rejectedEntities, isLoading: isLoadingRejected } = useSubordinates(undefined, 'rejected');
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string, status: string }) => 
@@ -59,27 +59,27 @@ export default function ApprovalsPage() {
     }
   };
 
-  const RequestCard = ({ entity, isPending }: { entity: any, isPending: boolean }) => (
+  const RequestCard = ({ entity, tabType }: { entity: any, tabType: 'pending' | 'approved' | 'rejected' }) => (
     <Card className="hover:shadow-md transition-shadow mb-4">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              entity.status === 'pending' 
-                ? 'bg-yellow-500/10' 
-                : entity.status === 'active'
-                ? 'bg-green-500/10'
-                : 'bg-red-500/10'
+              tabType === 'pending'
+                ? 'bg-warning/10' 
+                : tabType === 'approved'
+                ? 'bg-success/10'
+                : 'bg-destructive/10'
             }`}>
               <ClipboardCheck className={`w-5 h-5 ${
-                entity.status === 'pending'
-                  ? 'text-yellow-600'
-                  : entity.status === 'active'
-                  ? 'text-green-600'
-                  : 'text-red-600'
+                tabType === 'pending'
+                  ? 'text-warning'
+                  : tabType === 'approved'
+                  ? 'text-success'
+                  : 'text-destructive'
               }`} />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold">{entity.entity_id}</h3>
               <p className="text-sm text-muted-foreground">
                  {(entity.registered_entity_types || []).join(', ')}
@@ -90,8 +90,8 @@ export default function ApprovalsPage() {
             </div>
           </div>
           
-          {isPending ? (
-            <div className="flex gap-2">
+          {tabType === 'pending' ? (
+            <div className="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" asChild>
                 <Link to={`/entities/${entity.id}`}>
                   <Eye className="w-4 h-4 mr-1" />
@@ -100,8 +100,7 @@ export default function ApprovalsPage() {
               </Button>
               <Button 
                 size="sm" 
-                variant="outline"
-                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                variant="destructive"
                 onClick={() => {
                   setSelectedRequest(entity.id);
                   setActionType('reject');
@@ -122,15 +121,11 @@ export default function ApprovalsPage() {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-                <span className={`text-sm px-2 py-1 rounded-full ${
-                    entity.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                    {entity.status}
-                </span>
+            <div className="flex items-center gap-2 shrink-0">
                  <Button variant="ghost" size="sm" asChild>
                     <Link to={`/entities/${entity.id}`}>
-                    <Eye className="w-4 h-4" />
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
                     </Link>
                 </Button>
             </div>
@@ -152,12 +147,15 @@ export default function ApprovalsPage() {
       <Tabs defaultValue="pending" className="space-y-6">
         <TabsList>
           <TabsTrigger value="pending" className="relative">
-            Pending Requests
+            Pending
             {pendingEntities && pendingEntities.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
+              <span className="ml-2 px-2 py-0.5 bg-warning text-warning-foreground text-xs rounded-full font-semibold">
+                {pendingEntities.length}
+              </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="completed">Active / History</TabsTrigger>
+          <TabsTrigger value="approved">Approved</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -171,17 +169,39 @@ export default function ApprovalsPage() {
             </div>
           ) : (
             pendingEntities?.map(req => (
-              <RequestCard key={req.id} entity={req} isPending={true} />
+              <RequestCard key={req.id} entity={req} tabType="pending" />
             ))
           )}
         </TabsContent>
 
-        <TabsContent value="completed" className="space-y-4">
-             {isLoadingActive ? (
+        <TabsContent value="approved" className="space-y-4">
+             {isLoadingApproved ? (
                  <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+             ) : approvedEntities?.length === 0 ? (
+                 <div className="text-center py-12 bg-muted/50 rounded-lg">
+                   <Check className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                   <h3 className="text-lg font-semibold mb-2">No Approved Entities</h3>
+                   <p className="text-muted-foreground">Approved entities will appear here.</p>
+                 </div>
              ) : (
-                  activeEntities?.map(req => (
-                      <RequestCard key={req.id} entity={req} isPending={false} />
+                  approvedEntities?.map(req => (
+                      <RequestCard key={req.id} entity={req} tabType="approved" />
+                  ))
+             )}
+        </TabsContent>
+
+        <TabsContent value="rejected" className="space-y-4">
+             {isLoadingRejected ? (
+                 <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+             ) : rejectedEntities?.length === 0 ? (
+                 <div className="text-center py-12 bg-muted/50 rounded-lg">
+                   <X className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                   <h3 className="text-lg font-semibold mb-2">No Rejected Entities</h3>
+                   <p className="text-muted-foreground">Rejected requests will appear here.</p>
+                 </div>
+             ) : (
+                  rejectedEntities?.map(req => (
+                      <RequestCard key={req.id} entity={req} tabType="rejected" />
                   ))
              )}
         </TabsContent>
