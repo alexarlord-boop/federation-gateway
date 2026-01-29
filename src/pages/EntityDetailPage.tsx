@@ -143,22 +143,29 @@ export default function EntityDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                   Change Status
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                 <DropdownMenuLabel>Set Status</DropdownMenuLabel>
-                 <DropdownMenuItem onClick={() => handleStatusChange('active')}>
-                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Active
-                 </DropdownMenuItem>
-                 <DropdownMenuItem onClick={() => handleStatusChange('locked')}>
-                     <XCircle className="w-4 h-4 mr-2 text-red-500" /> Locked
-                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Only show operational toggle for approved entities */}
+            {(entity.status === 'active' || entity.status === 'locked') && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                     {entity.status === 'locked' ? 'Unlock' : 'Lock'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                   <DropdownMenuLabel>Operational Status</DropdownMenuLabel>
+                   <DropdownMenuItem 
+                     onClick={() => handleStatusChange(entity.status === 'locked' ? 'active' : 'locked')}
+                     disabled={entity.status !== 'active' && entity.status !== 'locked'}
+                   >
+                      {entity.status === 'locked' ? (
+                        <><CheckCircle2 className="w-4 h-4 mr-2 text-success" /> Unlock (Set Active)</>
+                      ) : (
+                        <><XCircle className="w-4 h-4 mr-2 text-warning" /> Lock (Suspend Operations)</>
+                      )}
+                   </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             <Button variant="outline" asChild>
               <a href={`${entity.entity_id}/.well-known/openid-federation`} target="_blank" rel="noopener">
