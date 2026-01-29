@@ -138,55 +138,24 @@ function TrustAnchorCard({
   );
 }
 
-function AddTrustAnchorDialog() {
+function AddAuthorityHintDialog() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<'local' | 'superior' | null>(null);
-  const [superiorEntityId, setSuperiorEntityId] = useState('');
-  const [superiorDescription, setSuperiorDescription] = useState('');
-  const createSubordinate = useCreateSubordinate();
+  const [entityId, setEntityId] = useState('');
+  const [description, setDescription] = useState('');
   const { addHint } = useAuthorityHints();
   const { toast } = useToast();
 
-  const handleCreateLocal = async () => {
-    try {
-        await createSubordinate.mutateAsync({
-            // Mock payload for a new TA
-            entity_id: 'https://new-federation.example.org',
-            registered_entity_types: ['federation_entity'],
-            status: 'active',
-            metadata: {
-                federation_entity: {
-                    organization_name: 'New Local Federation'
-                }
-            }
-        } as any);
-        toast({
-            title: "Success",
-            description: "New Trust Anchor created successfully",
-        });
-        setOpen(false);
-        setMode(null);
-    } catch (e) {
-        toast({
-            title: "Error",
-            description: "Failed to create Trust Anchor",
-            variant: "destructive"
-        });
-    }
-  };
-
-  const handleAddSuperior = async () => {
-    if (!superiorEntityId) {
+  const handleAdd = async () => {
+    if (!entityId) {
       toast({ variant: 'destructive', title: 'Invalid Input', description: 'Entity ID is required' });
       return;
     }
     try {
-      await addHint.mutateAsync({ entity_id: superiorEntityId, description: superiorDescription });
+      await addHint.mutateAsync({ entity_id: entityId, description });
       toast({ title: 'Superior TA Added', description: 'Authority hint configured successfully.' });
       setOpen(false);
-      setMode(null);
-      setSuperiorEntityId('');
-      setSuperiorDescription('');
+      setEntityId('');
+      setDescription('');
     } catch (e) {
       toast({ variant: 'destructive', title: 'Failed', description: 'Could not add authority hint' });
     }
@@ -197,84 +166,42 @@ function AddTrustAnchorDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
-          Add Trust Anchor
+          Add Superior TA
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Trust Anchor</DialogTitle>
+          <DialogTitle>Link Superior Trust Anchor</DialogTitle>
           <DialogDescription>
-            {!mode ? 'Choose how you want to add a new Trust Anchor to the registry.' : mode === 'local' ? 'Deploy a new local TA instance' : 'Add a superior TA via authority hint'}
+            Add an upstream federation via authority hint. This configures which superior TAs this instance trusts.
           </DialogDescription>
         </DialogHeader>
-        {!mode ? (
-          <div className="grid gap-4 py-4">
-            <button 
-              className="flex items-start gap-4 p-4 rounded-lg border border-border hover:border-accent hover:bg-accent/5 transition-colors text-left group"
-              onClick={() => setMode('local')}
-            >
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors shrink-0">
-                <Server className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-semibold group-hover:text-accent transition-colors">Deploy Local Instance</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Spin up a new local signer/registry that you manage. Full CRUD access.
-                </p>
-              </div>
-            </button>
-            
-            <button 
-              className="flex items-start gap-4 p-4 rounded-lg border border-border hover:border-info hover:bg-info/5 transition-colors text-left group"
-              onClick={() => setMode('superior')}
-            >
-              <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center group-hover:bg-info/20 transition-colors shrink-0">
-                <Globe className="w-5 h-5 text-info" />
-              </div>
-              <div>
-                <h3 className="font-semibold group-hover:text-info transition-colors">Link Superior TA</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Add upstream federation via authority hint. Read-only reference.
-                </p>
-              </div>
-            </button>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="entity-id">Superior Entity ID</Label>
+            <Input 
+              id="entity-id"
+              placeholder="https://edugain.org"
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+              className="mt-1"
+            />
           </div>
-        ) : mode === 'local' ? (
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">This will create a new federation_entity subordinate that acts as a local TA instance you can manage.</p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setMode(null)}>Back</Button>
-              <Button onClick={handleCreateLocal}>Create Local TA</Button>
-            </div>
+          <div>
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Input 
+              id="description"
+              placeholder="eduGAIN Interfederation"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1"
+            />
           </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="superior-entity-id">Superior Entity ID</Label>
-              <Input 
-                id="superior-entity-id"
-                placeholder="https://edugain.org"
-                value={superiorEntityId}
-                onChange={(e) => setSuperiorEntityId(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="superior-description">Description (Optional)</Label>
-              <Input 
-                id="superior-description"
-                placeholder="eduGAIN Interfederation"
-                value={superiorDescription}
-                onChange={(e) => setSuperiorDescription(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setMode(null)}>Back</Button>
-              <Button onClick={handleAddSuperior}>Add Authority Hint</Button>
-            </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleAdd}>Add Authority Hint</Button>
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -333,15 +260,15 @@ export default function TrustAnchorsPage() {
             Manage Trust Anchors and Intermediate Authorities
           </p>
         </div>
-        <AddTrustAnchorDialog />
+        <AddAuthorityHintDialog />
       </div>
 
-      {/* Level 1: My Level - Local Instances */}
+      {/* Level 1: My Level - Federation Instances */}
       <section className="mb-10">
         <div className="flex items-center gap-2 mb-4">
           <Server className="w-5 h-5 text-accent" />
           <h2 className="text-lg font-semibold">My Instances</h2>
-          <span className="text-sm text-muted-foreground">(Local - Full CRUD)</span>
+          <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {
@@ -415,7 +342,7 @@ export default function TrustAnchorsPage() {
         <div className="flex items-center gap-2 mb-4">
           <ArrowDownToLine className="w-5 h-5 text-warning" />
           <h2 className="text-lg font-semibold">Subordinate TAs & Intermediates</h2>
-          <span className="text-sm text-muted-foreground">(Downstream - Full CRUD)</span>
+          <span className="text-sm text-muted-foreground">(Managed by Others - Registered Here)</span>
         </div>
         {subordinateTAs && subordinateTAs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -462,8 +389,8 @@ export default function TrustAnchorsPage() {
           <Card className="bg-muted/30">
             <CardContent className="py-8 text-center text-muted-foreground">
               <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No subordinate TAs configured</p>
-              <p className="text-sm">Use "Add Trust Anchor" → "Deploy Local Instance" or register via /entities</p>
+              <p>No subordinate TAs registered</p>
+              <p className="text-sm">Subordinate federations will register themselves via Leaf Entities → Register New</p>
             </CardContent>
           </Card>
         )}
