@@ -10,7 +10,8 @@ export const useAuthorityHints = () => {
   });
   
   const addHint = useMutation({
-    mutationFn: (entityId: string) => AuthorityHintsService.createAuthorityHint({ entity_id: entityId }),
+    mutationFn: (data: { entity_id: string, description?: string }) => 
+      AuthorityHintsService.createAuthorityHint(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['authorityHints'] });
     }
