@@ -260,7 +260,15 @@ export default function TrustAnchorsPage() {
             Manage Trust Anchors and Intermediate Authorities
           </p>
         </div>
-        <AddAuthorityHintDialog />
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/entities/register?type=intermediate">
+              <Plus className="w-4 h-4 mr-2" />
+              Register Intermediate
+            </Link>
+          </Button>
+          <AddAuthorityHintDialog />
+        </div>
       </div>
 
       {/* Level 1: My Level - Federation Instances */}
@@ -389,8 +397,8 @@ export default function TrustAnchorsPage() {
           <Card className="bg-muted/30">
             <CardContent className="py-8 text-center text-muted-foreground">
               <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No subordinate TAs registered</p>
-              <p className="text-sm">Subordinate federations will register themselves via Leaf Entities → Register New</p>
+              <p>No subordinate TAs or intermediates registered</p>
+              <p className="text-sm">Register intermediate authorities using the "Register Intermediate" button above</p>
             </CardContent>
           </Card>
         )}

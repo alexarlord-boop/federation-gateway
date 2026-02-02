@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ const steps = [
 ];
 
 export default function EntityRegisterPage() {
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -43,6 +44,17 @@ export default function EntityRegisterPage() {
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Pre-fill entity type if coming from intermediate registration
+  useEffect(() => {
+    const type = searchParams.get('type');
+    if (type === 'intermediate') {
+      setFormData(prev => ({
+        ...prev,
+        entityTypes: ['federation_entity']
+      }));
+    }
+  }, [searchParams]);
   
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
