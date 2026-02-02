@@ -186,6 +186,10 @@ export default function LoginPage() {
               <p><strong>Admin:</strong> admin@oidfed.org / admin123</p>
               <p><strong>User:</strong> tech@example.org / user123</p>
             </div>
+            <Separator className="my-3" />
+            <p className="text-xs text-muted-foreground/70">
+              <strong>Production:</strong> Authentication via FastAPI Gateway with OIDC/SAML federation support
+            </p>
           </div>
         </div>
       </div>

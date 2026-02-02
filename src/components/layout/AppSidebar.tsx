@@ -185,6 +185,12 @@ export function AppSidebar() {
 
       <div className="pt-4 px-2">
         <ContextSwitcher />
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-3 px-2 py-1.5 bg-warning/10 border border-warning/30 rounded-md text-xs text-warning flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
+            Mock API Mode
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

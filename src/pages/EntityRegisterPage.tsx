@@ -91,7 +91,7 @@ export default function EntityRegisterPage() {
         await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
              registered_entity_types: formData.entityTypes,
-             status: 'active', // Default to active for simpler demo, or 'pending'
+             status: 'draft', // Submitted for review - demonstrates workflow state machine
              metadata: {
                  openid_provider: { 
                      organization_name: formData.organizationName,
@@ -148,11 +148,13 @@ export default function EntityRegisterPage() {
                 onChange={(e) => setFormData({ ...formData, entityId: e.target.value })}
               />
               <p className="text-sm text-muted-foreground">
-                The entity's identifier URL. Configuration will be fetched from 
-                <code className="mx-1 px-1 py-0.5 bg-muted rounded text-xs">
-                  /.well-known/openid-federation
-                </code>
+                The entity's identifier URL. Configuration will be fetched from:
               </p>
+              {formData.entityId && (
+                <code className="text-xs bg-muted px-2 py-1 rounded block mt-1 break-all">
+                  {formData.entityId}/.well-known/openid-federation
+                </code>
+              )}
             </div>
 
             <div className="space-y-2">
