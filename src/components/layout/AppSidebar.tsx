@@ -100,10 +100,13 @@ export function AppSidebar() {
   };
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = location.pathname === item.href || 
-      location.pathname.startsWith(item.href + '/');
     const hasChildren = item.children && item.children.length > 0;
     const isOpen = openSections.includes(item.title);
+    
+    // For items with children, check if any child path matches
+    const isActive = hasChildren
+      ? item.children?.some(child => location.pathname === child.href) || location.pathname === item.href
+      : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
 
     if (hasChildren) {
       return (
@@ -135,6 +138,7 @@ export function AppSidebar() {
                 <NavLink
                   key={child.href}
                   to={child.href}
+                  end
                   className={({ isActive }) => cn(
                     "block px-3 py-2 rounded-lg text-sm transition-colors",
                     isActive 
