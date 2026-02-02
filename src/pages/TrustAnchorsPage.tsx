@@ -253,33 +253,25 @@ export default function TrustAnchorsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
-        <div className="page-header mb-0">
-          <h1 className="page-title">TAs and IAs</h1>
-          <p className="page-description">
-            Manage Trust Anchors and Intermediate Authorities
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
-            <Link to="/entities/register?type=intermediate">
-              <Plus className="w-4 h-4 mr-2" />
-              Register Intermediate
-            </Link>
-          </Button>
-          <Button className="bg-info hover:bg-info/90 text-info-foreground">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Superior TA
-          </Button>
-        </div>
+      <div className="page-header mb-8">
+        <h1 className="page-title">TAs and IAs</h1>
+        <p className="page-description">
+          Manage Trust Anchors and Intermediate Authorities
+        </p>
       </div>
 
       {/* Level 1: My Level - Federation Instances */}
       <section className="mb-10">
-        <div className="flex items-center gap-2 mb-4">
-          <Server className="w-5 h-5 text-accent" />
-          <h2 className="text-lg font-semibold">My Instances</h2>
-          <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Server className="w-5 h-5 text-accent" />
+            <h2 className="text-lg font-semibold">My Instances</h2>
+            <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
+          </div>
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Plus className="w-4 h-4 mr-2" />
+            Add TA Instance
+          </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {
@@ -293,10 +285,13 @@ export default function TrustAnchorsPage() {
 
       {/* Level 2: Superior Level - Upstream */}
       <section className="mb-10">
-        <div className="flex items-center gap-2 mb-4">
-          <ChevronUp className="w-5 h-5 text-info" />
-          <h2 className="text-lg font-semibold">Superior Authorities</h2>
-          <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ChevronUp className="w-5 h-5 text-info" />
+            <h2 className="text-lg font-semibold">Superior Authorities</h2>
+            <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
+          </div>
+          <AddAuthorityHintDialog />
         </div>
         {authorityHints && authorityHints.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -350,10 +345,18 @@ export default function TrustAnchorsPage() {
 
       {/* Level 3a: Subordinate TAs/Intermediates */}
       <section>
-        <div className="flex items-center gap-2 mb-4">
-          <ArrowDownToLine className="w-5 h-5 text-warning" />
-          <h2 className="text-lg font-semibold">Subordinate TAs & Intermediates</h2>
-          <span className="text-sm text-muted-foreground">(Managed by Others - Registered Here)</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ArrowDownToLine className="w-5 h-5 text-warning" />
+            <h2 className="text-lg font-semibold">Subordinate TAs & Intermediates</h2>
+            <span className="text-sm text-muted-foreground">(Managed by Others - Registered Here)</span>
+          </div>
+          <Button className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
+            <Link to="/entities/register?type=intermediate">
+              <Plus className="w-4 h-4 mr-2" />
+              Register Intermediate
+            </Link>
+          </Button>
         </div>
         {subordinateTAs && subordinateTAs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
