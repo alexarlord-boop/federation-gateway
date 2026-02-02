@@ -164,7 +164,7 @@ function AddAuthorityHintDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="bg-info hover:bg-info/90 text-info-foreground">
           <Plus className="w-4 h-4 mr-2" />
           Add Superior TA
         </Button>
@@ -261,13 +261,16 @@ export default function TrustAnchorsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
+          <Button className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
             <Link to="/entities/register?type=intermediate">
               <Plus className="w-4 h-4 mr-2" />
               Register Intermediate
             </Link>
           </Button>
-          <AddAuthorityHintDialog />
+          <Button className="bg-info hover:bg-info/90 text-info-foreground">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Superior TA
+          </Button>
         </div>
       </div>
 
