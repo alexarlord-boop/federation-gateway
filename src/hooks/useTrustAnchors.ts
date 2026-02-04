@@ -29,6 +29,9 @@ export const useTrustAnchors = () => {
         queryKey: ['trust-anchors-list'],
         queryFn: async () => {
              const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+             if (!token) {
+                 return [];
+             }
              const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
              });

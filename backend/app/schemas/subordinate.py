@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 class SubordinateBase(BaseModel):
     entity_id: str
     status: str
+    trust_anchor_id: Optional[str] = None
     registered_entity_types: List[str] = Field(default_factory=list)
     jwks: Optional[Any] = None
     metadata: Optional[Any] = None

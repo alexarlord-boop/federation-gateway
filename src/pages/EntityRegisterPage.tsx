@@ -118,6 +118,7 @@ export default function EntityRegisterPage() {
              entity_id: formData.entityId,
              registered_entity_types: formData.entityTypes,
              status: 'draft', // Submitted for review - demonstrates workflow state machine
+             trust_anchor_id: formData.trustAnchorId,
              metadata,
              description: formData.displayName // Use description for display name mapping
         } as any);

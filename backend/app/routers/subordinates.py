@@ -47,6 +47,7 @@ def create_subordinate(payload: SubordinateCreate, db: Session = Depends(get_db)
         entity_id=payload.entity_id,
         status=payload.status,
         description=payload.description,
+        trust_anchor_id=payload.trust_anchor_id,
         registered_entity_types=json.dumps(payload.registered_entity_types),
         jwks=json.dumps(payload.jwks) if payload.jwks is not None else None,
         metadata_json=json.dumps(payload.metadata) if payload.metadata is not None else None,

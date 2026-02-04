@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
+from app.models.subordinate import Subordinate
 from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse, TrustAnchorConfig
 from app.auth.dependencies import get_current_user
 
@@ -20,7 +21,11 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(get_current_u
             description=a.description,
             type=a.type,
             status=a.status,
-            subordinate_count=a.subordinate_count,
+            subordinate_count=db.query(Subordinate)
+            .filter(
+                Subordinate.trust_anchor_id == a.id,
+            )
+            .count(),
             created_at=a.created_at.isoformat() if a.created_at else None,
             updated_at=a.updated_at.isoformat() if a.updated_at else None,
         )
