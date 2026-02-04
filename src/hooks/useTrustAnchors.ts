@@ -71,5 +71,22 @@ export const useTrustAnchors = () => {
         },
     });
 
-    return { trustAnchors, isLoading, error: null, createTrustAnchor };
+    const deleteTrustAnchor = useMutation({
+        mutationFn: async (id: string) => {
+            const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+            const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${id}`, {
+                method: 'DELETE',
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            if (!res.ok) {
+                throw new Error('Failed to delete trust anchor');
+            }
+            return true;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trust-anchors-list'] });
+        },
+    });
+
+    return { trustAnchors, isLoading, error: null, createTrustAnchor, deleteTrustAnchor };
 };

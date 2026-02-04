@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import uuid
 from app.db.database import get_db
@@ -57,3 +57,17 @@ def create_trust_anchor(
         created_at=anchor.created_at.isoformat() if anchor.created_at else None,
         updated_at=anchor.updated_at.isoformat() if anchor.updated_at else None,
     )
+
+
+@router.delete("/{ta_id}", status_code=204)
+def delete_trust_anchor(
+    ta_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
+    if not anchor:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(anchor)
+    db.commit()
+    return None

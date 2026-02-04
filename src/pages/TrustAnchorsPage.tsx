@@ -48,13 +48,15 @@ function TrustAnchorCard({
   isLocal = false, 
   isExternal = false,
   isSubordinate = false,
-  isActive = false 
+  isActive = false,
+  onDelete,
 }: { 
   ta: any; 
   isLocal?: boolean;
   isExternal?: boolean;
   isSubordinate?: boolean;
   isActive?: boolean;
+  onDelete?: (id: string) => void;
 }) {
   const typeConfig = typeLabels[ta.type];
 
@@ -108,6 +110,15 @@ function TrustAnchorCard({
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Entity Config
                 </DropdownMenuItem>
+                {isLocal && onDelete && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => onDelete(String(ta.id))}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -327,7 +338,7 @@ export default function TrustAnchorsPage() {
   });
 
   // My-level TAs (static config from mock data)
-  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor } = useTrustAnchors();
+  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor, deleteTrustAnchor } = useTrustAnchors();
   const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'test' || ta.type === 'training');
 
   // Superior TAs (via authority hints)
@@ -364,6 +375,15 @@ export default function TrustAnchorsPage() {
     }
   };
 
+  const handleDeleteTrustAnchor = async (id: string) => {
+    try {
+      await deleteTrustAnchor.mutateAsync(id);
+      toast({ title: 'Deleted', description: 'Trust anchor removed.' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete trust anchor.' });
+    }
+  };
+
   const isLoading = isLoadingMyTAs || isLoadingHints || isLoadingSubTAs;
 
   if (isLoading) {
@@ -397,7 +417,7 @@ export default function TrustAnchorsPage() {
           {localTAs.map((ta) => {
              const isActive = activeTrustAnchor?.id === ta.id;
              return (
-                <TrustAnchorCard key={ta.id} ta={ta} isLocal isActive={isActive} />
+                 <TrustAnchorCard key={ta.id} ta={ta} isLocal isActive={isActive} onDelete={handleDeleteTrustAnchor} />
              );
           })}
         </div>
