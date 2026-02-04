@@ -348,6 +348,12 @@ export default function TrustAnchorsPage() {
       queryClient.invalidateQueries({ queryKey: ['subordinates'] });
     },
   });
+  const deleteSubordinate = useMutation({
+    mutationFn: (id: string) => SubordinatesService.deleteSubordinate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subordinates'] });
+    },
+  });
 
   const handleDeleteHint = async (id: string) => {
     try {
@@ -511,6 +517,24 @@ export default function TrustAnchorsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => updateStatus.mutate({ id: String(ta.id), status: 'rejected' })}>
                           Set Rejected
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() =>
+                            deleteSubordinate.mutate(String(ta.id), {
+                              onSuccess: () =>
+                                toast({ title: 'Deleted', description: 'Subordinate removed.' }),
+                              onError: () =>
+                                toast({
+                                  variant: 'destructive',
+                                  title: 'Delete Failed',
+                                  description: 'Could not delete subordinate.',
+                                }),
+                            })
+                          }
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
