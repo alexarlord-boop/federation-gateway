@@ -43,7 +43,9 @@ import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';
+import { OpenAPI } from '@/client';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
 const typeLabels: Record<string, { label: string; className: string }> = {
@@ -60,6 +62,7 @@ function TrustAnchorCard({
   isSubordinate = false,
   isActive = false,
   onDelete,
+  onConfigure,
 }: { 
   ta: any; 
   isLocal?: boolean;
@@ -67,6 +70,7 @@ function TrustAnchorCard({
   isSubordinate?: boolean;
   isActive?: boolean;
   onDelete?: (id: string, label: string) => void;
+  onConfigure?: (id: string, label: string) => void;
 }) {
   const typeConfig = typeLabels[ta.type];
 
@@ -112,7 +116,7 @@ function TrustAnchorCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onConfigure?.(String(ta.id), ta.name || ta.entityId || ta.id)}>
                   <Settings className="w-4 h-4 mr-2" />
                   Configure
                 </DropdownMenuItem>
@@ -236,6 +240,133 @@ function AddAuthorityHintDialog() {
   );
 }
 
+function ConfigureTrustAnchorDialog({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: { id: string; label: string } | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [organizationName, setOrganizationName] = useState('');
+  const [homepageUri, setHomepageUri] = useState('');
+  const [contacts, setContacts] = useState('');
+  const [jwksText, setJwksText] = useState('');
+  const { toast } = useToast();
+
+  const loadConfig = async (id: string) => {
+    const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+    const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${id}/config`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setOrganizationName(data.organization_name || '');
+    setHomepageUri(data.homepage_uri || '');
+    setContacts((data.contacts || []).join(', '));
+    setJwksText(data.jwks ? JSON.stringify(data.jwks, null, 2) : '');
+  };
+
+  const handleSave = async () => {
+    if (!target) return;
+    let jwks: any = undefined;
+    if (jwksText.trim()) {
+      try {
+        jwks = JSON.parse(jwksText);
+      } catch (e) {
+        toast({ variant: 'destructive', title: 'Invalid JWKS', description: 'JWKS must be valid JSON.' });
+        return;
+      }
+    }
+
+    const payload = {
+      organization_name: organizationName || undefined,
+      homepage_uri: homepageUri || undefined,
+      contacts: contacts
+        ? contacts.split(',').map((c: string) => c.trim()).filter(Boolean)
+        : [],
+      jwks,
+    };
+    const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+    const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${target.id}/config`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      toast({ variant: 'destructive', title: 'Failed', description: 'Could not save configuration.' });
+      return;
+    }
+    toast({ title: 'Saved', description: 'TA configuration updated.' });
+    onSaved();
+  };
+
+  return (
+    <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Configure Trust Anchor</DialogTitle>
+          <DialogDescription>
+            {target ? `Editing ${target.label}` : 'Edit configuration'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="ta-org">Organization Name</Label>
+            <Input
+              id="ta-org"
+              placeholder="Example NREN"
+              value={organizationName}
+              onChange={(e) => setOrganizationName(e.target.value)}
+              onFocus={() => target && loadConfig(target.id)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-homepage">Homepage URI</Label>
+            <Input
+              id="ta-homepage"
+              placeholder="https://federation.example.org"
+              value={homepageUri}
+              onChange={(e) => setHomepageUri(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-contacts">Contacts (comma-separated)</Label>
+            <Input
+              id="ta-contacts"
+              placeholder="ops@example.org, security@example.org"
+              value={contacts}
+              onChange={(e) => setContacts(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-jwks">JWKS (JSON)</Label>
+            <Textarea
+              id="ta-jwks"
+              placeholder='{"keys": []}'
+              value={jwksText}
+              onChange={(e) => setJwksText(e.target.value)}
+              className="mt-1 font-mono text-xs"
+              rows={6}
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleSave}>Save</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: ReturnType<typeof useTrustAnchors>['createTrustAnchor'] }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -338,6 +469,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
 }
 
 export default function TrustAnchorsPage() {
+  const [configTarget, setConfigTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: 'ta' | 'subordinate' | 'hint'; id: string; label: string }
     | null
@@ -458,6 +590,7 @@ export default function TrustAnchorsPage() {
                    isLocal
                    isActive={isActive}
                    onDelete={(id, label) => setDeleteTarget({ kind: 'ta', id, label })}
+                   onConfigure={(id, label) => setConfigTarget({ id, label })}
                  />
              );
           })}
@@ -643,6 +776,12 @@ export default function TrustAnchorsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfigureTrustAnchorDialog
+        target={configTarget}
+        onClose={() => setConfigTarget(null)}
+        onSaved={() => setConfigTarget(null)}
+      />
     </div>
   );
 }

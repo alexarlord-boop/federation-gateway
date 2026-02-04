@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 
 class TrustAnchorCreate(BaseModel):
@@ -23,3 +23,10 @@ class TrustAnchorResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TrustAnchorConfig(BaseModel):
+    organization_name: Optional[str] = None
+    homepage_uri: Optional[str] = None
+    contacts: Optional[List[str]] = None
+    jwks: Optional[Dict[str, Any]] = None

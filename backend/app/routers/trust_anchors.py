@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
-from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse
+from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse, TrustAnchorConfig
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
@@ -71,3 +71,53 @@ def delete_trust_anchor(
     db.delete(anchor)
     db.commit()
     return None
+
+
+@router.get("/{ta_id}/config", response_model=TrustAnchorConfig)
+def get_trust_anchor_config(
+    ta_id: str,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
+    if not anchor:
+        raise HTTPException(status_code=404, detail="Not found")
+    config = TrustAnchorConfig()
+    if anchor.config_json:
+        try:
+            import json
+            cfg = json.loads(anchor.config_json)
+            config.organization_name = cfg.get("organization_name")
+            config.homepage_uri = cfg.get("homepage_uri")
+            config.contacts = cfg.get("contacts")
+        except Exception:
+            pass
+    if anchor.jwks:
+        try:
+            import json
+            config.jwks = json.loads(anchor.jwks)
+        except Exception:
+            pass
+    return config
+
+
+@router.put("/{ta_id}/config", response_model=TrustAnchorConfig)
+def update_trust_anchor_config(
+    ta_id: str,
+    payload: TrustAnchorConfig,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
+    if not anchor:
+        raise HTTPException(status_code=404, detail="Not found")
+    import json
+    anchor.config_json = json.dumps({
+        "organization_name": payload.organization_name,
+        "homepage_uri": payload.homepage_uri,
+        "contacts": payload.contacts or [],
+    })
+    if payload.jwks is not None:
+        anchor.jwks = json.dumps(payload.jwks)
+    db.commit()
+    return payload
