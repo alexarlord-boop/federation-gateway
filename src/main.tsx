@@ -6,12 +6,12 @@ import { OpenAPI } from "./client";
 OpenAPI.BASE = 'http://localhost:8765';
 
 async function enableMocking() {
-  if (!import.meta.env.DEV) {
+  if (!import.meta.env.DEV || import.meta.env.VITE_USE_MOCKS !== 'true') {
     return;
   }
- 
+
   const { worker } = await import('./mocks/browser');
- 
+
   return worker.start();
 }
 

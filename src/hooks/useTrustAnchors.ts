@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { mockTrustAnchors } from '@/data/mockData';
+import { OpenAPI } from '@/client';
 
 export interface TrustAnchorDisplay {
     id: string;
@@ -20,14 +20,18 @@ export const useTrustAnchors = () => {
     const { data, isLoading } = useQuery({
         queryKey: ['trust-anchors-list'],
         queryFn: async () => {
-             // In a real app this would call an endpoint like /api/admin/system/tenants 
-             // that is available to the system operator.
-             // For now, we return our mock set.
-             return mockTrustAnchors;
+             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+             const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
+                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+             });
+             if (!res.ok) {
+                 throw new Error('Failed to load trust anchors');
+             }
+             return res.json();
         }
     });
 
-    const trustAnchors: TrustAnchorDisplay[] = data?.map(ta => ({
+    const trustAnchors: TrustAnchorDisplay[] = data?.map((ta: any) => ({
         id: ta.id,
         entityId: ta.entityId,
         name: ta.name,

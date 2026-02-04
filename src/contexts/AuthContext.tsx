@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { User, UserRole } from '@/types/registry';
+import type { User } from '@/types/registry';
 import { OpenAPI } from '@/client';
 
 interface AuthContextType {
@@ -13,35 +13,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo
-const mockUsers: Record<string, User & { password: string }> = {
-  'admin@oidfed.org': {
-    id: '1',
-    email: 'admin@oidfed.org',
-    name: 'Federation Admin',
-    role: 'admin',
-    createdAt: '2024-01-01T00:00:00Z',
-    password: 'admin123',
-  },
-  'tech@example.org': {
-    id: '2',
-    email: 'tech@example.org',
-    name: 'Technical Contact',
-    role: 'user',
-    organizationId: 'org-1',
-    organizationName: 'Example University',
-    createdAt: '2024-06-15T00:00:00Z',
-    password: 'user123',
-  },
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     // Initialize from localStorage on mount
     const storedUser = localStorage.getItem('auth_user');
+    const storedToken = localStorage.getItem('auth_token');
     const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-    if (parsedUser) {
-        OpenAPI.TOKEN = 'mock-jwt-token';
+    if (parsedUser && storedToken) {
+      OpenAPI.TOKEN = storedToken;
     }
     return parsedUser;
   });
@@ -49,26 +28,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const mockUser = mockUsers[email];
-    if (mockUser && mockUser.password === password) {
-      const { password: _, ...userData } = mockUser;
+    try {
+      const response = await fetch('http://localhost:8765/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid email or password');
+      }
+
+      const data = await response.json();
+      const userData: User = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role,
+        organizationId: data.user.organization_id,
+        organizationName: data.user.organization_name,
+        createdAt: data.user.created_at || new Date().toISOString(),
+      };
+
       setUser(userData);
       localStorage.setItem('auth_user', JSON.stringify(userData));
-      OpenAPI.TOKEN = 'mock-jwt-token';
-    } else {
-      throw new Error('Invalid email or password');
+      localStorage.setItem('auth_token', data.access_token);
+      OpenAPI.TOKEN = data.access_token;
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
     OpenAPI.TOKEN = undefined;
   }, []);
 
