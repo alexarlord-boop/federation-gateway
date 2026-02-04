@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-import { mockDashboardStats, mockApprovalRequests } from '@/data/mockData';
 import { useEntities } from '@/hooks/useEntities';
 
 function StatCard({ 
@@ -51,7 +50,7 @@ export default function DashboardPage() {
   const { user, isAdmin } = useAuth();
   const { entities, isLoading } = useEntities();
   
-  const pendingApprovals = mockApprovalRequests.filter(r => r.status === 'pending');
+  const pendingApprovals = entities.filter(e => e.status === 'pending');
   
   // Calculate stats from real data
   const totalEntities = entities.length;
@@ -97,7 +96,7 @@ export default function DashboardPage() {
         {isAdmin && (
           <StatCard
             title="Pending Approvals"
-            value={pendingApprovals.length}
+            value={isLoading ? '-' : pendingApprovals.length}
             description="Awaiting review"
             icon={ClipboardCheck}
             href="/approvals"
@@ -178,23 +177,20 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pendingApprovals.map((request) => (
+                  {pendingApprovals.map((entity) => (
                     <Link
-                      key={request.id}
-                      to={`/approvals/${request.id}`}
+                      key={entity.id}
+                      to={`/entities/${entity.id}`}
                       className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-sm">{request.entityDisplayName}</p>
+                        <p className="font-medium text-sm">{entity.displayName || entity.entityId}</p>
                         <span className="entity-badge bg-pending/10 text-pending border border-pending/30">
-                          {request.type}
+                          registration
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Submitted by {request.submittedBy}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(request.submittedAt).toLocaleDateString()}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {entity.entityId}
                       </p>
                     </Link>
                   ))}

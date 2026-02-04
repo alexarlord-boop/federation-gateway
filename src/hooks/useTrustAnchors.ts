@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { OpenAPI } from '@/client';
 
 export interface TrustAnchorDisplay {
@@ -9,6 +9,14 @@ export interface TrustAnchorDisplay {
     status: string;
     description?: string;
     subordinateCount?: number;
+}
+
+export interface TrustAnchorCreate {
+    name: string;
+    entity_id: string;
+    description?: string;
+    type: string;
+    status?: string;
 }
 
 export const useTrustAnchors = () => {
@@ -33,13 +41,35 @@ export const useTrustAnchors = () => {
 
     const trustAnchors: TrustAnchorDisplay[] = data?.map((ta: any) => ({
         id: ta.id,
-        entityId: ta.entityId,
+        entityId: ta.entity_id ?? ta.entityId,
         name: ta.name,
         type: ta.type,
         status: ta.status,
         description: ta.description,
-        subordinateCount: ta.subordinateCount
+        subordinateCount: ta.subordinate_count ?? ta.subordinateCount
     })) || [];
 
-    return { trustAnchors, isLoading, error: null };
+    const queryClient = useQueryClient();
+    const createTrustAnchor = useMutation({
+        mutationFn: async (payload: TrustAnchorCreate) => {
+            const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+            const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                throw new Error('Failed to create trust anchor');
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trust-anchors-list'] });
+        },
+    });
+
+    return { trustAnchors, isLoading, error: null, createTrustAnchor };
 };

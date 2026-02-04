@@ -47,7 +47,7 @@ def seed_data():
                 name="Test Federation",
                 entity_id="https://ta.test.org",
                 description="Testing environment",
-                type="test",
+                type="federation",
                 status="active",
                 subordinate_count=1,
             ),
@@ -59,7 +59,8 @@ def seed_data():
                 id="sub-1",
                 entity_id="https://idp.example.edu",
                 status="active",
-                registered_entity_types=json.dumps(["openid_provider"]),
+                description="Example Intermediate Authority",
+                registered_entity_types=json.dumps(["openid_provider", "federation_entity"]),
                 jwks=json.dumps({"keys": []}),
                 metadata_json=json.dumps({
                     "openid_provider": {"organization_name": "Example University"},

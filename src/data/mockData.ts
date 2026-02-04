@@ -25,109 +25,16 @@ export const mockTrustAnchors: TrustAnchor[] = [
   },
 ];
 
-export const mockEntities: Entity[] = [
-  {
-    id: 'ent-1',
-    entityId: 'https://idp.example-university.edu',
-    displayName: 'Example University IdP',
-    entityTypes: ['openid_provider'],
-    trustAnchorId: 'ta-1',
-    trustAnchorName: 'My NREN Federation',
-    status: 'active',
-    organizationName: 'Example University',
-    contacts: [
-      { type: 'technical', email: 'idp-admin@example-university.edu', name: 'John Smith' },
-    ],
-    description: 'Central identity provider for Example University',
-    createdAt: '2024-01-10T00:00:00Z',
-    updatedAt: '2024-11-20T00:00:00Z',
-  },
-  {
-    id: 'ent-2',
-    entityId: 'https://research-portal.eu',
-    displayName: 'EU Research Portal',
-    entityTypes: ['openid_relying_party'],
-    trustAnchorId: 'ta-1',
-    trustAnchorName: 'My NREN Federation',
-    status: 'active',
-    organizationName: 'European Research Council',
-    contacts: [
-      { type: 'technical', email: 'tech@research-portal.eu', name: 'Maria Garcia' },
-    ],
-    description: 'Collaborative research platform',
-    createdAt: '2024-02-15T00:00:00Z',
-    updatedAt: '2024-10-05T00:00:00Z',
-  },
-  {
-    id: 'ent-3',
-    entityId: 'https://idp.nordic-university.no',
-    displayName: 'Nordic University IdP',
-    entityTypes: ['openid_provider'],
-    trustAnchorId: 'ta-1',
-    trustAnchorName: 'My NREN Federation',
-    status: 'pending',
-    organizationName: 'Nordic University',
-    contacts: [
-      { type: 'technical', email: 'it@nordic-university.no', name: 'Erik Larsen' },
-    ],
-    description: 'Identity provider for Nordic University',
-    createdAt: '2024-12-01T00:00:00Z',
-    updatedAt: '2024-12-01T00:00:00Z',
-    submittedBy: 'tech@example.org',
-  },
-  {
-    id: 'ent-5',
-    entityId: 'https://test-sp.geant.org',
-    displayName: 'Test Service Provider',
-    entityTypes: ['openid_relying_party'],
-    trustAnchorId: 'ta-3',
-    trustAnchorName: 'Test Federation',
-    status: 'draft',
-    organizationName: 'GÉANT',
-    createdAt: '2024-12-08T00:00:00Z',
-    updatedAt: '2024-12-08T00:00:00Z',
-    submittedBy: 'tech@example.org',
-  },
-];
+export const mockEntities: Entity[] = [];
 
-export const mockApprovalRequests: ApprovalRequest[] = [
-  {
-    id: 'apr-1',
-    entityId: 'ent-3',
-    entityDisplayName: 'Nordic University IdP',
-    type: 'registration',
-    status: 'pending',
-    submittedBy: 'Erik Larsen',
-    submittedAt: '2024-12-01T10:30:00Z',
-  },
-  {
-    id: 'apr-2',
-    entityId: 'ent-6',
-    entityDisplayName: 'Mediterranean Research Network',
-    type: 'registration',
-    status: 'pending',
-    submittedBy: 'Anna Rossi',
-    submittedAt: '2024-12-05T14:20:00Z',
-  },
-  {
-    id: 'apr-3',
-    entityId: 'ent-1',
-    entityDisplayName: 'Example University IdP',
-    type: 'update',
-    status: 'approved',
-    submittedBy: 'John Smith',
-    submittedAt: '2024-11-28T09:00:00Z',
-    reviewedBy: 'Federation Admin',
-    reviewedAt: '2024-11-29T11:30:00Z',
-  },
-];
+export const mockApprovalRequests: ApprovalRequest[] = [];
 
 export const mockDashboardStats: DashboardStats = {
-  totalEntities: 127,
-  activeEntities: 98,
-  pendingApprovals: 5,
-  trustAnchors: 3,
-  opCount: 42,
-  rpCount: 85,
-  recentRegistrations: 12,
+  totalEntities: 0,
+  activeEntities: 0,
+  pendingApprovals: 0,
+  trustAnchors: 2,
+  opCount: 0,
+  rpCount: 0,
+  recentRegistrations: 0,
 };

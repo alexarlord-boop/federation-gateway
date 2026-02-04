@@ -9,6 +9,7 @@ class Subordinate(Base):
     id = Column(String, primary_key=True, index=True)
     entity_id = Column(String, index=True, nullable=False)
     status = Column(String, index=True, nullable=False)
+    description = Column(String, nullable=True)
     registered_entity_types = Column(Text, nullable=False)
     jwks = Column(Text, nullable=True)
     metadata_json = Column("metadata", Text, nullable=True)

@@ -16,6 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
@@ -207,6 +214,107 @@ function AddAuthorityHintDialog() {
   );
 }
 
+function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: ReturnType<typeof useTrustAnchors>['createTrustAnchor'] }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [entityId, setEntityId] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState('federation');
+  const { toast } = useToast();
+
+  const handleAdd = async () => {
+    if (!name || !entityId) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Name and Entity ID are required' });
+      return;
+    }
+    try {
+      await createTrustAnchor.mutateAsync({
+        name,
+        entity_id: entityId,
+        description: description || undefined,
+        type,
+        status: 'active',
+      });
+      toast({ title: 'TA Instance Added', description: 'Local trust anchor created successfully.' });
+      setOpen(false);
+      setName('');
+      setEntityId('');
+      setDescription('');
+      setType('federation');
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Failed', description: 'Could not add TA instance' });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Plus className="w-4 h-4 mr-2" />
+          Add TA Instance
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create Local Trust Anchor</DialogTitle>
+          <DialogDescription>
+            Register a new local trust anchor instance managed by this operator.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="ta-name">Name</Label>
+            <Input
+              id="ta-name"
+              placeholder="Local Federation"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-entity-id">Entity ID</Label>
+            <Input
+              id="ta-entity-id"
+              placeholder="https://ta.local.org"
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-type">Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="federation">Federation</SelectItem>
+                <SelectItem value="test">Test</SelectItem>
+                <SelectItem value="training">Training</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="ta-description">Description (Optional)</Label>
+            <Input
+              id="ta-description"
+              placeholder="Primary federation instance"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleAdd}>Create</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function TrustAnchorsPage() {
   // Sync the context state with the debug API
   const { data: currentCtxData } = useQuery({
@@ -218,7 +326,7 @@ export default function TrustAnchorsPage() {
   });
 
   // My-level TAs (static config from mock data)
-  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs } = useTrustAnchors();
+  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor } = useTrustAnchors();
   const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'test' || ta.type === 'training');
 
   // Superior TAs (via authority hints)
@@ -268,10 +376,7 @@ export default function TrustAnchorsPage() {
             <h2 className="text-lg font-semibold">My Instances</h2>
             <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
           </div>
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="w-4 h-4 mr-2" />
-            Add TA Instance
-          </Button>
+          <AddTrustAnchorDialog createTrustAnchor={createTrustAnchor} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {

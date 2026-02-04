@@ -19,9 +19,9 @@ def serialize_subordinate(sub: Subordinate) -> SubordinateResponse:
         entity_id=sub.entity_id,
         status=sub.status,
         registered_entity_types=json.loads(sub.registered_entity_types),
-        jwks=json.loads(sub.jwks) if sub.jwks else None,
+        jwks=json.loads(sub.jwks) if sub.jwks else {"keys": []},
         metadata=json.loads(sub.metadata_json) if sub.metadata_json else None,
-        description=None,
+        description=sub.description,
     )
 
 
@@ -46,6 +46,7 @@ def create_subordinate(payload: SubordinateCreate, db: Session = Depends(get_db)
         id=f"sub-{uuid.uuid4().hex[:8]}",
         entity_id=payload.entity_id,
         status=payload.status,
+        description=payload.description,
         registered_entity_types=json.dumps(payload.registered_entity_types),
         jwks=json.dumps(payload.jwks) if payload.jwks is not None else None,
         metadata_json=json.dumps(payload.metadata) if payload.metadata is not None else None,
