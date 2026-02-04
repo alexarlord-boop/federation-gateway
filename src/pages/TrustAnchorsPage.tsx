@@ -23,6 +23,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
@@ -56,7 +66,7 @@ function TrustAnchorCard({
   isExternal?: boolean;
   isSubordinate?: boolean;
   isActive?: boolean;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string, label: string) => void;
 }) {
   const typeConfig = typeLabels[ta.type];
 
@@ -113,7 +123,7 @@ function TrustAnchorCard({
                 {isLocal && onDelete && (
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => onDelete(String(ta.id))}
+                    onClick={() => onDelete(String(ta.id), ta.name || ta.entityId || ta.id)}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
@@ -328,6 +338,10 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
 }
 
 export default function TrustAnchorsPage() {
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: 'ta' | 'subordinate' | 'hint'; id: string; label: string }
+    | null
+  >(null);
   // Sync the context state with the debug API
   const { data: currentCtxData } = useQuery({
     queryKey: ['debug-context'],
@@ -384,6 +398,27 @@ export default function TrustAnchorsPage() {
     }
   };
 
+  const handleDeleteSubordinate = async (id: string) => {
+    try {
+      await deleteSubordinate.mutateAsync(id);
+      toast({ title: 'Deleted', description: 'Subordinate removed.' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete subordinate.' });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === 'ta') {
+      await handleDeleteTrustAnchor(deleteTarget.id);
+    } else if (deleteTarget.kind === 'hint') {
+      await handleDeleteHint(deleteTarget.id);
+    } else {
+      await handleDeleteSubordinate(deleteTarget.id);
+    }
+    setDeleteTarget(null);
+  };
+
   const isLoading = isLoadingMyTAs || isLoadingHints || isLoadingSubTAs;
 
   if (isLoading) {
@@ -417,7 +452,13 @@ export default function TrustAnchorsPage() {
           {localTAs.map((ta) => {
              const isActive = activeTrustAnchor?.id === ta.id;
              return (
-                 <TrustAnchorCard key={ta.id} ta={ta} isLocal isActive={isActive} onDelete={handleDeleteTrustAnchor} />
+                 <TrustAnchorCard
+                   key={ta.id}
+                   ta={ta}
+                   isLocal
+                   isActive={isActive}
+                   onDelete={(id, label) => setDeleteTarget({ kind: 'ta', id, label })}
+                 />
              );
           })}
         </div>
@@ -458,7 +499,16 @@ export default function TrustAnchorsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteHint(hint.id.toString())}>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() =>
+                            setDeleteTarget({
+                              kind: 'hint',
+                              id: hint.id.toString(),
+                              label: hint.description || hint.entity_id,
+                            })
+                          }
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Remove Authority Hint
                         </DropdownMenuItem>
@@ -541,15 +591,10 @@ export default function TrustAnchorsPage() {
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() =>
-                            deleteSubordinate.mutate(String(ta.id), {
-                              onSuccess: () =>
-                                toast({ title: 'Deleted', description: 'Subordinate removed.' }),
-                              onError: () =>
-                                toast({
-                                  variant: 'destructive',
-                                  title: 'Delete Failed',
-                                  description: 'Could not delete subordinate.',
-                                }),
+                            setDeleteTarget({
+                              kind: 'subordinate',
+                              id: String(ta.id),
+                              label: ta.description || ta.entity_id || String(ta.id),
                             })
                           }
                         >
@@ -576,6 +621,28 @@ export default function TrustAnchorsPage() {
           </Card>
         )}
       </section>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `This will permanently delete "${deleteTarget.label}". This action cannot be undone.`
+                : 'This action cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
