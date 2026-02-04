@@ -36,6 +36,8 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
 import type { EntityStatus, EntityType } from '@/types/registry';
 import { useEntities } from '@/hooks/useEntities';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SubordinatesService } from '@/client/services/SubordinatesService';
 import { Loader2 } from 'lucide-react';
 
 export default function EntitiesPage() {
@@ -43,6 +45,14 @@ export default function EntitiesPage() {
   const [statusFilter, setStatusFilter] = useState<EntityStatus | 'all'>('all');
   
   const { entities, isLoading } = useEntities();
+  const queryClient = useQueryClient();
+  const updateStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      SubordinatesService.changeSubordinateStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subordinates'] });
+    },
+  });
 
   const filteredEntities = entities.filter(entity => {
     const matchesSearch = 
@@ -149,7 +159,7 @@ export default function EntitiesPage() {
                   <TableCell>
                     <div className="flex gap-1">
                       {entity.entityTypes.map((type) => (
-                        <EntityTypeBadge key={type} type={type} />
+                        <EntityTypeBadge key={type} type={type as EntityType} />
                       ))}
                     </div>
                   </TableCell>
@@ -166,6 +176,15 @@ export default function EntitiesPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <Link to={`/entities/${entity.id}`}>View Details</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
+                          Set Pending
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
+                          Set Active
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'rejected' })}>
+                          Set Rejected
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <ExternalLink className="w-4 h-4 mr-2" />

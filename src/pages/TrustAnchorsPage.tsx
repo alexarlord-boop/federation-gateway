@@ -31,7 +31,8 @@ import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate, useSubordinates } from '@/hooks/useSubordinates';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SubordinatesService } from '@/client/services/SubordinatesService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -339,6 +340,14 @@ export default function TrustAnchorsPage() {
   const activeTrustAnchor = allAnchors.find(ta => ta.id === currentCtxData?.contextId) || null;
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const updateStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      SubordinatesService.changeSubordinateStatus(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subordinates'] });
+    },
+  });
 
   const handleDeleteHint = async (id: string) => {
     try {
@@ -493,6 +502,15 @@ export default function TrustAnchorsPage() {
                             <ExternalLink className="w-4 h-4 mr-2" />
                             View Details
                           </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: String(ta.id), status: 'pending' })}>
+                          Set Pending
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: String(ta.id), status: 'active' })}>
+                          Set Active
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: String(ta.id), status: 'rejected' })}>
+                          Set Rejected
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

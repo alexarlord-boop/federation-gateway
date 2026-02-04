@@ -28,6 +28,7 @@ const steps = [
 
 export default function EntityRegisterPage() {
   const [searchParams] = useSearchParams();
+  const isIntermediate = searchParams.get('type') === 'intermediate';
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,14 +48,13 @@ export default function EntityRegisterPage() {
   
   // Pre-fill entity type if coming from intermediate registration
   useEffect(() => {
-    const type = searchParams.get('type');
-    if (type === 'intermediate') {
+    if (isIntermediate) {
       setFormData(prev => ({
         ...prev,
         entityTypes: ['federation_entity']
       }));
     }
-  }, [searchParams]);
+  }, [isIntermediate]);
   
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
@@ -90,7 +90,7 @@ export default function EntityRegisterPage() {
       ...prev,
       organizationName: 'Detected Organization',
       contactEmail: 'tech@example.org',
-      entityTypes: ['openid_provider'],
+      entityTypes: isIntermediate ? ['federation_entity'] : ['openid_provider'],
     }));
     
     setIsLoading(false);
@@ -100,16 +100,25 @@ export default function EntityRegisterPage() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+        const metadata: any = {};
+        if (formData.entityTypes.includes('openid_provider')) {
+          metadata.openid_provider = {
+            organization_name: formData.organizationName,
+            homepage_uri: formData.entityId,
+          };
+        }
+        if (formData.entityTypes.includes('federation_entity')) {
+          metadata.federation_entity = {
+            organization_name: formData.organizationName,
+            homepage_uri: formData.entityId,
+          };
+        }
+
         await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
              registered_entity_types: formData.entityTypes,
              status: 'draft', // Submitted for review - demonstrates workflow state machine
-             metadata: {
-                 openid_provider: { 
-                     organization_name: formData.organizationName,
-                     homepage_uri: formData.entityId 
-                 }
-             },
+             metadata,
              description: formData.displayName // Use description for display name mapping
         } as any);
 
@@ -118,7 +127,7 @@ export default function EntityRegisterPage() {
           description: 'Your entity registration has been successfully created.',
         });
         
-        navigate('/entities');
+        navigate(isIntermediate ? '/trust-anchors' : '/entities');
     } catch (e) {
         toast({
           title: 'Error',
