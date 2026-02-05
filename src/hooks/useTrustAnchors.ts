@@ -25,15 +25,15 @@ export const useTrustAnchors = () => {
     
     // We use a query to allow invalidation if we ever add dynamic TAs, but for now it returns static data
     // to ensure visibility even when logged in as a leaf-node context.
+    const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
     const { data, isLoading } = useQuery({
-        queryKey: ['trust-anchors-list'],
+        queryKey: ['trust-anchors-list', token],
         queryFn: async () => {
-             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
              if (!token) {
                  return [];
              }
              const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
-                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                 headers: { Authorization: `Bearer ${token}` },
              });
              if (!res.ok) {
                  throw new Error('Failed to load trust anchors');

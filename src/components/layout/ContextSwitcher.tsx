@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Network, Crown, Building, FlaskConical, Shield, GraduationCap } from 'lucide-react';
 import {
@@ -10,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { mockTrustAnchors } from '@/data/mockData';
+import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 
 const getIconForType = (type: string) => {
   switch (type) {
@@ -21,16 +20,9 @@ const getIconForType = (type: string) => {
   }
 };
 
-// Generate available contexts from Mock Data (federation-level TAs only)
-const AVAILABLE_CONTEXTS = mockTrustAnchors.map(ta => ({
-  id: ta.id,
-  name: ta.name,
-  icon: getIconForType(ta.type),
-  description: ta.description || 'Federation Instance'
-}));
-
 export function ContextSwitcher() {
   const queryClient = useQueryClient();
+    const { trustAnchors, isLoading } = useTrustAnchors();
   
   // Fetch current context
   const { data: currentCtxData } = useQuery({
@@ -55,20 +47,27 @@ export function ContextSwitcher() {
       }
   });
 
-  const activeContext = AVAILABLE_CONTEXTS.find(c => c.id === currentCtxData?.contextId) || AVAILABLE_CONTEXTS[1];
-  const Icon = activeContext.icon;
+    const availableContexts = trustAnchors.map(ta => ({
+            id: ta.id,
+            name: ta.name,
+            icon: getIconForType(ta.type),
+            description: ta.description || 'Federation Instance'
+    }));
+
+    const activeContext = availableContexts.find(c => c.id === currentCtxData?.contextId) || availableContexts[0];
+    const Icon = activeContext?.icon || Shield;
 
   return (
     <div className="px-3 pb-3">
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-start h-12 px-3 border-dashed">
+                <Button variant="outline" className="w-full justify-start h-12 px-3 border-dashed" disabled={isLoading || availableContexts.length === 0}>
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                             <Icon className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex flex-col items-start overflow-hidden">
-                             <span className="text-sm font-medium truncate w-full block text-left">{activeContext.name}</span>
+                             <span className="text-sm font-medium truncate w-full block text-left">{activeContext?.name || 'No Instance'}</span>
                              <span className="text-xs select-sublabel truncate w-full block text-left">Active Instance</span>
                         </div>
                     </div>
@@ -77,7 +76,12 @@ export function ContextSwitcher() {
             <DropdownMenuContent className="w-[15rem]" align="start">
                 <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {AVAILABLE_CONTEXTS.map(ctx => {
+                {availableContexts.length === 0 && (
+                    <DropdownMenuItem className="text-xs text-muted-foreground" disabled>
+                        No instances available
+                    </DropdownMenuItem>
+                )}
+                {availableContexts.map(ctx => {
                     const ItemIcon = ctx.icon;
                     return (
                         <DropdownMenuItem 
@@ -94,7 +98,7 @@ export function ContextSwitcher() {
                                                                     {ctx.description}
                                                                 </span>
                             </div>
-                            {ctx.id === activeContext.id && (
+                            {ctx.id === activeContext?.id && (
                                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                             )}
                         </DropdownMenuItem>
