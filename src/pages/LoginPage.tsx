@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Network, ArrowRight, AlertCircle, Globe } from 'lucide-react';
+import { Network, ArrowRight, AlertCircle, Globe, Shield, ArrowDownToLine, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,35 +53,51 @@ export default function LoginPage() {
           </div>
         </div>
         
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="max-w-md">
             <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-              Manage your federation
+              Operator workflow
             </h2>
             <p className="text-primary-foreground/80 leading-relaxed">
-              Register entities, manage trust anchors, and streamline approval workflows 
-              for your OpenID Federation infrastructure.
+              A guided flow for federation operators: configure the trust anchor, register subordinates, and activate entities.
             </p>
           </div>
-          
-          <div className="flex gap-4">
-            <div className="px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <p className="text-2xl font-bold text-primary-foreground">127+</p>
-              <p className="text-xs text-primary-foreground/70">Registered Entities</p>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-primary-foreground font-semibold">1. Configure Trust Anchor</p>
+                <p className="text-sm text-primary-foreground/70">Set metadata, JWKS, and authority hints.</p>
+              </div>
             </div>
-            <div className="px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <p className="text-2xl font-bold text-primary-foreground">3</p>
-              <p className="text-xs text-primary-foreground/70">Trust Anchors</p>
+
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
+                <ArrowDownToLine className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-primary-foreground font-semibold">2. Register Subordinates</p>
+                <p className="text-sm text-primary-foreground/70">Onboard intermediates and leaf entities via workflow.</p>
+              </div>
             </div>
-            <div className="px-4 py-2 bg-primary-foreground/10 rounded-lg">
-              <p className="text-2xl font-bold text-primary-foreground">45+</p>
-              <p className="text-xs text-primary-foreground/70">Organizations</p>
+
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-primary-foreground font-semibold">3. Approve & Activate</p>
+                <p className="text-sm text-primary-foreground/70">Review status and activate entities in federation.</p>
+              </div>
             </div>
           </div>
         </div>
 
         <p className="text-sm text-primary-foreground/50">
-          © 2024 OIDFed Registry. Part of the GÉANT federation infrastructure.
+          © 2026 OIDFed Registry. Trust & Identity Incubator
         </p>
       </div>
 
