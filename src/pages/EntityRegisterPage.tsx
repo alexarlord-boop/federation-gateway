@@ -40,13 +40,12 @@ export default function EntityRegisterPage() {
     contactEmail: 'tech@example.org',
     contactName: 'Contact name',
     policyUri: 'https://example.org/policy',
-    entityTypes: [] as EntityType[],
+    entityTypes: ['federation_entity'] as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Pre-fill entity type if coming from intermediate registration
   useEffect(() => {
     if (isIntermediate) {
       setFormData(prev => ({
@@ -90,7 +89,7 @@ export default function EntityRegisterPage() {
       ...prev,
       organizationName: 'Detected Organization',
       contactEmail: 'tech@example.org',
-      entityTypes: isIntermediate ? ['federation_entity'] : ['openid_provider'],
+      entityTypes: ['federation_entity'],
     }));
     
     setIsLoading(false);
@@ -109,27 +108,16 @@ export default function EntityRegisterPage() {
               : formData.contactEmail
           );
         }
-        if (formData.entityTypes.includes('openid_provider')) {
-          metadata.openid_provider = {
-            client_name: formData.displayName,
-            organization_name: formData.organizationName,
-            homepage_uri: formData.entityId,
-            policy_uri: formData.policyUri || undefined,
-            contacts,
-          };
-        }
-        if (formData.entityTypes.includes('federation_entity')) {
-          metadata.federation_entity = {
-            organization_name: formData.organizationName || formData.displayName,
-            homepage_uri: formData.entityId,
-            policy_uri: formData.policyUri || undefined,
-            contacts,
-          };
-        }
+        metadata.federation_entity = {
+          organization_name: formData.organizationName || formData.displayName,
+          homepage_uri: formData.entityId,
+          policy_uri: formData.policyUri || undefined,
+          contacts,
+        };
 
         await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
-             registered_entity_types: formData.entityTypes,
+             registered_entity_types: ['federation_entity'],
              status: 'draft', // Submitted for review - demonstrates workflow state machine
              trust_anchor_id: formData.trustAnchorId,
              metadata,
@@ -253,17 +241,6 @@ export default function EntityRegisterPage() {
               <div>
                 <Label className="text-muted-foreground">Entity ID</Label>
                 <p className="font-mono text-sm mt-1">{fetchedConfig?.iss}</p>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">Detected Entity Types</Label>
-                <div className="flex gap-2 mt-2">
-                  {formData.entityTypes.map((type) => (
-                    <span key={type} className="entity-badge bg-info/10 text-info border border-info/30">
-                      {type === 'openid_provider' ? 'OpenID Provider' : type}
-                    </span>
-                  ))}
-                </div>
               </div>
 
               <div>
@@ -395,16 +372,6 @@ export default function EntityRegisterPage() {
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Contact</dt>
                   <dd>{formData.contactEmail}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Entity Types</dt>
-                  <dd className="flex gap-1">
-                    {formData.entityTypes.map(t => (
-                      <span key={t} className="entity-badge bg-info/10 text-info">
-                        {t === 'openid_provider' ? 'OP' : t}
-                      </span>
-                    ))}
-                  </dd>
                 </div>
               </dl>
             </div>
