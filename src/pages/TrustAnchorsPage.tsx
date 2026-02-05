@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ChevronUp, Server, Globe, ArrowDownToLine, Loader2, Trash2 } from 'lucide-react';
+import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ArrowUpToLine, Server, Globe, ArrowDownToLine, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -601,7 +601,7 @@ export default function TrustAnchorsPage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <ChevronUp className="w-5 h-5 text-primary" />
+            <ArrowUpToLine className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">Superior Authorities</h2>
             <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
           </div>
