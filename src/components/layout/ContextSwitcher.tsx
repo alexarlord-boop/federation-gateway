@@ -89,8 +89,8 @@ export function ContextSwitcher() {
                             onClick={() => switchContext.mutate(ctx.id)}
                             className="group gap-2 p-2 cursor-pointer"
                         >
-                            <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
-                                <ItemIcon className="w-3 h-3" />
+                            <div className="w-6 h-6 rounded bg-muted flex items-center justify-center group-data-[highlighted]:bg-primary">
+                                <ItemIcon className="w-3 h-3 text-muted-foreground group-data-[highlighted]:text-white" />
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-sm font-medium">{ctx.name}</span>

@@ -101,16 +101,29 @@ export default function EntityRegisterPage() {
     setIsLoading(true);
     try {
         const metadata: any = {};
+        const contacts: Array<string | { name?: string; email?: string }> = [];
+        if (formData.contactEmail) {
+          contacts.push(
+            formData.contactName
+              ? { name: formData.contactName, email: formData.contactEmail }
+              : formData.contactEmail
+          );
+        }
         if (formData.entityTypes.includes('openid_provider')) {
           metadata.openid_provider = {
+            client_name: formData.displayName,
             organization_name: formData.organizationName,
             homepage_uri: formData.entityId,
+            policy_uri: formData.policyUri || undefined,
+            contacts,
           };
         }
         if (formData.entityTypes.includes('federation_entity')) {
           metadata.federation_entity = {
-            organization_name: formData.organizationName,
+            organization_name: formData.organizationName || formData.displayName,
             homepage_uri: formData.entityId,
+            policy_uri: formData.policyUri || undefined,
+            contacts,
           };
         }
 

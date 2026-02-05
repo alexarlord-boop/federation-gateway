@@ -97,10 +97,15 @@ export default function EntityDetailPage() {
   const getOpMetadata = () => (getMetadata() as any).openid_provider || {};
   const getFedMetadata = () => (getMetadata() as any).federation_entity || {};
   
-  const displayName = getOpMetadata().client_name || getOpMetadata().organization_name || getFedMetadata().organization_name || entity.entity_id;
-  const organizationName = getOpMetadata().organization_name || getFedMetadata().organization_name || '—';
+  const entityDescription = (entity as any).description as string | undefined;
+  const displayName = entityDescription
+    || getOpMetadata().client_name
+    || getOpMetadata().organization_name
+    || getFedMetadata().organization_name
+    || entity.entity_id;
+  const organizationName = getOpMetadata().organization_name || getFedMetadata().organization_name || displayName || '—';
   const contacts = getOpMetadata().contacts || getFedMetadata().contacts || [];
-  const homepage = getOpMetadata().client_uri || getFedMetadata().homepage_uri;
+  const homepage = getOpMetadata().client_uri || getOpMetadata().homepage_uri || getFedMetadata().homepage_uri;
 
   return (
     <div className="animate-fade-in">
@@ -221,6 +226,12 @@ export default function EntityDetailPage() {
                     <p className="text-sm font-medium text-muted-foreground">Organization</p>
                     <p className="mt-1">{organizationName}</p>
                   </div>
+                  {entityDescription && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Display Name</p>
+                      <p className="mt-1">{entityDescription}</p>
+                    </div>
+                  )}
                 </div>
 
                 {homepage && (
