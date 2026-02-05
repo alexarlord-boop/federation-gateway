@@ -1,0 +1,13 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8765:8765"
+  ui:
+    build:
+      context: .
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
