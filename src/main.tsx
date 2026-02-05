@@ -5,6 +5,11 @@ import { OpenAPI } from "./client";
 
 OpenAPI.BASE = 'http://localhost:8765';
 
+const savedTheme = localStorage.getItem('ui_theme');
+if (savedTheme) {
+  document.documentElement.classList.add(savedTheme);
+}
+
 async function enableMocking() {
   if (!import.meta.env.DEV || import.meta.env.VITE_USE_MOCKS !== 'true') {
     return;

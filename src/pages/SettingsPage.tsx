@@ -6,6 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { Loader2, Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -15,11 +22,20 @@ export default function SettingsPage() {
   const { hints, isLoading, addHint, deleteHint } = useAuthorityHints();
   const { toast } = useToast();
   const [newHint, setNewHint] = useState('');
+  const [theme, setTheme] = useState(() => localStorage.getItem('ui_theme') || 'theme-default');
+
+  const applyTheme = (value: string) => {
+    const root = document.documentElement;
+    root.classList.remove('theme-default', 'theme-grayscale', 'theme-indigo');
+    root.classList.add(value);
+    localStorage.setItem('ui_theme', value);
+    setTheme(value);
+  };
 
   const handleAddHint = async () => {
     if (!newHint) return;
     try {
-        await addHint.mutateAsync(newHint);
+        await addHint.mutateAsync({ entity_id: newHint });
         setNewHint('');
         toast({ title: "Success", description: "Authority hint added" });
     } catch (e) {
@@ -46,6 +62,27 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Choose the visual theme</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 max-w-sm">
+              <Label htmlFor="theme">Theme</Label>
+              <Select value={theme} onValueChange={applyTheme}>
+                <SelectTrigger id="theme">
+                  <SelectValue placeholder="Select theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="theme-default">Default (Teal/Navy)</SelectItem>
+                  <SelectItem value="theme-grayscale">Grayscale</SelectItem>
+                  <SelectItem value="theme-indigo">Indigo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
         {/* Federation Settings - New Section */}
         <Card>
            <CardHeader>
