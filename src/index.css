@@ -232,6 +232,18 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
+  .badge-cta {
+    @apply bg-primary/10 text-primary border-primary/30;
+  }
+
+  .select-sublabel {
+    @apply text-foreground/70;
+  }
+
+  .select-sublabel-active {
+    @apply text-primary-foreground;
+  }
+
   .form-section {
     @apply space-y-4 p-6 bg-card border rounded-lg;
   }

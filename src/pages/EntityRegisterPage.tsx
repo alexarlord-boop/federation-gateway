@@ -190,10 +190,12 @@ export default function EntityRegisterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {trustAnchors.map((ta) => (
-                    <SelectItem key={ta.id} value={ta.id}>
+                    <SelectItem key={ta.id} value={ta.id} className="group">
                       <div>
                         <p>{ta.name}</p>
-                        <p className="text-xs text-muted-foreground">{ta.type}</p>
+                        <p className="text-xs select-sublabel group-data-[highlighted]:select-sublabel-active">
+                          {ta.type}
+                        </p>
                       </div>
                     </SelectItem>
                   ))}

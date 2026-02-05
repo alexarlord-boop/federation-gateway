@@ -49,10 +49,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
 const typeLabels: Record<string, { label: string; className: string }> = {
-  federation: { label: 'Federation', className: 'bg-info/10 text-info border-info/30' },
-  intermediate: { label: 'Intermediate', className: 'bg-accent/10 text-accent border-accent/30' },
-  test: { label: 'Test', className: 'bg-warning/10 text-warning border-warning/30' },
-  training: { label: 'Training', className: 'bg-muted text-muted-foreground border-muted' },
+  federation: { label: 'Federation', className: 'badge-cta' },
+  intermediate: { label: 'Intermediate', className: 'badge-cta' },
+  test: { label: 'Test', className: 'badge-cta' },
+  training: { label: 'Training', className: 'badge-cta' },
 };
 
 function TrustAnchorCard({ 
@@ -197,7 +197,7 @@ function AddAuthorityHintDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-info hover:bg-info/90 text-info-foreground">
+        <Button>
           <Plus className="w-4 h-4 mr-2" />
           Add Superior TA
         </Button>
@@ -402,7 +402,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button>
           <Plus className="w-4 h-4 mr-2" />
           Add TA Instance
         </Button>
@@ -574,7 +574,7 @@ export default function TrustAnchorsPage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Server className="w-5 h-5 text-accent" />
+            <Server className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">My Instances</h2>
             <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
           </div>
@@ -601,7 +601,7 @@ export default function TrustAnchorsPage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <ChevronUp className="w-5 h-5 text-info" />
+            <ChevronUp className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">Superior Authorities</h2>
             <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
           </div>
@@ -670,11 +670,11 @@ export default function TrustAnchorsPage() {
       <section>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <ArrowDownToLine className="w-5 h-5 text-warning" />
+            <ArrowDownToLine className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">Subordinate TAs & Intermediates</h2>
             <span className="text-sm text-muted-foreground">(Managed by Others - Registered Here)</span>
           </div>
-          <Button className="bg-warning hover:bg-warning/90 text-warning-foreground" asChild>
+          <Button asChild>
             <Link to="/entities/register?type=intermediate">
               <Plus className="w-4 h-4 mr-2" />
               Register Intermediate
@@ -688,13 +688,13 @@ export default function TrustAnchorsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-warning/10 group-hover:bg-warning/20 transition-colors">
-                        <Shield className="w-6 h-6 text-warning" />
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                        <Shield className="w-6 h-6 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">{ta.description || ta.entity_id}</CardTitle>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="entity-badge border bg-warning/10 text-warning border-warning/30">Intermediate</span>
+                          <span className="entity-badge border badge-cta">Intermediate</span>
                           <StatusBadge status={ta.status as any} />
                         </div>
                       </div>

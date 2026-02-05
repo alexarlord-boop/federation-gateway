@@ -23,7 +23,7 @@ export function TrustAnchorSelector() {
         >
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Shield className="w-4 h-4 text-accent" />
+              <Shield className="w-4 h-4 text-primary" />
               {activeTrustAnchor?.status === 'active' && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-success rounded-full animate-pulse" />
               )}
@@ -36,7 +36,7 @@ export function TrustAnchorSelector() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[280px]">
-        <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+        <DropdownMenuLabel className="text-xs select-sublabel uppercase tracking-wider">
           Active Trust Anchor
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -44,25 +44,22 @@ export function TrustAnchorSelector() {
           <DropdownMenuItem
             key={ta.id}
             onClick={() => setActiveTrustAnchor(ta)}
-            className="flex items-center gap-3 py-2.5 cursor-pointer"
+            className="group flex items-center gap-3 py-2.5 cursor-pointer"
           >
             <div className="relative">
-              <Shield className={cn(
-                "w-5 h-5",
-                ta.type === 'federation' ? 'text-accent' : 
-                ta.type === 'intermediate' ? 'text-info' : 
-                ta.type === 'test' ? 'text-warning' : 'text-muted-foreground'
-              )} />
+              <Shield className="w-5 h-5 text-primary" />
               {ta.status === 'active' && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-success rounded-full" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{ta.name}</div>
-              <div className="text-xs text-muted-foreground capitalize">{ta.type}</div>
+              <div className="text-xs select-sublabel group-data-[highlighted]:select-sublabel-active capitalize">
+                {ta.type}
+              </div>
             </div>
             {activeTrustAnchor?.id === ta.id && (
-              <Check className="w-4 h-4 text-accent shrink-0" />
+              <Check className="w-4 h-4 text-primary shrink-0" />
             )}
           </DropdownMenuItem>
         ))}

@@ -69,7 +69,7 @@ export function ContextSwitcher() {
                         </div>
                         <div className="flex flex-col items-start overflow-hidden">
                              <span className="text-sm font-medium truncate w-full block text-left">{activeContext.name}</span>
-                             <span className="text-xs text-muted-foreground truncate w-full block text-left">Active Instance</span>
+                             <span className="text-xs select-sublabel truncate w-full block text-left">Active Instance</span>
                         </div>
                     </div>
                 </Button>
@@ -83,14 +83,16 @@ export function ContextSwitcher() {
                         <DropdownMenuItem 
                             key={ctx.id} 
                             onClick={() => switchContext.mutate(ctx.id)}
-                            className="gap-2 p-2 cursor-pointer"
+                            className="group gap-2 p-2 cursor-pointer"
                         >
                             <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
                                 <ItemIcon className="w-3 h-3" />
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-sm font-medium">{ctx.name}</span>
-                                <span className="text-xs text-muted-foreground">{ctx.description}</span>
+                                                                <span className="text-xs select-sublabel group-data-[highlighted]:select-sublabel-active">
+                                                                    {ctx.description}
+                                                                </span>
                             </div>
                             {ctx.id === activeContext.id && (
                                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
