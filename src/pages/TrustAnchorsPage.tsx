@@ -173,8 +173,8 @@ function TrustAnchorCard({
 
 function AddAuthorityHintDialog() {
   const [open, setOpen] = useState(false);
-  const [entityId, setEntityId] = useState('');
-  const [description, setDescription] = useState('');
+  const [entityId, setEntityId] = useState('https://edugain.org');
+  const [description, setDescription] = useState('eduGAIN Interfederation');
   const { addHint } = useAuthorityHints();
   const { toast } = useToast();
 
@@ -195,7 +195,16 @@ function AddAuthorityHintDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          if (!entityId) setEntityId('https://edugain.org');
+          if (!description) setDescription('eduGAIN Interfederation');
+        }
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -369,9 +378,9 @@ function ConfigureTrustAnchorDialog({
 
 function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: ReturnType<typeof useTrustAnchors>['createTrustAnchor'] }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [entityId, setEntityId] = useState('');
-  const [description, setDescription] = useState('');
+  const [name, setName] = useState('Local Federation');
+  const [entityId, setEntityId] = useState('https://ta.local.org');
+  const [description, setDescription] = useState('Primary federation instance');
   const [type, setType] = useState('federation');
   const { toast } = useToast();
 
@@ -400,7 +409,18 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          if (!name) setName('Local Federation');
+          if (!entityId) setEntityId('https://ta.local.org');
+          if (!description) setDescription('Primary federation instance');
+          if (!type) setType('federation');
+        }
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -660,7 +680,7 @@ export default function TrustAnchorsPage() {
             <CardContent className="py-8 text-center text-muted-foreground">
               <Globe className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p>No superior authorities configured</p>
-              <p className="text-sm">Add upstream TAs via "Add Trust Anchor" → "Link Superior TA"</p>
+              <p className="text-sm">Add upstream TAs via "Add Superior TA" button</p>
             </CardContent>
           </Card>
         )}
@@ -749,7 +769,7 @@ export default function TrustAnchorsPage() {
             <CardContent className="py-8 text-center text-muted-foreground">
               <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p>No subordinate TAs or intermediates registered</p>
-              <p className="text-sm">Register intermediate authorities using the "Register Intermediate" button above</p>
+              <p className="text-sm">Register intermediate authorities using the "Register Intermediate" button</p>
             </CardContent>
           </Card>
         )}

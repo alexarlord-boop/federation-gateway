@@ -32,14 +32,14 @@ export default function EntityRegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    entityId: '',
+    entityId: 'https://idp.example.org',
     trustAnchorId: '',
-    displayName: '',
-    organizationName: '',
-    description: '',
-    contactEmail: '',
-    contactName: '',
-    policyUri: '',
+    displayName: 'Friendly name for this entity',
+    organizationName: 'Organization',
+    description: 'Brief description of this entity...',
+    contactEmail: 'tech@example.org',
+    contactName: 'Contact name',
+    policyUri: 'https://example.org/policy',
     entityTypes: [] as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
