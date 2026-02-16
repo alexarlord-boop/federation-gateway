@@ -59,7 +59,14 @@ export default function ApprovalsPage() {
     }
   };
 
-  const RequestCard = ({ entity, tabType }: { entity: any, tabType: 'pending' | 'approved' | 'rejected' }) => (
+  const RequestCard = ({ entity, tabType }: { entity: any, tabType: 'pending' | 'approved' | 'rejected' }) => {
+    const entityRole = entity?.metadata?.federation_entity?.entity_role;
+    const typeLabels = (entity.registered_entity_types || [])
+      .filter((t: string) => t !== 'federation_entity')
+      .map((t: string) => (t === 'openid_provider' ? 'OP' : t === 'openid_relying_party' ? 'RP' : t));
+    const typeLine = typeLabels.length > 0 ? typeLabels.join(', ') : entityRole === 'intermediate' ? 'Intermediate' : 'Leaf Entity';
+
+    return (
     <Card className="hover:shadow-md transition-shadow mb-4">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
@@ -81,9 +88,9 @@ export default function ApprovalsPage() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold">{entity.entity_id}</h3>
-              <p className="text-sm text-muted-foreground">
-                 {(entity.registered_entity_types || []).join(', ')}
-              </p>
+                <p className="text-sm text-muted-foreground">
+                  {typeLine}
+                </p>
                <p className="text-xs text-muted-foreground mt-1">
                 ID: {entity.id}
               </p>
@@ -133,7 +140,8 @@ export default function ApprovalsPage() {
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -228,7 +236,7 @@ export default function ApprovalsPage() {
               Cancel
             </Button>
             <Button 
-              variant={actionType === 'display' ? 'default' : (actionType === 'reject' ? 'destructive' : 'default')}
+              variant={actionType === 'reject' ? 'destructive' : 'default'}
               onClick={handleAction}
             >
               Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}

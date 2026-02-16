@@ -40,7 +40,7 @@ export default function EntityRegisterPage() {
     contactEmail: 'tech@example.org',
     contactName: 'Contact name',
     policyUri: 'https://example.org/policy',
-    entityTypes: ['federation_entity'] as EntityType[],
+    entityTypes: ['openid_provider'] as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const navigate = useNavigate();
@@ -89,7 +89,7 @@ export default function EntityRegisterPage() {
       ...prev,
       organizationName: 'Detected Organization',
       contactEmail: 'tech@example.org',
-      entityTypes: ['federation_entity'],
+      entityTypes: isIntermediate ? ['federation_entity'] : prev.entityTypes,
     }));
     
     setIsLoading(false);
@@ -113,11 +113,30 @@ export default function EntityRegisterPage() {
           homepage_uri: formData.entityId,
           policy_uri: formData.policyUri || undefined,
           contacts,
+          entity_role: isIntermediate ? 'intermediate' : 'leaf',
         };
+
+        if (!isIntermediate) {
+          if (formData.entityTypes.includes('openid_provider')) {
+            metadata.openid_provider = {
+              issuer: formData.entityId,
+              client_name: formData.displayName,
+              policy_uri: formData.policyUri || undefined,
+              contacts,
+            };
+          }
+          if (formData.entityTypes.includes('openid_relying_party')) {
+            metadata.openid_relying_party = {
+              client_name: formData.displayName,
+              policy_uri: formData.policyUri || undefined,
+              contacts,
+            };
+          }
+        }
 
         await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
-             registered_entity_types: ['federation_entity'],
+               registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
              status: 'draft', // Submitted for review - demonstrates workflow state machine
              trust_anchor_id: formData.trustAnchorId,
              metadata,
@@ -204,6 +223,24 @@ export default function EntityRegisterPage() {
               </Select>
             </div>
 
+            {!isIntermediate && (
+              <div className="space-y-2">
+                <Label htmlFor="entityType">Entity Type</Label>
+                <Select
+                  value={formData.entityTypes[0]}
+                  onValueChange={(v) => setFormData({ ...formData, entityTypes: [v as EntityType] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select entity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openid_provider">OpenID Provider (OP)</SelectItem>
+                    <SelectItem value="openid_relying_party">Relying Party (RP)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Button 
               onClick={handleFetchConfig} 
               disabled={!formData.entityId || !formData.trustAnchorId || isLoading}
@@ -242,6 +279,19 @@ export default function EntityRegisterPage() {
                 <Label className="text-muted-foreground">Entity ID</Label>
                 <p className="font-mono text-sm mt-1">{fetchedConfig?.iss}</p>
               </div>
+
+              {!isIntermediate && (
+                <div>
+                  <Label className="text-muted-foreground">Entity Type</Label>
+                  <div className="flex gap-2 mt-2">
+                    {formData.entityTypes.map((type) => (
+                      <span key={type} className="entity-badge bg-info/10 text-info border border-info/30">
+                        {type === 'openid_provider' ? 'OpenID Provider (OP)' : 'Relying Party (RP)'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label className="text-muted-foreground">Organization</Label>
@@ -373,6 +423,18 @@ export default function EntityRegisterPage() {
                   <dt className="text-muted-foreground">Contact</dt>
                   <dd>{formData.contactEmail}</dd>
                 </div>
+                {!isIntermediate && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Entity Type</dt>
+                    <dd className="flex gap-1">
+                      {formData.entityTypes.map(t => (
+                        <span key={t} className="entity-badge bg-info/10 text-info">
+                          {t === 'openid_provider' ? 'OP' : 'RP'}
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 

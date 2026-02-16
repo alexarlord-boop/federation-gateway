@@ -16,10 +16,8 @@ export interface EntityDisplay {
 export const useEntities = () => {
   const { data: subordinates, isLoading, error } = useSubordinates(); // Fetch all
 
-  // Filter out federation types to get "Leaf Entities"
-  // In a real scenario, API should support improved filtering
   const entities: EntityDisplay[] = subordinates
-    ?.filter((sub: Subordinate) => !sub.registered_entity_types?.includes('federation_entity'))
+    ?.filter((sub: Subordinate) => (sub.metadata as any)?.federation_entity?.entity_role !== 'intermediate')
     .map((sub: Subordinate) => ({
       id: sub.id as string,
       entityId: sub.entity_id,

@@ -512,6 +512,9 @@ export default function TrustAnchorsPage() {
 
   // Subordinate TAs/IAs (federation_entity subordinates)
   const { data: subordinateTAs, isLoading: isLoadingSubTAs } = useSubordinates('federation_entity');
+  const intermediateTAs = (subordinateTAs || []).filter(
+    (ta: any) => ta?.metadata?.federation_entity?.entity_role === 'intermediate'
+  );
 
   // Determine active TA from debug context
   const activeTrustAnchor = allAnchors.find(ta => ta.id === currentCtxData?.contextId) || null;
@@ -701,9 +704,9 @@ export default function TrustAnchorsPage() {
             </Link>
           </Button>
         </div>
-        {subordinateTAs && subordinateTAs.length > 0 ? (
+        {intermediateTAs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subordinateTAs.map((ta) => (
+            {intermediateTAs.map((ta) => (
               <Card key={ta.id} className="group hover:shadow-md transition-all">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
