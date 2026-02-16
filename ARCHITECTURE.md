@@ -2,7 +2,19 @@
 
 ## Overview
 
-The Federation Gateway Admin UI is a web-based interface for managing OpenID Federation entities, subordinates, trust marks, and trust anchors. This document outlines the system architecture, components, data flow, and deployment strategy.
+The Federation Gateway Admin UI is a **backend-agnostic** web-based interface for managing OpenID Federation entities, subordinates, trust marks, and trust anchors.
+
+### Core Design Principle
+
+The UI is designed to work with **any** OpenID Federation Admin API implementation that adheres to the OpenAPI specification (`Federation Admin OpenAPI.yaml`). This means:
+
+- **The UI is the product** - a universal frontend for OIDFed management
+- **The OpenAPI spec is the contract** - any backend implementing it can plug in
+- **Multiple backend implementations are expected** - organizations can choose/build their own (Python, Go, Java, .NET, etc.)
+- **The FastAPI backend in this repo is a reference implementation** - not the only option
+- **MSW handlers serve as the canonical behavior model** - they define expected API interactions
+
+This architecture enables vendor-neutral deployment: NRENs can use this UI with their existing infrastructure while maintaining a consistent operator experience.
 
 ## System Components
 
@@ -38,20 +50,27 @@ src/
 └── types/           # TypeScript type definitions
 ```
 
-### 2. FastAPI Backend (`backend/`)
+### 2. Admin API Backend (Reference Implementation: `backend/`)
 
-**Purpose**: Authentication, subordinate management, and entity configuration
+**Purpose**: Reference implementation of the OpenID Federation Admin API specification
 
-**Technology Stack**:
+**Important**: This FastAPI backend is **one possible implementation**. Organizations can implement the same OpenAPI contract in any language/framework:
+- Python (FastAPI, Django, Flask)
+- Go (Gin, Echo, Chi)
+- Java (Spring Boot, Quarkus)
+- .NET (ASP.NET Core)
+- Node.js (Express, Fastify, NestJS)
+
+**Reference Implementation Stack**:
 - FastAPI (Python web framework)
 - SQLAlchemy (ORM)
 - SQLite (development database)
 - Jose (JWT handling)
 - Bcrypt (password hashing)
 
-**Port**: 8765
+**Port**: 8765 (configurable via `VITE_API_BASE_URL`)
 
-**Status**: Partial implementation - primarily supports authentication and basic CRUD operations
+**Status**: Partial reference implementation - primarily supports authentication and basic CRUD operations
 
 **Structure**:
 ```
@@ -72,11 +91,23 @@ backend/app/
 
 ### 3. Mock Service Worker (MSW)
 
-**Purpose**: Development-time API mocking to enable frontend development without a full backend
+**Purpose**: 
+1. Development-time API mocking to enable frontend development without a backend
+2. **Canonical behavior specification** - defines expected API interactions
+3. Reference for backend implementers
 
 **Location**: `public/mockServiceWorker.js` + `src/mocks/handlers.ts`
 
 **Status**: Active in development mode only (disabled in production builds)
+
+**Significance**: MSW handlers are effectively **executable API documentation**. They show:
+- Expected request/response payloads
+- Error handling patterns
+- State transitions
+- Validation rules
+- Edge cases
+
+Backend implementers should use MSW handlers as a reference alongside the OpenAPI spec.
 
 **Mocked Endpoints**:
 - Entity management (CRUD operations)
@@ -366,18 +397,38 @@ Location: `Federation Admin OpenAPI.yaml`
 
 ### API Base URL Configuration
 
-**Development**:
+**Critical for Backend Flexibility**: The UI can connect to any compliant Admin API by configuring the base URL.
+
+**Development** (Reference FastAPI):
 ```typescript
 // src/client/core/OpenAPI.ts
 BASE: 'http://localhost:8765'
 ```
 
-**Production** (planned):
+**Production** (Pluggable Backend):
 ```typescript
 BASE: import.meta.env.VITE_API_BASE_URL || '/api'
 ```
 
+**Example Deployments**:
+```bash
+# Connecting to organization's Go implementation
+VITE_API_BASE_URL=https://api.nren.example.org/oidfed
+
+# Connecting to cloud-hosted Java backend
+VITE_API_BASE_URL=https://federation-api.cloud.edu/v1
+
+# Local development with reference FastAPI
+VITE_API_BASE_URL=http://localhost:8765
+```
+
 Environment variable: `VITE_API_BASE_URL`
+
+**Backend Requirements**:
+- Must implement all endpoints in `Federation Admin OpenAPI.yaml`
+- Must handle CORS for browser-based UI
+- Should return errors in standard format
+- Authentication method is flexible (JWT, OAuth2, API keys, etc.)
 
 ### Key Endpoints
 
@@ -478,17 +529,27 @@ docker-compose up --build
 - Strong ecosystem and community
 - Excellent developer experience
 - Enterprise-grade tooling
+- **Backend-agnostic** - works with any API
 
 ### Why Vite?
 - Fast HMR (Hot Module Replacement)
 - Modern build tool (ESBuild)
 - Better than Create React App for performance
+- Environment variable support for API configuration
 
-### Why FastAPI?
+### Why OpenAPI-First Design?
+- **Enables multiple backend implementations**
+- Auto-generated TypeScript client (type-safe)
+- Contract-driven development
+- UI and backend teams can work independently
+- Backend implementers have clear specification
+
+### Why FastAPI (for reference implementation)?
 - Native async/await support
 - Auto-generated OpenAPI docs
 - Type hints with Pydantic
 - Fast performance (comparable to Node.js)
+- **Note**: Organizations can implement in any language
 
 ### Why React Query?
 - Eliminates boilerplate for data fetching
@@ -510,27 +571,104 @@ docker-compose up --build
 
 ## Future Enhancements
 
-### Short-term
-1. Complete FastAPI backend implementation
-2. Real database migration system (Alembic)
-3. Comprehensive error handling
-4. Form validation improvements
-5. Loading states and skeleton screens
+### Short-term (UI Focus)
+1. Comprehensive error handling for backend failures
+2. Form validation improvements
+3. Loading states and skeleton screens
+4. Offline detection and graceful degradation
+5. Backend health checking and status display
 
-### Medium-term
-1. Role-based access control (RBAC)
-2. Audit logging for all operations
-3. Advanced search and filtering
-4. Batch operations
-5. Export functionality (CSV, JSON)
+### Medium-term (UI + OpenAPI Evolution)
+1. Advanced search and filtering
+2. Batch operations UI
+3. Export functionality (CSV, JSON)
+4. **OpenAPI spec v2** with extended endpoints:
+   - Advanced query parameters
+   - Bulk operations
+   - WebSocket events (optional)
+5. Backend compatibility testing suite
 
-### Long-term
-1. Separate Auth Gateway service
-2. OIDC/SAML federation support
-3. Multi-tenancy support
-4. GraphQL API (alternative to REST)
-5. Real-time updates (WebSockets)
-6. Mobile-responsive design improvements
+### Long-term (Ecosystem)
+1. **Multi-backend support dashboard** - connect to multiple Admin APIs simultaneously
+2. **Backend implementation templates** - starter kits for Go, Java, .NET
+3. **Compliance testing tool** - validate backend adherence to OpenAPI spec
+4. **Community backend registry** - catalog of known implementations
+5. **Plugin system** - extend UI for custom backend features
+6. GraphQL gateway (optional - wraps REST backends)
+7. Mobile app (React Native) using same OpenAPI client
+8. Real-time updates (WebSockets as optional OpenAPI extension)
+
+## Backend Implementation Guide
+
+### For Organizations Building Their Own Admin API
+
+If you're implementing the Admin API in your preferred language/framework:
+
+**1. Start with the OpenAPI Spec**
+```bash
+# File: Federation Admin OpenAPI.yaml
+# This is the contract your backend must fulfill
+```
+
+**2. Use MSW Handlers as Behavioral Reference**
+```bash
+# File: src/mocks/handlers.ts
+# Shows expected request/response patterns
+# Demonstrates error handling
+# Illustrates state transitions
+```
+
+**3. Required Endpoints (Minimum Viable Backend)**
+- `POST /auth/login` - Authentication
+- `GET /subordinates` - List subordinates
+- `POST /subordinates` - Create subordinate
+- `GET /subordinates/{id}` - Get subordinate details
+- `PATCH /subordinates/{id}` - Update subordinate
+- `GET /trust-anchors` - List trust anchors
+- `GET /.well-known/openid-federation` - Entity configuration
+
+**4. Testing Your Backend with the UI**
+```bash
+# Build the UI pointing to your backend
+VITE_API_BASE_URL=https://your-api.example.org npm run build
+
+# Or in development
+VITE_API_BASE_URL=https://your-api.example.org npm run dev
+```
+
+**5. CORS Configuration**
+```
+Access-Control-Allow-Origin: https://ui.example.org
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Allow-Credentials: true
+```
+
+**6. Authentication Flexibility**
+
+The UI expects an `Authorization` header, but your backend can use:
+- JWT tokens (like reference implementation)
+- OAuth2 bearer tokens
+- API keys
+- Session cookies
+- Any other method that can be passed in headers
+
+**7. Reference Implementations**
+
+| Language | Framework | Repository | Status |
+|----------|-----------|------------|--------|
+| Python | FastAPI | This repo (`backend/`) | Partial |
+| Go | (TBD) | - | Planned |
+| Java | (TBD) | - | Planned |
+| .NET | (TBD) | - | Planned |
+
+**8. Validation**
+
+Run the UI test suite against your backend:
+```bash
+npm run test:backend-compliance -- --api-url https://your-api.example.org
+```
+(Planned feature - will validate OpenAPI conformance)
 
 ## Development Guidelines
 
@@ -630,16 +768,61 @@ docker-compose up --build
 - Deployment runbook
 - Troubleshooting guide
 
+## Project Scope & Deliverables
+
+### Primary Deliverable: Universal UI
+
+**What this project provides**:
+1. ✅ Production-ready React UI for OIDFed management
+2. ✅ OpenAPI specification (the contract)
+3. ✅ MSW handlers (reference behavior)
+4. ✅ Reference FastAPI backend (example implementation)
+5. ✅ Docker deployment templates
+6. ✅ TypeScript API client generation tools
+
+**What this project does NOT provide**:
+- ❌ A specific backend you must use
+- ❌ Database schema (implementation-dependent)
+- ❌ Cryptographic OIDFed protocol implementation (backend's responsibility)
+- ❌ Specific authentication method (flexible)
+
+### Adoption Paths
+
+**Path 1: Use the Reference Backend**
+```bash
+# Quick start - use our FastAPI implementation
+docker-compose up --build
+```
+
+**Path 2: Build Your Own Backend**
+```bash
+# Implement the OpenAPI spec in your language
+# Point the UI to your backend
+VITE_API_BASE_URL=https://your-api.org npm run build
+```
+
+**Path 3: Hybrid**
+```bash
+# Use our UI + reference backend, extend with custom endpoints
+# Add custom features via OpenAPI extensions
+```
+
 ## Contact & Maintenance
 
 **Codebase**: `/Users/alex.petrunin/federation-gateway`
 
 **Key Files**:
+- [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml) - **THE CONTRACT**
+- [`src/mocks/handlers.ts`](src/mocks/handlers.ts) - Reference behavior
 - [`package.json`](package.json) - Frontend dependencies
 - [`vite.config.ts`](vite.config.ts) - Build configuration
-- [`docker-compose.yml`](docker-compose.yml) - Container orchestration
-- [`backend/app/main.py`](backend/app/main.py) - FastAPI entry point
+- [`backend/app/main.py`](backend/app/main.py) - Reference backend (optional)
 - [`src/App.tsx`](src/App.tsx) - React app entry point
+
+**For Backend Implementers**:
+- Start with: [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)
+- Reference: [`src/mocks/handlers.ts`](src/mocks/handlers.ts)
+- Example: [`backend/`](backend/)
 
 ---
 
