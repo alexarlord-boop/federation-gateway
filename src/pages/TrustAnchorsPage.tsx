@@ -263,6 +263,7 @@ function ConfigureTrustAnchorDialog({
   const [organizationName, setOrganizationName] = useState('');
   const [homepageUri, setHomepageUri] = useState('');
   const [contacts, setContacts] = useState('');
+  const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
   const [jwksText, setJwksText] = useState('');
   const { toast } = useToast();
 
@@ -276,6 +277,7 @@ function ConfigureTrustAnchorDialog({
     setOrganizationName(data.organization_name || '');
     setHomepageUri(data.homepage_uri || '');
     setContacts((data.contacts || []).join(', '));
+    setAdminApiBaseUrl(data.admin_api_base_url || '');
     setJwksText(data.jwks ? JSON.stringify(data.jwks, null, 2) : '');
   };
 
@@ -297,6 +299,7 @@ function ConfigureTrustAnchorDialog({
       contacts: contacts
         ? contacts.split(',').map((c: string) => c.trim()).filter(Boolean)
         : [],
+      admin_api_base_url: adminApiBaseUrl || undefined,
       jwks,
     };
     const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
@@ -358,6 +361,16 @@ function ConfigureTrustAnchorDialog({
             />
           </div>
           <div>
+            <Label htmlFor="ta-admin-api">Admin API Base URL</Label>
+            <Input
+              id="ta-admin-api"
+              placeholder="https://ta-a-admin.example.org"
+              value={adminApiBaseUrl}
+              onChange={(e) => setAdminApiBaseUrl(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
             <Label htmlFor="ta-jwks">JWKS (JSON)</Label>
             <Textarea
               id="ta-jwks"
@@ -383,6 +396,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
   const [name, setName] = useState('Local Federation');
   const [entityId, setEntityId] = useState('https://ta.local.org');
   const [description, setDescription] = useState('Primary federation instance');
+  const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
   const [type, setType] = useState('federation');
   const { toast } = useToast();
 
@@ -396,6 +410,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
         name,
         entity_id: entityId,
         description: description || undefined,
+        admin_api_base_url: adminApiBaseUrl || undefined,
         type,
         status: 'active',
       });
@@ -404,6 +419,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
       setName('');
       setEntityId('');
       setDescription('');
+      setAdminApiBaseUrl('');
       setType('federation');
     } catch (e) {
       toast({ variant: 'destructive', title: 'Failed', description: 'Could not add TA instance' });
@@ -418,6 +434,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
           if (!name) setName('Local Federation');
           if (!entityId) setEntityId('https://ta.local.org');
           if (!description) setDescription('Primary federation instance');
+          if (!adminApiBaseUrl) setAdminApiBaseUrl('');
           if (!type) setType('federation');
         }
         setOpen(next);
@@ -477,6 +494,16 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
               placeholder="Primary federation instance"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="ta-admin-api-add">Admin API Base URL (Optional)</Label>
+            <Input
+              id="ta-admin-api-add"
+              placeholder="https://ta-a-admin.example.org"
+              value={adminApiBaseUrl}
+              onChange={(e) => setAdminApiBaseUrl(e.target.value)}
               className="mt-1"
             />
           </div>

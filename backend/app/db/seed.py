@@ -3,6 +3,7 @@ from app.db.database import SessionLocal
 from app.models.user import User
 from app.models.trust_anchor import TrustAnchor
 from app.auth.security import get_password_hash
+import json
 
 
 def seed_data():
@@ -38,7 +39,7 @@ def seed_data():
                 type="federation",
                 status="active",
                 subordinate_count=3,
-                config_json=None,
+                config_json=json.dumps({"admin_api_base_url": "http://localhost:8765"}),
                 jwks=None,
             ),
             TrustAnchor(
@@ -49,7 +50,7 @@ def seed_data():
                 type="test",
                 status="active",
                 subordinate_count=1,
-                config_json=None,
+                config_json=json.dumps({"admin_api_base_url": "http://localhost:8765"}),
                 jwks=None,
             ),
         ]

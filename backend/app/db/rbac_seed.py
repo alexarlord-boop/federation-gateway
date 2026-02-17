@@ -193,14 +193,25 @@ def seed_rbac_data(db: Session, spec_path: str = None):
     users = db.query(User).all()
     default_viewer = db.query(Role).filter(Role.role_id == "viewer").first()
     default_admin = db.query(Role).filter(Role.role_id == "super_admin").first()
+    default_tech = db.query(Role).filter(Role.role_id == "tech_contact").first()
 
     for user in users:
-        if user.roles:
+        # legacy admin users should be super_admin
+        if user.role == "admin":
+            if default_admin and default_admin not in user.roles:
+                user.roles.clear()
+                user.roles.append(default_admin)
             continue
 
-        if user.role == "admin" and default_admin:
-            user.roles.append(default_admin)
-        elif default_viewer:
+        # legacy standard users should be technical contacts by default
+        if user.role == "user":
+            if default_tech and default_tech not in user.roles:
+                user.roles.clear()
+                user.roles.append(default_tech)
+            continue
+
+        # unknown legacy roles fall back to viewer
+        if not user.roles and default_viewer:
             user.roles.append(default_viewer)
 
     db.commit()

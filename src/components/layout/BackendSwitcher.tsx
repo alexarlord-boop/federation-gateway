@@ -1,4 +1,5 @@
 import { Server } from 'lucide-react';
+import { useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +10,25 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useBackend } from '@/contexts/BackendContext';
+import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 
 export function BackendSwitcher() {
-  const { backends, selectedBackend, setSelectedBackend } = useBackend();
+  const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
+  const { trustAnchors } = useTrustAnchors();
+
+  useEffect(() => {
+    const discovered = trustAnchors
+      .filter((ta) => !!ta.adminApiBaseUrl)
+      .map((ta) => ({
+        id: `ta:${ta.id}`,
+        name: ta.name,
+        baseUrl: ta.adminApiBaseUrl as string,
+      }));
+
+    if (discovered.length > 0) {
+      registerBackends(discovered);
+    }
+  }, [registerBackends, trustAnchors]);
 
   return (
     <div className="px-3 pb-2">
@@ -24,13 +41,13 @@ export function BackendSwitcher() {
               </div>
               <div className="flex flex-col items-start overflow-hidden">
                 <span className="text-sm font-medium truncate w-full text-left">{selectedBackend.name}</span>
-                <span className="text-xs select-sublabel truncate w-full text-left">Active Backend</span>
+                <span className="text-xs select-sublabel truncate w-full text-left">Active Instance</span>
               </div>
             </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[15rem]" align="start">
-          <DropdownMenuLabel>Switch Backend</DropdownMenuLabel>
+          <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {backends.map((backend) => (
             <DropdownMenuItem

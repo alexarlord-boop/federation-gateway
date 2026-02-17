@@ -9,6 +9,7 @@ export interface TrustAnchorDisplay {
     status: string;
     description?: string;
     subordinateCount?: number;
+    adminApiBaseUrl?: string;
 }
 
 export interface TrustAnchorCreate {
@@ -17,6 +18,7 @@ export interface TrustAnchorCreate {
     description?: string;
     type: string;
     status?: string;
+    admin_api_base_url?: string;
 }
 
 export const useTrustAnchors = () => {
@@ -27,14 +29,17 @@ export const useTrustAnchors = () => {
     // to ensure visibility even when logged in as a leaf-node context.
     const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
     const { data, isLoading } = useQuery({
-        queryKey: ['trust-anchors-list', token],
+        queryKey: ['trust-anchors-list', OpenAPI.BASE, token],
         queryFn: async () => {
              if (!token) {
                  return [];
              }
-             const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
+             const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors`, {
                  headers: { Authorization: `Bearer ${token}` },
              });
+             if (res.status === 403) {
+                 return [];
+             }
              if (!res.ok) {
                  throw new Error('Failed to load trust anchors');
              }
@@ -49,14 +54,15 @@ export const useTrustAnchors = () => {
         type: ta.type,
         status: ta.status,
         description: ta.description,
-        subordinateCount: ta.subordinate_count ?? ta.subordinateCount
+        subordinateCount: ta.subordinate_count ?? ta.subordinateCount,
+        adminApiBaseUrl: ta.admin_api_base_url ?? ta.adminApiBaseUrl,
     })) || [];
 
     const queryClient = useQueryClient();
     const createTrustAnchor = useMutation({
         mutationFn: async (payload: TrustAnchorCreate) => {
             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-            const res = await fetch('http://localhost:8765/api/v1/admin/trust-anchors', {
+            const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -77,7 +83,7 @@ export const useTrustAnchors = () => {
     const deleteTrustAnchor = useMutation({
         mutationFn: async (id: string) => {
             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-            const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${id}`, {
+            const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors/${id}`, {
                 method: 'DELETE',
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });

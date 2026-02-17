@@ -31,9 +31,8 @@ def user_has_permission(user: User, feature: str, operation: str) -> bool:
     """
     Check whether a user has a given feature/operation permission.
 
-    Compatibility behavior:
-    - legacy admin role => full access
-    - role relationships (new RBAC) => evaluate assigned permissions
+    RBAC behavior:
+    - evaluate assigned role permissions only
     """
     def _normalize(name: str) -> str:
         value = name.replace('-', '_').strip().lower()
@@ -50,9 +49,6 @@ def user_has_permission(user: User, feature: str, operation: str) -> bool:
         if r.endswith('s') and r[:-1] == c:
             return True
         return False
-
-    if user.role == "admin":
-        return True
 
     for role in getattr(user, "roles", []) or []:
         for permission in getattr(role, "permissions", []) or []:

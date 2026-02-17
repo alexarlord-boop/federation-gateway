@@ -8,6 +8,7 @@ class TrustAnchorCreate(BaseModel):
     description: Optional[str] = None
     type: str
     status: str = "active"
+    admin_api_base_url: Optional[str] = None
 
 
 class TrustAnchorResponse(BaseModel):
@@ -18,6 +19,7 @@ class TrustAnchorResponse(BaseModel):
     type: str
     status: str
     subordinate_count: int = 0
+    admin_api_base_url: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -29,4 +31,5 @@ class TrustAnchorConfig(BaseModel):
     organization_name: Optional[str] = None
     homepage_uri: Optional[str] = None
     contacts: Optional[List[str]] = None
+    admin_api_base_url: Optional[str] = None
     jwks: Optional[Dict[str, Any]] = None

@@ -19,13 +19,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const tokenKey = `auth_token:${selectedBackend.id}`;
-  const userKey = `auth_user:${selectedBackend.id}`;
+  const backendScopeKey = selectedBackend.baseUrl || '__same_origin__';
+  const tokenKey = `auth_token:${backendScopeKey}`;
+  const userKey = `auth_user:${backendScopeKey}`;
 
   useEffect(() => {
     const storedUser = localStorage.getItem(userKey);
     const storedToken = localStorage.getItem(tokenKey);
-    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+
+    // Strict session restore: require both user and token.
+    // Prevents UI from entering authenticated routes with no bearer token,
+    // which causes repeated 403 loops.
+    const parsedUser = storedUser && storedToken ? JSON.parse(storedUser) : null;
+
+    if ((storedUser && !storedToken) || (!storedUser && storedToken)) {
+      localStorage.removeItem(userKey);
+      localStorage.removeItem(tokenKey);
+    }
 
     setUser(parsedUser);
     OpenAPI.TOKEN = storedToken || undefined;

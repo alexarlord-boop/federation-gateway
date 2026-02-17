@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { OpenAPI } from '@/client';
 
 export interface BackendTarget {
@@ -11,6 +11,7 @@ interface BackendContextValue {
   backends: BackendTarget[];
   selectedBackend: BackendTarget;
   setSelectedBackend: (backendId: string) => void;
+  registerBackends: (targets: BackendTarget[]) => void;
 }
 
 const DEFAULT_BACKENDS: BackendTarget[] = [
@@ -38,28 +39,52 @@ function parseBackends(): BackendTarget[] {
 const BackendContext = createContext<BackendContextValue | undefined>(undefined);
 
 export function BackendProvider({ children }: { children: React.ReactNode }) {
-  const backends = useMemo(() => parseBackends(), []);
+  const initialBackends = useMemo(() => parseBackends(), []);
+  const [backends, setBackends] = useState<BackendTarget[]>(initialBackends);
 
   const [selectedBackendId, setSelectedBackendId] = useState<string>(() => {
     const stored = localStorage.getItem('selected_backend_id');
-    return stored || backends[0].id;
+    return stored || initialBackends[0].id;
   });
 
   const selectedBackend = useMemo(() => {
-    return backends.find((b) => b.id === selectedBackendId) || backends[0];
-  }, [backends, selectedBackendId]);
+    return backends.find((b) => b.id === selectedBackendId) || backends[0] || initialBackends[0];
+  }, [backends, selectedBackendId, initialBackends]);
 
   useEffect(() => {
     localStorage.setItem('selected_backend_id', selectedBackend.id);
     OpenAPI.BASE = selectedBackend.baseUrl;
-    // Reset bearer token. Auth context will restore backend-scoped token after switch.
-    OpenAPI.TOKEN = undefined;
   }, [selectedBackend]);
+
+  const registerBackends = useCallback((targets: BackendTarget[]) => {
+    if (!targets.length) return;
+
+    setBackends((prev) => {
+      const map = new Map(prev.map((b) => [b.id, b]));
+      let changed = false;
+
+      for (const target of targets) {
+        if (!target.id || !target.name) continue;
+        const existing = map.get(target.id);
+        if (!existing || existing.name != target.name || existing.baseUrl != target.baseUrl) {
+          map.set(target.id, target);
+          changed = true;
+        }
+      }
+
+      if (!changed) {
+        return prev;
+      }
+
+      return Array.from(map.values());
+    });
+  }, []);
 
   const value: BackendContextValue = {
     backends,
     selectedBackend,
     setSelectedBackend: setSelectedBackendId,
+    registerBackends,
   };
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>;
