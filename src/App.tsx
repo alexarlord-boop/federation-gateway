@@ -18,6 +18,7 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 import TrustMarksPage from "./pages/TrustMarksPage";
 import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
+import RBACManagementPage from "./pages/RBACManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,11 @@ function AppRoutes() {
         <Route path="/users" element={
           <ProtectedRoute adminOnly>
             <UsersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/rbac" element={
+          <ProtectedRoute adminOnly>
+            <RBACManagementPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={<SettingsPage />} />

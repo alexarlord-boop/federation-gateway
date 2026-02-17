@@ -88,6 +88,12 @@ const sidebarSections: SidebarSection[] = [
         icon: Users,
         adminOnly: true,
       },
+      { 
+        title: 'RBAC Management', 
+        href: '/rbac', 
+        icon: Shield,
+        adminOnly: true,
+      },
     ],
   },
 ];
