@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
 import { useEntities } from '@/hooks/useEntities';
+import { BackendInfoPanel } from '@/components/BackendInfoPanel';
 
 function StatCard({ 
   title, 
@@ -200,29 +201,8 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Quick actions for non-admin */}
-        {!isAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start" variant="outline" asChild>
-                <Link to="/entities/register">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Register New Entity
-                </Link>
-              </Button>
-              <Button className="w-full justify-start" variant="outline" asChild>
-                <Link to="/entities">
-                  <Shield className="w-4 h-4 mr-2" />
-                  View My Entities
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Backend Info Panel */}
+        <BackendInfoPanel />
       </div>
     </div>
   );

@@ -20,7 +20,9 @@ export type OpenAPIConfig = {
 };
 
 export const OpenAPI: OpenAPIConfig = {
-    BASE: 'http://localhost:8765',
+    // In production (Docker), use empty string to make relative URLs (proxied by Nginx)
+    // In development, use localhost:8765
+    BASE: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8765'),
     VERSION: '0.1.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',

@@ -4,6 +4,120 @@ import { mockDB } from '../lib/mock-db';
 const BASE_URL = 'http://localhost:8765'; // Keeping consistent with OAS server
 
 export const handlers = [
+  // Capability Discovery
+  http.get(`${BASE_URL}/api/v1/capabilities`, () => {
+    return HttpResponse.json({
+      version: "1.0.0",
+      implementation: {
+        name: "MSW Mock Backend",
+        version: "0.2.0",
+        vendor: "Development Environment"
+      },
+      features: {
+        subordinates: {
+          enabled: true,
+          operations: [
+            "list",
+            "create",
+            "read",
+            "update",
+            "delete",
+            "approve"
+          ],
+          endpoints: [
+            "GET /api/v1/admin/subordinates",
+            "POST /api/v1/admin/subordinates",
+            "GET /api/v1/admin/subordinates/{id}",
+            "PATCH /api/v1/admin/subordinates/{id}",
+            "DELETE /api/v1/admin/subordinates/{id}",
+            "POST /api/v1/admin/subordinates/{id}/approve"
+          ]
+        },
+        trust_anchors: {
+          enabled: true,
+          operations: [
+            "list",
+            "create",
+            "read",
+            "update"
+          ],
+          endpoints: [
+            "GET /api/v1/admin/trust-anchors",
+            "POST /api/v1/admin/trust-anchors"
+          ]
+        },
+        trust_marks: {
+          enabled: true,
+          operations: [
+            "list",
+            "create",
+            "read",
+            "revoke"
+          ],
+          endpoints: [
+            "GET /api/v1/admin/trust-marks"
+          ]
+        },
+        jwks_management: {
+          enabled: true,
+          operations: [
+            "list_keys",
+            "add_key",
+            "delete_key"
+          ],
+          endpoints: [
+            "GET /api/v1/admin/entity-configuration/keys",
+            "POST /api/v1/admin/entity-configuration/keys"
+          ]
+        },
+        authority_hints: {
+          enabled: false,
+          reason: "Not implemented in MSW mock"
+        },
+        federation_discovery: {
+          enabled: false,
+          reason: "Planned for future release"
+        }
+      },
+      rbac: {
+        supported: true,
+        roles: [
+          {
+            id: "super_admin",
+            name: "Super Administrator",
+            description: "Full system access",
+            builtin: true
+          },
+          {
+            id: "fed_operator",
+            name: "Federation Operator",
+            description: "Manage subordinates and trust anchors",
+            builtin: true
+          },
+          {
+            id: "tech_contact",
+            name: "Technical Contact",
+            description: "View entities and manage keys",
+            builtin: true
+          },
+          {
+            id: "viewer",
+            name: "Viewer",
+            description: "Read-only access",
+            builtin: true
+          }
+        ],
+        permissions_model: "feature-based"
+      },
+      extensions: {
+        custom_metadata_fields: true,
+        webhook_notifications: false,
+        audit_logging: false,
+        bulk_operations: false
+      }
+    });
+  }),
+
   // List Subordinates
   http.get(`${BASE_URL}/api/v1/admin/subordinates`, ({ request }) => {
     const url = new URL(request.url);

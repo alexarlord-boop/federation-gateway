@@ -15,6 +15,91 @@ externalDocs:
   description: OpenID Federation 1.0 specification
   url: https://openid.net/specs/openid-federation-1_0.html
 paths:
+  /api/v1/capabilities:
+    get:
+      tags:
+        - System
+      summary: Get backend capabilities
+      description: >
+        Returns a manifest of features and endpoints supported by this backend implementation.
+        UI uses this to enable/disable features and generate RBAC permissions dynamically.
+        This endpoint allows the UI to be backend-agnostic and adapt to different implementations.
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Backend capability manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityManifest'
+              example:
+                version: "1.0.0"
+                implementation:
+                  name: "FastAPI Reference Implementation"
+                  version: "0.2.0"
+                  vendor: "NREN-Example"
+                features:
+                  subordinates:
+                    enabled: true
+                    operations:
+                      - list
+                      - create
+                      - read
+                      - update
+                      - delete
+                      - approve
+                    endpoints:
+                      - GET /api/v1/admin/subordinates
+                      - POST /api/v1/admin/subordinates
+                      - GET /api/v1/admin/subordinates/{id}
+                      - PATCH /api/v1/admin/subordinates/{id}
+                      - DELETE /api/v1/admin/subordinates/{id}
+                      - POST /api/v1/admin/subordinates/{id}/approve
+                  trust_anchors:
+                    enabled: true
+                    operations:
+                      - list
+                      - create
+                      - read
+                      - update
+                    endpoints:
+                      - GET /api/v1/admin/trust-anchors
+                      - POST /api/v1/admin/trust-anchors
+                  trust_marks:
+                    enabled: true
+                    operations:
+                      - list
+                      - create
+                      - read
+                      - revoke
+                  jwks_management:
+                    enabled: true
+                    operations:
+                      - list_keys
+                      - add_key
+                      - rotate_key
+                      - delete_key
+                  authority_hints:
+                    enabled: false
+                    reason: "Planned for future release"
+                rbac:
+                  supported: true
+                  roles:
+                    - id: "super_admin"
+                      name: "Super Administrator"
+                      description: "Full system access"
+                      builtin: true
+                    - id: "fed_operator"
+                      name: "Federation Operator"
+                      description: "Manage subordinates and trust anchors"
+                      builtin: true
+                  permissions_model: "feature-based"
+                extensions:
+                  custom_metadata_fields: true
+                  webhook_notifications: false
+                  audit_logging: true
+        '500':
+          $ref: '#/components/responses/ServerError'
   /api/v1/admin/entity-configuration/jwks:
     get:
       tags:
@@ -3903,6 +3988,130 @@ paths:
         required: true
 components:
   schemas:
+    CapabilityManifest:
+      type: object
+      required:
+        - version
+        - implementation
+        - features
+        - rbac
+      properties:
+        version:
+          type: string
+          description: Capability manifest schema version
+          example: "1.0.0"
+        implementation:
+          $ref: '#/components/schemas/ImplementationInfo'
+        features:
+          type: object
+          description: Feature availability map
+          additionalProperties:
+            $ref: '#/components/schemas/FeatureCapability'
+        rbac:
+          $ref: '#/components/schemas/RBACInfo'
+        extensions:
+          type: object
+          description: Optional/custom features
+          additionalProperties:
+            type: boolean
+    
+    ImplementationInfo:
+      type: object
+      required:
+        - name
+        - version
+      properties:
+        name:
+          type: string
+          description: Backend implementation name
+          example: "FastAPI Reference Implementation"
+        version:
+          type: string
+          description: Backend version
+          example: "0.2.0"
+        vendor:
+          type: string
+          description: Organization providing this implementation
+          example: "NREN-Example"
+    
+    FeatureCapability:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: Whether this feature is available
+        operations:
+          type: array
+          description: Supported operations for this feature
+          items:
+            type: string
+            enum:
+              - list
+              - create
+              - read
+              - update
+              - delete
+              - approve
+              - reject
+              - revoke
+              - sign
+              - validate
+              - rotate
+        endpoints:
+          type: array
+          description: API endpoints implementing this feature
+          items:
+            type: string
+        reason:
+          type: string
+          description: Explanation if feature is disabled
+    
+    RBACInfo:
+      type: object
+      required:
+        - supported
+      properties:
+        supported:
+          type: boolean
+          description: Whether RBAC is supported
+        roles:
+          type: array
+          description: Available roles
+          items:
+            $ref: '#/components/schemas/RoleDefinition'
+        permissions_model:
+          type: string
+          description: Permission model used
+          enum:
+            - feature-based
+            - endpoint-based
+            - custom
+    
+    RoleDefinition:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique role identifier
+          example: "super_admin"
+        name:
+          type: string
+          description: Human-readable role name
+          example: "Super Administrator"
+        description:
+          type: string
+          description: Role purpose and scope
+          example: "Full system access"
+        builtin:
+          type: boolean
+          description: Whether this is a system role (cannot be deleted)
+          default: false
+    
     PublicKeyEntry:
       description: A public key entry managed by the API.
       type: object
@@ -5233,6 +5442,8 @@ components:
           summary: UUID
           value: f4b493bc-a5af-11f0-99ee-a71e7c554cad
 tags:
+  - name: System
+    description: System endpoints for capability discovery and health checks.
   - name: Entity Configuration
     description: Endpoints related to the entity configuration document.
   - name: Authority Hints

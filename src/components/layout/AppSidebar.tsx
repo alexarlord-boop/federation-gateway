@@ -12,6 +12,7 @@ import {
   Leaf
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCapabilities } from '@/contexts/CapabilityContext';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -27,7 +28,8 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
-  children?: { title: string; href: string }[];
+  feature?: string; // Feature required for this nav item
+  children?: { title: string; href: string; feature?: string; operation?: string }[];
 }
 
 interface SidebarSection {
@@ -50,20 +52,23 @@ const sidebarSections: SidebarSection[] = [
         href: '/trust-anchors', 
         icon: Shield,
         adminOnly: true,
+        feature: 'trust_anchors',
       },
       { 
         title: 'Leaf Entities', 
         href: '/entities', 
         icon: Leaf,
+        feature: 'subordinates',
         children: [
-          { title: 'All Entities', href: '/entities' },
-          { title: 'Register New', href: '/entities/register' },
+          { title: 'All Entities', href: '/entities', feature: 'subordinates', operation: 'list' },
+          { title: 'Register New', href: '/entities/register', feature: 'subordinates', operation: 'create' },
         ]
       },
       { 
         title: 'Trust Marks', 
         href: '/trust-marks', 
         icon: Award,
+        feature: 'trust_marks',
       },
     ],
   },
@@ -75,6 +80,7 @@ const sidebarSections: SidebarSection[] = [
         href: '/approvals', 
         icon: ClipboardCheck,
         adminOnly: true,
+        feature: 'subordinates', // Approvals require subordinate management
       },
       { 
         title: 'Users', 
@@ -88,6 +94,7 @@ const sidebarSections: SidebarSection[] = [
 
 export function AppSidebar() {
   const { user, isAdmin, logout } = useAuth();
+  const { isFeatureEnabled, hasOperation, capabilities } = useCapabilities();
   const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>(['Leaf Entities']);
 
@@ -99,16 +106,49 @@ export function AppSidebar() {
     );
   };
 
+  // Check if nav item should be shown based on features and permissions
+  const shouldShowNavItem = (item: NavItem): boolean => {
+    // Check admin permission
+    if (item.adminOnly && !isAdmin) return false;
+    
+    // Check feature availability
+    if (item.feature && !isFeatureEnabled(item.feature)) return false;
+    
+    return true;
+  };
+
+  // Check if child nav item should be shown
+  const shouldShowChildItem = (child: { feature?: string; operation?: string }): boolean => {
+    if (!child.feature) return true;
+    
+    if (child.operation) {
+      return hasOperation(child.feature, child.operation);
+    }
+    
+    return isFeatureEnabled(child.feature);
+  };
+
   const renderNavItem = (item: NavItem) => {
+    // Check if this item should be shown
+    if (!shouldShowNavItem(item)) return null;
+
     const hasChildren = item.children && item.children.length > 0;
     const isOpen = openSections.includes(item.title);
     
+    // Filter children based on feature availability
+    const visibleChildren = hasChildren 
+      ? item.children?.filter(shouldShowChildItem) || []
+      : [];
+    
+    // Don't show parent if it has children but none are visible
+    if (hasChildren && visibleChildren.length === 0) return null;
+    
     // For items with children, check if any child path matches
     const isActive = hasChildren
-      ? item.children?.some(child => location.pathname === child.href) || location.pathname === item.href
+      ? visibleChildren?.some(child => location.pathname === child.href) || location.pathname === item.href
       : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
 
-    if (hasChildren) {
+    if (hasChildren && visibleChildren.length > 0) {
       return (
         <Collapsible 
           key={item.href} 
@@ -134,7 +174,7 @@ export function AppSidebar() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="ml-8 mt-1 space-y-1">
-              {item.children?.map((child) => (
+              {visibleChildren.map((child) => (
                 <NavLink
                   key={child.href}
                   to={child.href}
@@ -195,12 +235,17 @@ export function AppSidebar() {
             Mock API Mode
           </div>
         )}
+        {capabilities && (
+          <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md text-[10px] text-muted-foreground">
+            {capabilities.implementation.name} v{capabilities.implementation.version}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-6">
         {sidebarSections.map((section) => {
-          const filteredItems = section.items.filter(item => !item.adminOnly || isAdmin);
+          const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;
           
           return (
