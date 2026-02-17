@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { CapabilityManifest, capabilityService } from '@/services/capabilities';
+import { useBackend } from '@/contexts/BackendContext';
 
 interface CapabilityContextType {
   capabilities: CapabilityManifest | null;
@@ -25,6 +26,7 @@ interface CapabilityProviderProps {
 }
 
 export function CapabilityProvider({ children }: CapabilityProviderProps) {
+  const { selectedBackend } = useBackend();
   const [capabilities, setCapabilities] = useState<CapabilityManifest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -33,7 +35,7 @@ export function CapabilityProvider({ children }: CapabilityProviderProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const manifest = await capabilityService.fetchCapabilities();
+      const manifest = await capabilityService.fetchCapabilities(selectedBackend.baseUrl);
       setCapabilities(manifest);
     } catch (err) {
       console.error('Failed to fetch capabilities:', err);
@@ -61,16 +63,17 @@ export function CapabilityProvider({ children }: CapabilityProviderProps) {
   };
 
   useEffect(() => {
+    capabilityService.clearCache(selectedBackend.baseUrl);
     fetchCapabilities();
-  }, []);
+  }, [selectedBackend.baseUrl]);
 
   const value: CapabilityContextType = {
     capabilities,
     isLoading,
     error,
-    isFeatureEnabled: capabilityService.isFeatureEnabled.bind(capabilityService),
-    hasOperation: capabilityService.hasOperation.bind(capabilityService),
-    getEnabledFeatures: capabilityService.getEnabledFeatures.bind(capabilityService),
+    isFeatureEnabled: (feature: string) => capabilityService.isFeatureEnabled(feature, selectedBackend.baseUrl),
+    hasOperation: (feature: string, operation: string) => capabilityService.hasOperation(feature, operation, selectedBackend.baseUrl),
+    getEnabledFeatures: () => capabilityService.getEnabledFeatures(selectedBackend.baseUrl),
     refetch: fetchCapabilities,
   };
 

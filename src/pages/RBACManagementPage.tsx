@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -6,10 +6,41 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Shield, Users, Lock, Settings } from 'lucide-react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
+import { useBackend } from '@/contexts/BackendContext';
+import { OpenAPI } from '@/client';
+
+interface FeatureConfigItem {
+  feature_name: string;
+  enabled: boolean;
+  reason?: string | null;
+  operations: string[];
+}
 
 export default function RBACManagementPage() {
   const { capabilities } = useCapabilities();
+  const { selectedBackend } = useBackend();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigItem[]>([]);
+  const [isSavingFeature, setIsSavingFeature] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadFeatureConfigs = async () => {
+      try {
+        const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+        const res = await fetch(`${selectedBackend.baseUrl}/api/v1/rbac/features`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+        setFeatureConfigs(data);
+      } catch {
+        setFeatureConfigs([]);
+      }
+    };
+
+    loadFeatureConfigs();
+  }, [selectedBackend.baseUrl]);
 
   if (!capabilities) {
     return (
@@ -21,6 +52,32 @@ export default function RBACManagementPage() {
 
   const roles = capabilities.rbac?.roles || [];
   const features = Object.entries(capabilities.features || {});
+
+  const updateFeature = async (featureName: string, enabled: boolean) => {
+    setIsSavingFeature(featureName);
+    try {
+      const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+      const response = await fetch(`${selectedBackend.baseUrl}/api/v1/rbac/features/${featureName}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          enabled,
+          reason: enabled ? null : 'Disabled by administrator',
+        }),
+      });
+
+      if (!response.ok) return;
+      const updated = await response.json();
+      setFeatureConfigs((prev) => prev.map((f) => (f.feature_name === featureName ? updated : f)));
+    } finally {
+      setIsSavingFeature(null);
+    }
+  };
+
+  const featureStateMap = new Map(featureConfigs.map((cfg) => [cfg.feature_name, cfg]));
 
   return (
     <div className="space-y-6">
@@ -191,8 +248,14 @@ export default function RBACManagementPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {features.map(([featureName, feature]) => (
-                  <div
+                {features.map(([featureName, capabilityFeature]) => {
+                  const feature = featureStateMap.get(featureName);
+                  const enabled = feature?.enabled ?? capabilityFeature.enabled;
+                  const reason = feature?.reason ?? capabilityFeature.reason;
+                  const operations = feature?.operations ?? capabilityFeature.operations ?? [];
+
+                  return (
+                    <div
                     key={featureName}
                     className="flex items-center justify-between p-4 rounded-lg border"
                   >
@@ -202,18 +265,18 @@ export default function RBACManagementPage() {
                           {featureName.replace(/_/g, ' ')}
                         </h3>
                         <Badge
-                          variant={feature.enabled ? 'default' : 'secondary'}
+                          variant={enabled ? 'default' : 'secondary'}
                         >
-                          {feature.enabled ? 'Enabled' : 'Disabled'}
+                          {enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
                       </div>
-                      {feature.reason && (
+                      {reason && (
                         <p className="text-sm text-muted-foreground">
-                          {feature.reason}
+                          {reason}
                         </p>
                       )}
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {feature.operations?.map((op) => (
+                        {operations.map((op) => (
                           <Badge key={op} variant="outline" className="text-xs">
                             {op}
                           </Badge>
@@ -221,17 +284,13 @@ export default function RBACManagementPage() {
                       </div>
                     </div>
                     <Switch
-                      checked={feature.enabled}
-                      disabled={!feature.enabled}
-                      onCheckedChange={(checked) => {
-                        // TODO: Implement feature toggle API call
-                        console.log(
-                          `Toggle ${featureName} to ${checked}`
-                        );
-                      }}
+                      checked={enabled}
+                      disabled={isSavingFeature === featureName}
+                      onCheckedChange={(checked) => updateFeature(featureName, checked)}
                     />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

@@ -44,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';
 import { OpenAPI } from '@/client';
+import { useBackend } from '@/contexts/BackendContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -258,6 +259,7 @@ function ConfigureTrustAnchorDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { selectedBackend } = useBackend();
   const [organizationName, setOrganizationName] = useState('');
   const [homepageUri, setHomepageUri] = useState('');
   const [contacts, setContacts] = useState('');
@@ -266,7 +268,7 @@ function ConfigureTrustAnchorDialog({
 
   const loadConfig = async (id: string) => {
     const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-    const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${id}/config`, {
+    const res = await fetch(`${selectedBackend.baseUrl}/api/v1/admin/trust-anchors/${id}/config`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (!res.ok) return;
@@ -298,7 +300,7 @@ function ConfigureTrustAnchorDialog({
       jwks,
     };
     const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-    const res = await fetch(`http://localhost:8765/api/v1/admin/trust-anchors/${target.id}/config`, {
+    const res = await fetch(`${selectedBackend.baseUrl}/api/v1/admin/trust-anchors/${target.id}/config`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -489,6 +491,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
 }
 
 export default function TrustAnchorsPage() {
+  const { selectedBackend } = useBackend();
   const [configTarget, setConfigTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: 'ta' | 'subordinate' | 'hint'; id: string; label: string }
@@ -496,9 +499,9 @@ export default function TrustAnchorsPage() {
   >(null);
   // Sync the context state with the debug API
   const { data: currentCtxData } = useQuery({
-    queryKey: ['debug-context'],
+    queryKey: ['debug-context', selectedBackend.id],
     queryFn: async () => {
-        const res = await fetch('http://localhost:8765/api/debug/context');
+        const res = await fetch(`${selectedBackend.baseUrl}/api/debug/context`);
         return res.json();
     }
   });

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
+import { BackendSwitcher } from './BackendSwitcher';
 import { ContextSwitcher } from './ContextSwitcher';
 
 interface NavItem {
@@ -234,6 +235,7 @@ export function AppSidebar() {
       </div>
 
       <div className="pt-4 px-2">
+        <BackendSwitcher />
         <ContextSwitcher />
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-3 px-2 py-1.5 bg-warning/10 border border-warning/30 rounded-md text-xs text-warning flex items-center gap-1.5">

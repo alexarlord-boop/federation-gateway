@@ -1,9 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { OpenAPI } from "./client";
-
-OpenAPI.BASE = 'http://localhost:8765';
 
 const savedTheme = localStorage.getItem('ui_theme');
 if (savedTheme) {

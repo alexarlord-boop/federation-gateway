@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User } from '@/types/registry';
 import { OpenAPI } from '@/client';
+import { useBackend } from '@/contexts/BackendContext';
 
 interface AuthContextType {
   user: User | null;
@@ -14,22 +15,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Initialize from localStorage on mount
-    const storedUser = localStorage.getItem('auth_user');
-    const storedToken = localStorage.getItem('auth_token');
-    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-    if (parsedUser && storedToken) {
-      OpenAPI.TOKEN = storedToken;
-    }
-    return parsedUser;
-  });
+  const { selectedBackend } = useBackend();
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const tokenKey = `auth_token:${selectedBackend.id}`;
+  const userKey = `auth_user:${selectedBackend.id}`;
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem(userKey);
+    const storedToken = localStorage.getItem(tokenKey);
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+
+    setUser(parsedUser);
+    OpenAPI.TOKEN = storedToken || undefined;
+  }, [tokenKey, userKey]);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8765/api/auth/login', {
+      const response = await fetch(`${selectedBackend.baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -51,20 +56,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(userData);
-      localStorage.setItem('auth_user', JSON.stringify(userData));
-      localStorage.setItem('auth_token', data.access_token);
+      localStorage.setItem(userKey, JSON.stringify(userData));
+      localStorage.setItem(tokenKey, data.access_token);
       OpenAPI.TOKEN = data.access_token;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedBackend.baseUrl, tokenKey, userKey]);
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem(userKey);
+    localStorage.removeItem(tokenKey);
     OpenAPI.TOKEN = undefined;
-  }, []);
+  }, [tokenKey, userKey]);
 
   const value: AuthContextType = {
     user,

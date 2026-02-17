@@ -8,7 +8,7 @@ import uuid
 from app.db.database import get_db
 from app.schemas.subordinate import SubordinateCreate, SubordinateResponse, SubordinateUpdateStatus
 from app.models.subordinate import Subordinate
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_permission
 
 router = APIRouter(prefix="/api/v1/admin/subordinates", tags=["subordinates"])
 
@@ -30,7 +30,7 @@ def list_subordinates(
     entity_type: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    user=Depends(get_current_user),
+    _user=Depends(require_permission("subordinates", "list")),
 ):
     query = db.query(Subordinate)
     if entity_type:
@@ -41,7 +41,7 @@ def list_subordinates(
 
 
 @router.post("", response_model=SubordinateResponse, status_code=201)
-def create_subordinate(payload: SubordinateCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def create_subordinate(payload: SubordinateCreate, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "create"))):
     sub = Subordinate(
         id=f"sub-{uuid.uuid4().hex[:8]}",
         entity_id=payload.entity_id,
@@ -60,7 +60,7 @@ def create_subordinate(payload: SubordinateCreate, db: Session = Depends(get_db)
 
 
 @router.get("/{sub_id}", response_model=SubordinateResponse)
-def get_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def get_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "view"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
@@ -68,7 +68,7 @@ def get_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(get
 
 
 @router.put("/{sub_id}/status", response_model=SubordinateResponse)
-def update_status(sub_id: str, payload: SubordinateUpdateStatus, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_status(sub_id: str, payload: SubordinateUpdateStatus, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "update"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
@@ -79,7 +79,7 @@ def update_status(sub_id: str, payload: SubordinateUpdateStatus, db: Session = D
 
 
 @router.put("/{sub_id}/metadata", response_model=dict)
-def update_metadata(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def update_metadata(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "update"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
@@ -89,7 +89,7 @@ def update_metadata(sub_id: str, payload: dict, db: Session = Depends(get_db), u
 
 
 @router.delete("/{sub_id}", status_code=204)
-def delete_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def delete_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "delete"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
@@ -99,7 +99,7 @@ def delete_subordinate(sub_id: str, db: Session = Depends(get_db), user=Depends(
 
 
 @router.post("/{sub_id}/jwks", response_model=dict)
-def add_jwk(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def add_jwk(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "update"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")
@@ -111,7 +111,7 @@ def add_jwk(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depe
 
 
 @router.put("/{sub_id}/jwks", response_model=dict)
-def set_jwks(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+def set_jwks(sub_id: str, payload: dict, db: Session = Depends(get_db), user=Depends(require_permission("subordinates", "update"))):
     sub = db.query(Subordinate).filter(Subordinate.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Not found")

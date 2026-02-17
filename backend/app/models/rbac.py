@@ -4,7 +4,7 @@ RBAC Database Models
 Stores user roles, permissions, and capability configuration.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table, JSON
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Table, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -51,6 +51,7 @@ class Permission(Base):
     
     # Unique constraint on feature + operation
     __table_args__ = (
+        UniqueConstraint('feature', 'operation', name='uq_permission_feature_operation'),
         {'sqlite_autoincrement': True},
     )
     

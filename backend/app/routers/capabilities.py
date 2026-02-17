@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.rbac import Role, Permission, FeatureConfig
+from app.models.rbac import Role, FeatureConfig
 
 router = APIRouter()
 
@@ -43,6 +43,7 @@ class RoleDefinition(BaseModel):
     name: str
     description: Optional[str] = None
     builtin: bool = False
+    permissions: Optional[List[str]] = None
 
 
 class RBACInfo(BaseModel):
@@ -137,8 +138,25 @@ async def get_capabilities(db: Session = Depends(get_db)):
             id=role.role_id,
             name=role.name,
             description=role.description,
-            builtin=role.builtin
+            builtin=role.builtin,
+            permissions=role_permissions,
         ))
+
+    # Canonical UI feature aliases to keep frontend stable across backend tag differences
+    if "trust_anchors" not in features and "general_constraints" in features:
+        features["trust_anchors"] = features["general_constraints"]
+
+    if "trust_marks" not in features:
+        if "trust_mark_issuance" in features:
+            features["trust_marks"] = features["trust_mark_issuance"]
+        elif "federation_trust_marks" in features:
+            features["trust_marks"] = features["federation_trust_marks"]
+
+    if "jwks_management" not in features:
+        if "keys" in features:
+            features["jwks_management"] = features["keys"]
+        elif "subordinate_keys" in features:
+            features["jwks_management"] = features["subordinate_keys"]
     
     return CapabilityManifest(
         version="1.0.0",

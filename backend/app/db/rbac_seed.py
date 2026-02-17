@@ -8,6 +8,7 @@ and eliminates hardcoding.
 
 from sqlalchemy.orm import Session
 from app.models.rbac import Role, Permission, FeatureConfig
+from app.models.user import User
 from app.utils.openapi_parser import parse_openapi_spec
 
 
@@ -83,6 +84,15 @@ def seed_rbac_data(db: Session, spec_path: str = None):
                 "operation": operation,
                 "description": f"{operation.capitalize()} {config['feature_name'].replace('_', ' ')}"
             })
+
+    # Administrative permission used to manage RBAC itself
+    permissions_data.append(
+        {
+            "feature": "rbac",
+            "operation": "manage",
+            "description": "Manage roles, permissions, and feature toggles",
+        }
+    )
     
     # Create permissions (avoid duplicates)
     for perm_data in permissions_data:
@@ -97,52 +107,38 @@ def seed_rbac_data(db: Session, spec_path: str = None):
     
     db.flush()  # Flush to get IDs for relationships
     
-    # 3. Define default roles with their permissions
-    # Admins can create custom roles and assign any available permissions
+    # 3. Define default roles with permissions derived from discovered operations
+    # This keeps defaults aligned with varying backend implementations.
     roles_data = [
         {
             "role_id": "super_admin",
             "name": "Super Administrator",
             "description": "Full system access with all permissions",
             "builtin": True,
-            "permissions": "*"  # Special marker for all permissions
         },
         {
             "role_id": "fed_operator",
             "name": "Federation Operator",
-            "description": "Can manage all federation entities but not system settings",
+            "description": "Can manage federation entities but not RBAC administration",
             "builtin": True,
-            "permissions": [
-                ("subordinates", ["list", "view", "create", "update", "delete"]),
-                ("trust_anchors", ["list", "view", "create", "update", "delete"]),
-                ("trust_marks", ["list", "view", "issue", "revoke"]),
-                ("jwks_management", ["list", "create", "rotate"])
-            ]
         },
         {
             "role_id": "tech_contact",
             "name": "Technical Contact",
-            "description": "Can manage subordinates and view trust configuration",
+            "description": "Can read most data and update technical configuration",
             "builtin": True,
-            "permissions": [
-                ("subordinates", ["list", "view", "create", "update"]),
-                ("trust_anchors", ["list", "view"]),
-                ("trust_marks", ["list", "view"]),
-                ("jwks_management", ["list"])
-            ]
         },
         {
             "role_id": "viewer",
             "name": "Viewer",
             "description": "Read-only access to federation information",
             "builtin": True,
-            "permissions": [
-                ("subordinates", ["list", "view"]),
-                ("trust_anchors", ["list", "view"]),
-                ("trust_marks", ["list", "view"])
-            ]
-        }
+        },
     ]
+
+    all_permissions = db.query(Permission).all()
+    read_ops = {"list", "view", "read"}
+    technical_feature_hints = ("subordinate", "key", "entity_configuration")
     
     # Create roles and assign permissions
     for role_data in roles_data:
@@ -168,23 +164,47 @@ def seed_rbac_data(db: Session, spec_path: str = None):
         # Clear existing permissions and reassign
         role.permissions.clear()
         
-        # Assign permissions
-        if role_data["permissions"] == "*":
-            # Super admin gets all permissions
-            all_permissions = db.query(Permission).all()
+        # Assign permissions dynamically
+        if role.role_id == "super_admin":
             role.permissions.extend(all_permissions)
-        else:
-            # Add specific permissions
-            for feature, operations in role_data["permissions"]:
-                for operation in operations:
-                    permission = db.query(Permission).filter_by(
-                        feature=feature,
-                        operation=operation
-                    ).first()
-                    if permission and permission not in role.permissions:
-                        role.permissions.append(permission)
+        elif role.role_id == "fed_operator":
+            role.permissions.extend([p for p in all_permissions if p.feature != "rbac"])
+        elif role.role_id == "tech_contact":
+            role.permissions.extend(
+                [
+                    p
+                    for p in all_permissions
+                    if p.feature != "rbac"
+                    and (
+                        p.operation in read_ops
+                        or (
+                            p.operation in {"create", "update"}
+                            and any(h in p.feature for h in technical_feature_hints)
+                        )
+                    )
+                ]
+            )
+        elif role.role_id == "viewer":
+            role.permissions.extend([p for p in all_permissions if p.feature != "rbac" and p.operation in read_ops])
     
     db.commit()
+
+    # 4. Map legacy users to new RBAC roles if they don't have any role assigned yet
+    users = db.query(User).all()
+    default_viewer = db.query(Role).filter(Role.role_id == "viewer").first()
+    default_admin = db.query(Role).filter(Role.role_id == "super_admin").first()
+
+    for user in users:
+        if user.roles:
+            continue
+
+        if user.role == "admin" and default_admin:
+            user.roles.append(default_admin)
+        elif default_viewer:
+            user.roles.append(default_viewer)
+
+    db.commit()
+
     print("✅ RBAC data seeded successfully from OpenAPI specification")
     print(f"   - Features: {len(feature_configs)}")
     print(f"   - Permissions: {len(permissions_data)}")

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
+import { useBackend } from '@/contexts/BackendContext';
 
 const getIconForType = (type: string) => {
   switch (type) {
@@ -22,20 +23,21 @@ const getIconForType = (type: string) => {
 
 export function ContextSwitcher() {
   const queryClient = useQueryClient();
+    const { selectedBackend } = useBackend();
     const { trustAnchors, isLoading } = useTrustAnchors();
   
   // Fetch current context
   const { data: currentCtxData } = useQuery({
-    queryKey: ['debug-context'],
+        queryKey: ['debug-context', selectedBackend.id],
     queryFn: async () => {
-        const res = await fetch('http://localhost:8765/api/debug/context');
+                const res = await fetch(`${selectedBackend.baseUrl}/api/debug/context`);
         return res.json();
     }
   });
 
   const switchContext = useMutation({
       mutationFn: async (id: string) => {
-          await fetch('http://localhost:8765/api/debug/context', {
+          await fetch(`${selectedBackend.baseUrl}/api/debug/context`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ contextId: id })
@@ -45,7 +47,7 @@ export function ContextSwitcher() {
           queryClient.invalidateQueries();
           window.location.reload(); // Hard reload to ensure all stores clear
       }
-  });
+    });
 
     const availableContexts = trustAnchors.map(ta => ({
             id: ta.id,
