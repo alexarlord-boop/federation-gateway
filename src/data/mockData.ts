@@ -1,6 +1,29 @@
-import type { TrustAnchor, Entity, ApprovalRequest, DashboardStats } from '@/types/registry';
+import type { TrustAnchorDisplay } from '@/hooks/useTrustAnchors';
 
-export const mockTrustAnchors: TrustAnchor[] = [
+interface ApprovalRequest {
+  id: string;
+  entityId: string;
+  entityDisplayName: string;
+  type: 'registration' | 'update' | 'deletion';
+  status: 'pending' | 'approved' | 'rejected';
+  submittedBy: string;
+  submittedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+}
+
+interface DashboardStats {
+  totalEntities: number;
+  activeEntities: number;
+  pendingApprovals: number;
+  trustAnchors: number;
+  opCount: number;
+  rpCount: number;
+  recentRegistrations: number;
+}
+
+export const mockTrustAnchors: TrustAnchorDisplay[] = [
   {
     id: 'ta-1',
     name: 'My NREN Federation',
@@ -9,8 +32,6 @@ export const mockTrustAnchors: TrustAnchor[] = [
     type: 'federation',
     status: 'active',
     subordinateCount: 127,
-    createdAt: '2023-01-15T00:00:00Z',
-    updatedAt: '2024-12-01T00:00:00Z',
   },
   {
     id: 'ta-3',
@@ -20,12 +41,8 @@ export const mockTrustAnchors: TrustAnchor[] = [
     type: 'test',
     status: 'active',
     subordinateCount: 23,
-    createdAt: '2023-06-01T00:00:00Z',
-    updatedAt: '2024-12-10T00:00:00Z',
   },
 ];
-
-export const mockEntities: Entity[] = [];
 
 export const mockApprovalRequests: ApprovalRequest[] = [];
 

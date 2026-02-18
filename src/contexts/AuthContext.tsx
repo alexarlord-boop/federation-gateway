@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { User } from '@/types/registry';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  organizationId?: string;
+  organizationName?: string;
+  createdAt: string;
+}
 import { OpenAPI } from '@/client';
 import { useBackend } from '@/contexts/BackendContext';
 

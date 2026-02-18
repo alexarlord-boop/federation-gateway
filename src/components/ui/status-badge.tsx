@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { EntityStatus } from '@/types/registry';
+export type EntityStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'active' | 'inactive';
 
 interface StatusBadgeProps {
   status: EntityStatus;

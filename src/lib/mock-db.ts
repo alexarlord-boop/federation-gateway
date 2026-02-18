@@ -1,8 +1,8 @@
-import { mockTrustAnchors, mockEntities } from '../data/mockData';
+import { mockTrustAnchors } from '../data/mockData';
 import type { Subordinate } from '../client/models/Subordinate';
 import type { SubordinateDetails } from '../client/models/SubordinateDetails';
 import type { AuthorityHint } from '../client/models/AuthorityHint';
-import type { TrustAnchor, Entity } from '../types/registry';
+import type { TrustAnchorDisplay } from '../hooks/useTrustAnchors';
 
 const STORAGE_KEY_SUBORDINATES = 'mock_subordinates_v3';
 const STORAGE_KEY_HINTS = 'mock_hints';
@@ -48,7 +48,7 @@ class MockDB {
 
   private initializeFromMocks(): MockDBState {
     // Map existing TrustAnchors to SubordinateDetails
-    const taSubordinates: SubordinateDetails[] = mockTrustAnchors.map((ta: TrustAnchor) => ({
+    const taSubordinates = mockTrustAnchors.map((ta: TrustAnchorDisplay) => ({
       id: ta.id,
       entity_id: ta.entityId,
       status: ta.status,
@@ -66,22 +66,7 @@ class MockDB {
       }
     }));
 
-    // Map existing Entities to SubordinateDetails
-    const entitySubordinates: SubordinateDetails[] = mockEntities.map((ent: Entity) => ({
-      id: ent.id,
-      entity_id: ent.entityId,
-      status: ent.status,
-      registered_entity_types: ent.entityTypes,
-      jwks: { keys: [] },
-      metadata: {
-        openid_provider: {
-            organization_name: ent.organizationName || ent.displayName,
-        },
-        [INTERNAL_OWNER_KEY]: ent.trustAnchorId || 'ta-1' // Default owner if missing
-      }
-    }));
-
-    const all = [...taSubordinates, ...entitySubordinates];
+    const all = [...taSubordinates] as unknown as SubordinateDetails[];
     // Default Hints
     const defaultHints: AuthorityHint[] = [
         { id: 'ah-1', entity_id: 'https://edugain.org', description: 'eduGAIN Interfederation' }

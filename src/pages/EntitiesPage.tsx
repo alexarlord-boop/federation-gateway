@@ -34,7 +34,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-import type { EntityStatus, EntityType } from '@/types/registry';
+type EntityStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'active' | 'inactive';
+type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 import { useEntities } from '@/hooks/useEntities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';

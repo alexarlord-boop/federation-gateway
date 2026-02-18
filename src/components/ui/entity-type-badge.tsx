@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { EntityType } from '@/types/registry';
+export type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 interface EntityTypeBadgeProps {
   type: EntityType;

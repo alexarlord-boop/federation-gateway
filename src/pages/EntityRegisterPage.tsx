@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
-import type { EntityType } from '@/types/registry';
+type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
   { id: 'entity', title: 'Entity ID', description: 'Enter the entity identifier' },

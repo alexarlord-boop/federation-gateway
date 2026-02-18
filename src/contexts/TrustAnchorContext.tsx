@@ -1,26 +1,26 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { mockTrustAnchors } from '@/data/mockData';
-import type { TrustAnchor } from '@/types/registry';
+import type { TrustAnchorDisplay } from '@/hooks/useTrustAnchors';
 
 interface TrustAnchorContextType {
-  activeTrustAnchor: TrustAnchor | null;
-  setActiveTrustAnchor: (ta: TrustAnchor | null) => void;
-  trustAnchors: TrustAnchor[];
+  activeTrustAnchor: TrustAnchorDisplay | null;
+  setActiveTrustAnchor: (ta: TrustAnchorDisplay | null) => void;
+  trustAnchors: TrustAnchorDisplay[];
+  setTrustAnchors: (tas: TrustAnchorDisplay[]) => void;
 }
 
 const TrustAnchorContext = createContext<TrustAnchorContextType | undefined>(undefined);
 
 export function TrustAnchorProvider({ children }: { children: ReactNode }) {
-  const [activeTrustAnchor, setActiveTrustAnchor] = useState<TrustAnchor | null>(
-    mockTrustAnchors.find(ta => ta.type === 'federation') || null
-  );
+  const [trustAnchors, setTrustAnchors] = useState<TrustAnchorDisplay[]>([]);
+  const [activeTrustAnchor, setActiveTrustAnchor] = useState<TrustAnchorDisplay | null>(null);
 
   return (
     <TrustAnchorContext.Provider 
       value={{ 
         activeTrustAnchor, 
         setActiveTrustAnchor, 
-        trustAnchors: mockTrustAnchors 
+        trustAnchors,
+        setTrustAnchors,
       }}
     >
       {children}
