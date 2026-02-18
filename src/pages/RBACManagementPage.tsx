@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Shield, Users, Lock, Settings } from 'lucide-react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
-import { useBackend } from '@/contexts/BackendContext';
 import { OpenAPI } from '@/client';
+import { GATEWAY_BASE } from '@/lib/api-config';
 
 interface FeatureConfigItem {
   feature_name: string;
@@ -18,7 +18,6 @@ interface FeatureConfigItem {
 
 export default function RBACManagementPage() {
   const { capabilities } = useCapabilities();
-  const { selectedBackend } = useBackend();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigItem[]>([]);
   const [isSavingFeature, setIsSavingFeature] = useState<string | null>(null);
@@ -27,7 +26,7 @@ export default function RBACManagementPage() {
     const loadFeatureConfigs = async () => {
       try {
         const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-        const res = await fetch(`${selectedBackend.baseUrl}/api/v1/rbac/features`, {
+        const res = await fetch(`${GATEWAY_BASE}/api/v1/rbac/features`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
 
@@ -40,7 +39,7 @@ export default function RBACManagementPage() {
     };
 
     loadFeatureConfigs();
-  }, [selectedBackend.baseUrl]);
+  }, []);
 
   if (!capabilities) {
     return (
@@ -57,7 +56,7 @@ export default function RBACManagementPage() {
     setIsSavingFeature(featureName);
     try {
       const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-      const response = await fetch(`${selectedBackend.baseUrl}/api/v1/rbac/features/${featureName}`, {
+      const response = await fetch(`${GATEWAY_BASE}/api/v1/rbac/features/${featureName}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

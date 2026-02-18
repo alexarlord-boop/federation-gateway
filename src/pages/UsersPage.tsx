@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select';
 import { useQuery } from '@tanstack/react-query';
 import { OpenAPI } from '@/client';
+import { GATEWAY_BASE } from '@/lib/api-config';
 import { useToast } from '@/hooks/use-toast';
 
 // TODO: Create a dedicated UsersService when backend exposes GET /api/v1/users
@@ -52,11 +53,11 @@ interface GatewayUser {
 function useUsers() {
   const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
   return useQuery<GatewayUser[]>({
-    queryKey: ['users', OpenAPI.BASE, token],
+    queryKey: ['users', GATEWAY_BASE, token],
     queryFn: async () => {
       if (!token) return [];
       // TODO: Replace with generated service once backend endpoint exists
-      const res = await fetch(`${OpenAPI.BASE}/api/v1/users`, {
+      const res = await fetch(`${GATEWAY_BASE}/api/v1/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 403 || res.status === 404) return [];

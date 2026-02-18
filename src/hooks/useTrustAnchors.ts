@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { OpenAPI } from '@/client';
+import { GATEWAY_BASE } from '@/lib/api-config';
 
 export interface TrustAnchorDisplay {
     id: string;
@@ -29,12 +30,12 @@ export const useTrustAnchors = () => {
     // to ensure visibility even when logged in as a leaf-node context.
     const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
     const { data, isLoading } = useQuery({
-        queryKey: ['trust-anchors-list', OpenAPI.BASE, token],
+        queryKey: ['trust-anchors-list', GATEWAY_BASE, token],
         queryFn: async () => {
              if (!token) {
                  return [];
              }
-             const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors`, {
+             const res = await fetch(`${GATEWAY_BASE}/api/v1/admin/trust-anchors`, {
                  headers: { Authorization: `Bearer ${token}` },
              });
              if (res.status === 403) {
@@ -62,7 +63,7 @@ export const useTrustAnchors = () => {
     const createTrustAnchor = useMutation({
         mutationFn: async (payload: TrustAnchorCreate) => {
             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-            const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors`, {
+            const res = await fetch(`${GATEWAY_BASE}/api/v1/admin/trust-anchors`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export const useTrustAnchors = () => {
     const deleteTrustAnchor = useMutation({
         mutationFn: async (id: string) => {
             const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-            const res = await fetch(`${OpenAPI.BASE}/api/v1/admin/trust-anchors/${id}`, {
+            const res = await fetch(`${GATEWAY_BASE}/api/v1/admin/trust-anchors/${id}`, {
                 method: 'DELETE',
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });

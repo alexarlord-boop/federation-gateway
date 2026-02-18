@@ -6,7 +6,7 @@
  * that may support different subsets of features.
  */
 
-import { OpenAPI } from '../client/core/OpenAPI';
+import { GATEWAY_BASE } from '../lib/api-config';
 
 export interface CapabilityManifest {
   version: string;
@@ -49,7 +49,7 @@ class CapabilityService {
   /**
    * Fetch capabilities from the backend
    */
-  async fetchCapabilities(baseUrl: string = OpenAPI.BASE): Promise<CapabilityManifest> {
+  async fetchCapabilities(baseUrl: string = GATEWAY_BASE): Promise<CapabilityManifest> {
     const cacheKey = baseUrl || '__default__';
 
     // Return cached promise if already fetching
@@ -62,7 +62,7 @@ class CapabilityService {
       return this.manifests[cacheKey];
     }
 
-    // Fetch from backend using OpenAPI BASE
+    // Fetch capabilities from the gateway
     const url = `${baseUrl}/api/v1/capabilities`;
     
     this.fetchPromises[cacheKey] = fetch(url)
@@ -84,7 +84,7 @@ class CapabilityService {
   /**
    * Check if a feature is enabled
    */
-  isFeatureEnabled(featureName: string, baseUrl: string = OpenAPI.BASE): boolean {
+  isFeatureEnabled(featureName: string, baseUrl: string = GATEWAY_BASE): boolean {
     const cacheKey = baseUrl || '__default__';
     return this.manifests[cacheKey]?.features[featureName]?.enabled ?? false;
   }
@@ -92,7 +92,7 @@ class CapabilityService {
   /**
    * Check if a feature supports a specific operation
    */
-  hasOperation(featureName: string, operation: string, baseUrl: string = OpenAPI.BASE): boolean {
+  hasOperation(featureName: string, operation: string, baseUrl: string = GATEWAY_BASE): boolean {
     const cacheKey = baseUrl || '__default__';
     const feature = this.manifests[cacheKey]?.features[featureName];
     if (!feature?.enabled) return false;
@@ -102,7 +102,7 @@ class CapabilityService {
   /**
    * Get all enabled features
    */
-  getEnabledFeatures(baseUrl: string = OpenAPI.BASE): string[] {
+  getEnabledFeatures(baseUrl: string = GATEWAY_BASE): string[] {
     const cacheKey = baseUrl || '__default__';
     const manifest = this.manifests[cacheKey];
     if (!manifest) return [];
@@ -114,7 +114,7 @@ class CapabilityService {
   /**
    * Get disabled features with reasons
    */
-  getDisabledFeatures(baseUrl: string = OpenAPI.BASE): Array<{ name: string; reason: string }> {
+  getDisabledFeatures(baseUrl: string = GATEWAY_BASE): Array<{ name: string; reason: string }> {
     const cacheKey = baseUrl || '__default__';
     const manifest = this.manifests[cacheKey];
     if (!manifest) return [];
@@ -129,7 +129,7 @@ class CapabilityService {
   /**
    * Get available roles for RBAC
    */
-  getAvailableRoles(baseUrl: string = OpenAPI.BASE): RoleDefinition[] {
+  getAvailableRoles(baseUrl: string = GATEWAY_BASE): RoleDefinition[] {
     const cacheKey = baseUrl || '__default__';
     return this.manifests[cacheKey]?.rbac.roles ?? [];
   }
@@ -137,7 +137,7 @@ class CapabilityService {
   /**
    * Check if RBAC is supported
    */
-  supportsRBAC(baseUrl: string = OpenAPI.BASE): boolean {
+  supportsRBAC(baseUrl: string = GATEWAY_BASE): boolean {
     const cacheKey = baseUrl || '__default__';
     return this.manifests[cacheKey]?.rbac.supported ?? false;
   }
@@ -145,7 +145,7 @@ class CapabilityService {
   /**
    * Get the current manifest (may be null if not fetched)
    */
-  getManifest(baseUrl: string = OpenAPI.BASE): CapabilityManifest | null {
+  getManifest(baseUrl: string = GATEWAY_BASE): CapabilityManifest | null {
     const cacheKey = baseUrl || '__default__';
     return this.manifests[cacheKey] ?? null;
   }

@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { OpenAPI } from '@/client';
 
 export interface BackendTarget {
   id: string;
@@ -53,7 +52,6 @@ export function BackendProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('selected_backend_id', selectedBackend.id);
-    OpenAPI.BASE = selectedBackend.baseUrl;
   }, [selectedBackend]);
 
   const registerBackends = useCallback((targets: BackendTarget[]) => {

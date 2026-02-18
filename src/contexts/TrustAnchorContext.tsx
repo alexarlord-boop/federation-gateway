@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import type { TrustAnchorDisplay } from '@/hooks/useTrustAnchors';
+import { setActiveInstance } from '@/lib/api-config';
 
 interface TrustAnchorContextType {
   activeTrustAnchor: TrustAnchorDisplay | null;
@@ -12,7 +13,21 @@ const TrustAnchorContext = createContext<TrustAnchorContextType | undefined>(und
 
 export function TrustAnchorProvider({ children }: { children: ReactNode }) {
   const [trustAnchors, setTrustAnchors] = useState<TrustAnchorDisplay[]>([]);
-  const [activeTrustAnchor, setActiveTrustAnchor] = useState<TrustAnchorDisplay | null>(null);
+  const [activeTrustAnchor, setActiveTrustAnchorState] = useState<TrustAnchorDisplay | null>(null);
+
+  // When the active instance changes, point the generated OpenAPI client
+  // at /api/v1/proxy/{instanceId} so every Admin API call routes through
+  // the gateway proxy automatically.
+  const setActiveTrustAnchor = useCallback((ta: TrustAnchorDisplay | null) => {
+    setActiveTrustAnchorState(ta);
+    setActiveInstance(ta?.id ?? null);
+  }, []);
+
+  // On unmount (user logs out → TrustAnchorProvider unmounts), reset to
+  // the gateway's own base so login / auth calls still work.
+  useEffect(() => {
+    return () => setActiveInstance(null);
+  }, []);
 
   return (
     <TrustAnchorContext.Provider 
