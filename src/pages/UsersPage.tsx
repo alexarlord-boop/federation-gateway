@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Plus, Mail, Building2, Shield, MoreHorizontal } from 'lucide-react';
+import { Users, Plus, Mail, Building2, Shield, MoreHorizontal, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -33,48 +33,43 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { useQuery } from '@tanstack/react-query';
+import { OpenAPI } from '@/client';
+import { useToast } from '@/hooks/use-toast';
 
-const mockUsers = [
-  {
-    id: '1',
-    name: 'Federation Admin',
-    email: 'admin@oidfed.org',
-    role: 'admin',
-    organization: 'GÉANT',
-    status: 'active',
-    createdAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'John Smith',
-    email: 'john.smith@example-university.edu',
-    role: 'user',
-    organization: 'Example University',
-    status: 'active',
-    createdAt: '2024-03-15T00:00:00Z',
-  },
-  {
-    id: '3',
-    name: 'Maria Garcia',
-    email: 'maria.garcia@research-portal.eu',
-    role: 'user',
-    organization: 'European Research Council',
-    status: 'active',
-    createdAt: '2024-06-20T00:00:00Z',
-  },
-  {
-    id: '4',
-    name: 'Erik Larsen',
-    email: 'erik@nordic-university.no',
-    role: 'user',
-    organization: 'Nordic University',
-    status: 'pending',
-    createdAt: '2024-12-01T00:00:00Z',
-  },
-];
+// TODO: Create a dedicated UsersService when backend exposes GET /api/v1/users
+// TODO: Create user CRUD endpoints in the Auth Gateway (POST /api/v1/users, PATCH, DELETE)
+interface GatewayUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  organization_name?: string;
+  status?: string;
+  created_at?: string;
+}
+
+function useUsers() {
+  const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
+  return useQuery<GatewayUser[]>({
+    queryKey: ['users', OpenAPI.BASE, token],
+    queryFn: async () => {
+      if (!token) return [];
+      // TODO: Replace with generated service once backend endpoint exists
+      const res = await fetch(`${OpenAPI.BASE}/api/v1/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 403 || res.status === 404) return [];
+      if (!res.ok) throw new Error('Failed to load users');
+      return res.json();
+    },
+  });
+}
 
 export default function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { data: users, isLoading, error } = useUsers();
+  const { toast } = useToast();
 
   return (
     <div className="animate-fade-in">
@@ -129,7 +124,15 @@ export default function UsersPage() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsCreateDialogOpen(false)}>
+              <Button onClick={() => {
+                // TODO: Wire to POST /api/v1/users when backend supports it
+                toast({
+                  title: 'Not yet implemented',
+                  description: 'User creation requires a backend user management endpoint.',
+                  variant: 'destructive',
+                });
+                setIsCreateDialogOpen(false);
+              }}>
                 Create User
               </Button>
             </DialogFooter>
@@ -150,7 +153,28 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockUsers.map((user) => (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
+                </TableCell>
+              </TableRow>
+            ) : error || !users || users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <Users className="w-10 h-10 mb-2 opacity-30" />
+                    <p>{error ? 'User management unavailable' : 'No users found'}</p>
+                    <p className="text-sm">
+                      {error
+                        ? 'The backend does not expose a user listing endpoint yet.'
+                        : 'Users will appear here once the user management API is implemented.'}
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+            users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -168,7 +192,7 @@ export default function UsersPage() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">{user.organization}</span>
+                    <span className="text-sm">{user.organization_name || '—'}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -191,12 +215,12 @@ export default function UsersPage() {
                       ? 'bg-success/10 text-success border border-success/30'
                       : 'bg-pending/10 text-pending border border-pending/30'
                   }`}>
-                    {user.status}
+                    {user.status || 'active'}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                   </span>
                 </TableCell>
                 <TableCell>
@@ -223,7 +247,8 @@ export default function UsersPage() {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            ))
+            )}
           </TableBody>
         </Table>
       </div>

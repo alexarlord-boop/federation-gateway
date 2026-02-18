@@ -1,46 +1,26 @@
-import { Award, ExternalLink, Info } from 'lucide-react';
+import { Award, ExternalLink, Info, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-const mockTrustMarkTypes = [
-  {
-    id: 'tm-1',
-    name: 'REFEDS MFA Profile',
-    description: 'Indicates support for REFEDS Multi-Factor Authentication profile',
-    issuer: 'https://refeds.org',
-    entityCount: 45,
-  },
-  {
-    id: 'tm-2',
-    name: 'eduGAIN Member',
-    description: 'Entity is a registered eduGAIN member',
-    issuer: 'https://edugain.org',
-    entityCount: 120,
-  },
-  {
-    id: 'tm-3',
-    name: 'SIRTFI Certified',
-    description: 'Security Incident Response Trust Framework for Federated Identity',
-    issuer: 'https://refeds.org',
-    entityCount: 38,
-  },
-  {
-    id: 'tm-4',
-    name: 'Research & Scholarship',
-    description: 'Entity supports R&S attribute bundle',
-    issuer: 'https://refeds.org',
-    entityCount: 89,
-  },
-];
+import { useQuery } from '@tanstack/react-query';
+import { FederationTrustMarksService } from '@/client/services/FederationTrustMarksService';
+import type { TrustMarkType } from '@/client/models/TrustMarkType';
 
 export default function TrustMarksPage() {
+  const { data: trustMarkTypes, isLoading, error } = useQuery<TrustMarkType[]>({
+    queryKey: ['trust-mark-types'],
+    queryFn: () => FederationTrustMarksService.getTrustMarkTypes(),
+  });
+
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1 className="page-title">Trust Marks</h1>
-        <p className="page-description">
-          View trust mark types registered in the federation
-        </p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="page-header mb-0">
+          <h1 className="page-title">Trust Marks</h1>
+          <p className="page-description">
+            View trust mark types registered in the federation
+          </p>
+        </div>
+        {/* TODO: Add trust mark type creation when backend supports it */}
       </div>
 
       <div className="mb-6 p-4 bg-info/10 border border-info/30 rounded-lg flex items-start gap-3">
@@ -54,45 +34,61 @@ export default function TrustMarksPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {mockTrustMarkTypes.map((tm) => (
-          <Card key={tm.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <Award className="w-6 h-6 text-warning" />
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 bg-muted/50 rounded-lg">
+          <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Trust Marks Unavailable</h3>
+          <p className="text-muted-foreground text-sm">
+            The connected Admin API does not support trust mark management, or the feature is disabled.
+          </p>
+        </div>
+      ) : !trustMarkTypes || trustMarkTypes.length === 0 ? (
+        <div className="text-center py-12 bg-muted/50 rounded-lg">
+          <Award className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Trust Mark Types</h3>
+          <p className="text-muted-foreground">
+            No trust mark types have been registered yet.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {trustMarkTypes.map((tm) => (
+            <Card key={tm.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
+                    <Award className="w-6 h-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-mono text-sm break-all">
+                      {tm.trust_mark_type}
+                    </CardTitle>
+                    {tm.description && (
+                      <CardDescription className="mt-1">
+                        {tm.description}
+                      </CardDescription>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{tm.name}</CardTitle>
-                  <CardDescription className="mt-1">
-                    {tm.description}
-                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Trust Mark ID</p>
+                    <p className="text-xs font-mono text-muted-foreground break-all mt-1">
+                      {tm.trust_mark_type}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Issuer</p>
-                  <a 
-                    href={tm.issuer} 
-                    target="_blank" 
-                    rel="noopener" 
-                    className="text-sm text-accent hover:underline inline-flex items-center gap-1"
-                  >
-                    {tm.issuer}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">{tm.entityCount}</p>
-                  <p className="text-xs text-muted-foreground">entities</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

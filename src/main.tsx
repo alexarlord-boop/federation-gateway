@@ -7,16 +7,4 @@ if (savedTheme) {
   document.documentElement.classList.add(savedTheme);
 }
 
-async function enableMocking() {
-  if (!import.meta.env.DEV || import.meta.env.VITE_USE_MOCKS !== 'true') {
-    return;
-  }
-
-  const { worker } = await import('./mocks/browser');
-
-  return worker.start();
-}
-
-enableMocking().then(() => {
-  createRoot(document.getElementById("root")!).render(<App />);
-});
+createRoot(document.getElementById("root")!).render(<App />);
