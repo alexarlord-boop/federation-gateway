@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
-from app.routers import auth, subordinates, entity_configuration, debug, trust_anchors, capabilities, rbac
+from app.routers import auth, subordinates, entity_configuration, debug, trust_anchors, capabilities, rbac, proxy
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
 
@@ -35,6 +35,7 @@ app.include_router(subordinates.router)
 app.include_router(entity_configuration.router)
 app.include_router(debug.router)
 app.include_router(trust_anchors.router)
+app.include_router(proxy.router)
 
 
 @app.get("/health")
