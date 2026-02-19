@@ -31,6 +31,7 @@ import { useEntityDetail } from '@/hooks/useEntityDetail';
 import { useSubordinateConstraints } from '@/hooks/useSubordinateConstraints';
 import { useSubordinateKeys } from '@/hooks/useSubordinateKeys';
 import { useSubordinateMetadataPolicies } from '@/hooks/useSubordinateMetadataPolicies';
+import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -336,6 +337,8 @@ export default function EntityDetailPage() {
   const { toast } = useToast();
   
   const { entity, isLoading, error, updateStatus, deleteSubordinate } = useEntityDetail(id!);
+  const canUpdate = useOperationAllowed('subordinates', 'update');
+  const canDelete = useOperationAllowed('subordinates', 'delete');
 
   if (isLoading) {
     return (
@@ -441,8 +444,8 @@ export default function EntityDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {/* Only show operational toggle for approved entities */}
-            {(entity.status === 'active' || entity.status === 'locked') && (
+            {/* Only show operational toggle for approved entities when user can update */}
+            {canUpdate && (entity.status === 'active' || entity.status === 'locked') && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
@@ -472,6 +475,7 @@ export default function EntityDetailPage() {
               </a>
             </Button>
             
+            {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="icon">
@@ -494,6 +498,7 @@ export default function EntityDetailPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            )}
           </div>
         </div>
       </div>

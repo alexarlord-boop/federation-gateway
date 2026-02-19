@@ -30,7 +30,9 @@ import { useCriticalPolicyOperators } from '@/hooks/useCriticalPolicyOperators';
 import { useEntityConfigTrustMarks } from '@/hooks/useEntityConfigTrustMarks';
 import { useEntityConfigMetadata } from '@/hooks/useEntityConfigMetadata';
 import { useCapabilities } from '@/contexts/CapabilityContext';
+import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw,
 } from 'lucide-react';
@@ -40,7 +42,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { activeTrustAnchor } = useTrustAnchor();
   const { toast } = useToast();
-  const { isFeatureEnabled } = useCapabilities();
+  const { isFeatureEnabled, isLoading: capLoading } = useCapabilities();
   const [theme, setTheme] = useState(() => localStorage.getItem('ui_theme') || 'theme-default');
 
   // Capability flags — tabs are hidden when their backend feature is disabled
@@ -57,6 +59,25 @@ export default function SettingsPage() {
     localStorage.setItem('ui_theme', value);
     setTheme(value);
   };
+
+  // Show a loading skeleton while capabilities are being fetched
+  if (capLoading) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="page-header">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-80 mt-2" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full max-w-lg" />
+          <div className="space-y-4 pt-4">
+            <Skeleton className="h-48 rounded-xl" />
+            <Skeleton className="h-48 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -78,34 +99,44 @@ export default function SettingsPage() {
         {/* ───────── GENERAL ───────── */}
         <TabsContent value="general" className="space-y-6">
           <AppearanceSection theme={theme} applyTheme={applyTheme} />
-          {showAuthorityHints && <AuthorityHintsSection />}
+          <CapabilityGuard capability="authority_hints">
+            <AuthorityHintsSection />
+          </CapabilityGuard>
         </TabsContent>
 
         {/* ───────── ENTITY CONFIGURATION ───────── */}
         {showEntityConfig && (
           <TabsContent value="entity-config" className="space-y-6">
-            {!activeTrustAnchor ? <NoInstanceCard /> : <EntityConfigSection />}
+            <CapabilityGuard capability="entity_configuration" fallback="placeholder">
+              {!activeTrustAnchor ? <NoInstanceCard /> : <EntityConfigSection />}
+            </CapabilityGuard>
           </TabsContent>
         )}
 
         {/* ───────── KEYS & KMS ───────── */}
         {showKeys && (
           <TabsContent value="keys" className="space-y-6">
-            {!activeTrustAnchor ? <NoInstanceCard /> : <KeyManagementSection />}
+            <CapabilityGuard capability="keys" fallback="placeholder">
+              {!activeTrustAnchor ? <NoInstanceCard /> : <KeyManagementSection />}
+            </CapabilityGuard>
           </TabsContent>
         )}
 
         {/* ───────── CONSTRAINTS ───────── */}
         {showConstraints && (
           <TabsContent value="constraints" className="space-y-6">
-            {!activeTrustAnchor ? <NoInstanceCard /> : <GeneralConstraintsSection />}
+            <CapabilityGuard capability="general_constraints" fallback="placeholder">
+              {!activeTrustAnchor ? <NoInstanceCard /> : <GeneralConstraintsSection />}
+            </CapabilityGuard>
           </TabsContent>
         )}
 
         {/* ───────── METADATA POLICIES ───────── */}
         {showPolicies && (
           <TabsContent value="policies" className="space-y-6">
-            {!activeTrustAnchor ? <NoInstanceCard /> : <MetadataPoliciesSection />}
+            <CapabilityGuard capability="general_metadata_policies" fallback="placeholder">
+              {!activeTrustAnchor ? <NoInstanceCard /> : <MetadataPoliciesSection />}
+            </CapabilityGuard>
           </TabsContent>
         )}
 

@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { gatewayFetch } from '@/lib/gateway-fetch';
+import { capabilityKeys } from '@/contexts/CapabilityContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,8 +65,8 @@ export function useRBACFeatures() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: rbacFeatureKeys.all });
-      // Also invalidate capabilities so CapabilityGuard picks up the change
-      queryClient.invalidateQueries({ queryKey: ['capabilities'] });
+      // Invalidate capabilities so CapabilityGuard picks up the change immediately
+      queryClient.invalidateQueries({ queryKey: capabilityKeys.all });
     },
   });
 

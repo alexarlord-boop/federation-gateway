@@ -4,6 +4,9 @@
  * A wrapper component that conditionally renders its children based on whether
  * the backend supports a given capability (feature + optional operation).
  *
+ * While capabilities are loading a lightweight skeleton is shown (instead of
+ * blank space) so route-level guards don't flash empty pages.
+ *
  * Usage:
  *   <CapabilityGuard capability="trust_marks">
  *     <TrustMarksPage />
@@ -19,6 +22,7 @@
  */
 import { ReactNode } from 'react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ShieldOff } from 'lucide-react';
 
 interface CapabilityGuardProps {
@@ -35,6 +39,22 @@ interface CapabilityGuardProps {
    * - ReactNode: render custom fallback
    */
   fallback?: 'hidden' | 'placeholder' | ReactNode;
+}
+
+function CapabilityLoadingSkeleton() {
+  return (
+    <div className="space-y-6 p-4">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+      </div>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  );
 }
 
 function NotSupportedPlaceholder({ capability }: { capability: string }) {
@@ -57,8 +77,12 @@ export function CapabilityGuard({
 }: CapabilityGuardProps) {
   const { isFeatureEnabled, hasOperation, isLoading } = useCapabilities();
 
-  // While capabilities are loading, render nothing to avoid flash
-  if (isLoading) return null;
+  // While capabilities are loading, show a skeleton instead of blank space
+  if (isLoading) {
+    // For "hidden" guards (e.g. inline buttons) don't show a skeleton
+    if (fallback === 'hidden') return null;
+    return <CapabilityLoadingSkeleton />;
+  }
 
   const allowed = operation
     ? hasOperation(capability, operation)
