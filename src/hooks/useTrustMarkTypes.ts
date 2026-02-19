@@ -11,6 +11,16 @@ import type { TrustMarkType } from '@/client/models/TrustMarkType';
 import type { AddTrustMarkType } from '@/client/models/AddTrustMarkType';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
+export const useTrustMarkType = (typeId: number) => {
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id;
+  return useQuery<TrustMarkType>({
+    queryKey: ['trust-mark-type', instanceId, typeId],
+    queryFn: () => FederationTrustMarksService.getTrustMarkType(typeId),
+    enabled: !!instanceId && !!typeId,
+  });
+};
+
 export const useTrustMarkTypes = () => {
   const { activeTrustAnchor } = useTrustAnchor();
   const instanceId = activeTrustAnchor?.id;

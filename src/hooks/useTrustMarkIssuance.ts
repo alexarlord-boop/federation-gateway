@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TrustMarkIssuanceService } from '@/client/services/TrustMarkIssuanceService';
 import type { TrustMarkSpec } from '@/client/models/TrustMarkSpec';
 import type { AddTrustMarkSpec } from '@/client/models/AddTrustMarkSpec';
+import type { PatchTrustMarkSpec } from '@/client/models/PatchTrustMarkSpec';
 import type { TrustMarkSubject } from '@/client/models/TrustMarkSubject';
 import type { AddTrustMarkSubject } from '@/client/models/AddTrustMarkSubject';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
@@ -49,13 +50,26 @@ export const useTrustMarkSpecs = () => {
     },
   });
 
+  const patch = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PatchTrustMarkSpec }) =>
+      TrustMarkIssuanceService.patchTrustMarkIssuanceSpec(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trust-mark-specs', instanceId] });
+    },
+  });
+
+  const getSpec = (specId: number) =>
+    TrustMarkIssuanceService.getTrustMarkIssuanceSpec(specId);
+
   return {
     specs: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error,
     create,
     update,
+    patch,
     remove,
+    getSpec,
   };
 };
 
@@ -104,6 +118,9 @@ export const useTrustMarkSubjects = (specId: number) => {
     },
   });
 
+  const getSubject = (subjectId: number) =>
+    TrustMarkIssuanceService.getTrustMarkSubject(specId, subjectId);
+
   return {
     subjects: query.data ?? [],
     isLoading: query.isLoading,
@@ -112,5 +129,6 @@ export const useTrustMarkSubjects = (specId: number) => {
     update,
     remove,
     changeStatus,
+    getSubject,
   };
 };
