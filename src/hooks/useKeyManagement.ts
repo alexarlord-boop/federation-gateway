@@ -8,7 +8,7 @@
  * - Triggering manual key rotation
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { KeyManagementService } from '@/client/services/KeyManagementService';
+import { KeysService } from '@/client/services/KeysService';
 import type { PublicKeyEntry } from '@/client/models/PublicKeyEntry';
 import type { AddPublicKeyEntry } from '@/client/models/AddPublicKeyEntry';
 import type { KMSInfo } from '@/client/models/KMSInfo';
@@ -24,13 +24,13 @@ export const useKeyManagement = () => {
   // Public keys
   const keysQuery = useQuery<PublicKeyEntry[]>({
     queryKey: ['public-keys', instanceId],
-    queryFn: () => KeyManagementService.listPublicKeys(),
+    queryFn: () => KeysService.listPublicKeys(),
     enabled: !!instanceId,
   });
 
   const addKey = useMutation({
     mutationFn: (data: AddPublicKeyEntry) =>
-      KeyManagementService.addPublicKey(data),
+      KeysService.addPublicKey(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['public-keys', instanceId] });
     },
@@ -38,7 +38,7 @@ export const useKeyManagement = () => {
 
   const deleteKey = useMutation({
     mutationFn: ({ kid, revoke, reason }: { kid: string; revoke?: boolean; reason?: string }) =>
-      KeyManagementService.deletePublicKey(kid, revoke, reason),
+      KeysService.deletePublicKey(kid, revoke, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['public-keys', instanceId] });
     },
@@ -46,7 +46,7 @@ export const useKeyManagement = () => {
 
   const rotateKey = useMutation({
     mutationFn: ({ kid, data }: { kid: string; data: any }) =>
-      KeyManagementService.rotatePublicKey(kid, data),
+      KeysService.rotatePublicKey(kid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['public-keys', instanceId] });
     },
@@ -54,7 +54,7 @@ export const useKeyManagement = () => {
 
   const updateKeyMetadata = useMutation({
     mutationFn: ({ kid, exp }: { kid: string; exp: number | null }) =>
-      KeyManagementService.updatePublicKeyMetadata(kid, { exp }),
+      KeysService.updatePublicKeyMetadata(kid, { exp }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['public-keys', instanceId] });
     },
@@ -63,13 +63,13 @@ export const useKeyManagement = () => {
   // KMS info
   const kmsInfoQuery = useQuery<KMSInfo>({
     queryKey: ['kms-info', instanceId],
-    queryFn: () => KeyManagementService.getKmsInfo(),
+    queryFn: () => KeysService.getKmsInfo(),
     enabled: !!instanceId,
   });
 
   const updateAlgorithm = useMutation({
     mutationFn: (alg: SignatureAlgorithm) =>
-      KeyManagementService.updateKmsAlg(alg),
+      KeysService.updateKmsAlg(alg),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kms-info', instanceId] });
     },
@@ -78,13 +78,13 @@ export const useKeyManagement = () => {
   // Rotation options
   const rotationQuery = useQuery<KMSRotationOptions>({
     queryKey: ['kms-rotation', instanceId],
-    queryFn: () => KeyManagementService.getKmsRotationOptions(),
+    queryFn: () => KeysService.getKmsRotationOptions(),
     enabled: !!instanceId,
   });
 
   const updateRotation = useMutation({
     mutationFn: (opts: KMSRotationOptions) =>
-      KeyManagementService.updateKmsRotationOptions(opts),
+      KeysService.updateKmsRotationOptions(opts),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kms-rotation', instanceId] });
     },
@@ -92,7 +92,7 @@ export const useKeyManagement = () => {
 
   const triggerRotation = useMutation({
     mutationFn: ({ revoke, reason }: { revoke?: boolean; reason?: string } = {}) =>
-      KeyManagementService.triggerKmsRotation(revoke, reason),
+      KeysService.triggerKmsRotation(revoke, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['public-keys', instanceId] });
       queryClient.invalidateQueries({ queryKey: ['kms-info', instanceId] });
@@ -102,7 +102,7 @@ export const useKeyManagement = () => {
   // Published JWKS
   const jwksQuery = useQuery({
     queryKey: ['published-jwks', instanceId],
-    queryFn: () => KeyManagementService.getPublishedJwks(),
+    queryFn: () => KeysService.getPublishedJwks(),
     enabled: !!instanceId,
   });
 

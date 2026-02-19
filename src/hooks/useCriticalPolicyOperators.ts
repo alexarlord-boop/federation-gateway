@@ -5,7 +5,7 @@
  * of metadata_policy_crit operators.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CriticalMetadataPolicyOperatorsService } from '@/client/services/CriticalMetadataPolicyOperatorsService';
+import { SubordinateCriticalMetadataPoliciesService as CritOpsService } from '@/client/services/SubordinateCriticalMetadataPoliciesService';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 export const useCriticalPolicyOperators = () => {
@@ -18,25 +18,25 @@ export const useCriticalPolicyOperators = () => {
 
   const query = useQuery<string[]>({
     queryKey: ['critical-policy-operators', instanceId],
-    queryFn: () => CriticalMetadataPolicyOperatorsService.getCriticalMetadataPolicyOperators(),
+    queryFn: () => CritOpsService.getCriticalMetadataPolicyOperators(),
     enabled: !!instanceId,
   });
 
   const setAll = useMutation({
     mutationFn: (operators: string[]) =>
-      CriticalMetadataPolicyOperatorsService.setCriticalMetadataPolicyOperators(operators as any),
+      CritOpsService.setCriticalMetadataPolicyOperators(operators as any),
     onSuccess: invalidate,
   });
 
   const add = useMutation({
     mutationFn: (operator: string) =>
-      CriticalMetadataPolicyOperatorsService.createCriticalMetadataPolicyOperator(operator as any),
+      CritOpsService.createCriticalMetadataPolicyOperator(operator as any),
     onSuccess: invalidate,
   });
 
   const remove = useMutation({
     mutationFn: (operator: string) =>
-      CriticalMetadataPolicyOperatorsService.deleteCriticalMetadataPolicyOperator(operator as any),
+      CritOpsService.deleteCriticalMetadataPolicyOperator(operator as any),
     onSuccess: invalidate,
   });
 
