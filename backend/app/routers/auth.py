@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from jose import JWTError
 from app.db.database import get_db
-from app.schemas.auth import LoginRequest, TokenResponse, AuthUser
-from app.auth.security import verify_password, create_access_token
+from app.schemas.auth import LoginRequest, TokenResponse, AuthUser, RefreshRequest, RefreshResponse
+from app.auth.security import verify_password, create_access_token, create_refresh_token, decode_access_token
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 
@@ -15,9 +16,11 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    token = create_access_token({"sub": user.id, "role": user.role})
+    access = create_access_token({"sub": user.id, "role": user.role})
+    refresh = create_refresh_token({"sub": user.id})
     return TokenResponse(
-        access_token=token,
+        access_token=access,
+        refresh_token=refresh,
         token_type="bearer",
         user=AuthUser(
             id=user.id,
@@ -28,6 +31,34 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             organization_name=user.organization_name,
             created_at=user.created_at.isoformat() if user.created_at else None,
         ),
+    )
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
+    """Exchange a valid refresh token for a new access + refresh token pair."""
+    try:
+        claims = decode_access_token(payload.refresh_token)
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    if claims.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is not a refresh token")
+
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    new_access = create_access_token({"sub": user.id, "role": user.role})
+    new_refresh = create_refresh_token({"sub": user.id})
+    return RefreshResponse(
+        access_token=new_access,
+        refresh_token=new_refresh,
+        token_type="bearer",
     )
 
 

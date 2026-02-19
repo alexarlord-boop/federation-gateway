@@ -5,14 +5,17 @@
  * live on GATEWAY_BASE and need the same auth token that AuthContext puts
  * into `OpenAPI.TOKEN`.  This thin wrapper avoids duplicating the
  * "read token → build headers → check status" boilerplate in every hook.
+ *
+ * 401 handling: on a 401 response the helper attempts a single silent
+ * token refresh via `TokenManager` and retries the original request.
  */
 
-import { OpenAPI } from '@/client';
 import { GATEWAY_BASE } from '@/lib/api-config';
-
-function getToken(): string | undefined {
-  return typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-}
+import {
+  getAccessToken,
+  ensureValidToken,
+  refreshAccessToken,
+} from '@/lib/token-manager';
 
 function authHeaders(token?: string): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -32,28 +35,43 @@ export interface GatewayFetchOptions {
 /**
  * Perform a fetch against the gateway (or a supplied base URL).
  *
- * - Automatically injects the current Bearer token.
+ * - Ensures we have a valid (non-expired) access token before sending.
  * - Returns parsed JSON on success.
  * - Returns `null` for any status listed in `softFail`.
+ * - On 401: silently refreshes the token and retries **once**.
  * - Throws on any other non-2xx response.
  */
 export async function gatewayFetch<T = unknown>(
   opts: GatewayFetchOptions,
 ): Promise<T | null> {
   const { path, method = 'GET', body, baseUrl, softFail = [] } = opts;
-  const token = getToken();
+
+  // Proactively ensure we have a non-expired token before sending
+  const token = await ensureValidToken() ?? getAccessToken();
   const url = `${baseUrl ?? GATEWAY_BASE}${path}`;
 
-  const headers: Record<string, string> = {
-    ...authHeaders(token),
-    ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+  const doFetch = async (bearerToken?: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      ...authHeaders(bearerToken),
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    };
+
+    return fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
   };
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res = await doFetch(token);
+
+  // 401 → attempt one silent refresh and retry
+  if (res.status === 401) {
+    const pair = await refreshAccessToken();
+    if (pair) {
+      res = await doFetch(pair.accessToken);
+    }
+  }
 
   if (softFail.includes(res.status)) {
     return null;

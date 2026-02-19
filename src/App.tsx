@@ -9,6 +9,8 @@ import { TrustAnchorProvider } from "@/contexts/TrustAnchorContext";
 import { CapabilityProvider } from "@/contexts/CapabilityContext";
 import { CapabilityGuard } from "@/components/CapabilityGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ApiError } from "@/client/core/ApiError";
+import { refreshAccessToken } from "@/lib/token-manager";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -23,7 +25,39 @@ import SettingsPage from "./pages/SettingsPage";
 import RBACManagementPage from "./pages/RBACManagementPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+/**
+ * Global retry handler for the generated OpenAPI client.
+ *
+ * When a query fails with a 401, we silently refresh the access token and
+ * signal React Query to retry (which re-invokes OpenAPI.TOKEN → fresh token).
+ * Only one retry is attempted for 401s; all other errors use default behaviour.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401 && failureCount === 0) {
+          // Fire-and-forget: by the time React Query retries, the
+          // refreshAccessToken promise has already stored the new pair and
+          // OpenAPI.TOKEN resolver will read it.
+          refreshAccessToken();
+          return true;
+        }
+        // Default: retry up to 3 times for non-auth errors
+        return failureCount < 3;
+      },
+    },
+    mutations: {
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401 && failureCount === 0) {
+          refreshAccessToken();
+          return true;
+        }
+        return false;
+      },
+    },
+  },
+});
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { isAuthenticated, isAdmin } = useAuth();

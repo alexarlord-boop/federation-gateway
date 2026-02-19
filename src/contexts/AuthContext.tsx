@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 export interface User {
   id: string;
@@ -11,6 +11,15 @@ export interface User {
 }
 import { OpenAPI } from '@/client';
 import { useBackend } from '@/contexts/BackendContext';
+import {
+  initTokenManager,
+  storeTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  isAccessTokenExpired,
+  refreshAccessToken,
+} from '@/lib/token-manager';
 
 interface AuthContextType {
   user: User | null;
@@ -27,28 +36,98 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { selectedBackend } = useBackend();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const backendScopeKey = selectedBackend.baseUrl || '__same_origin__';
   const tokenKey = `auth_token:${backendScopeKey}`;
   const userKey = `auth_user:${backendScopeKey}`;
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem(userKey);
-    const storedToken = localStorage.getItem(tokenKey);
+  // Stable logout — clears all tokens + state
+  const logout = useCallback(() => {
+    setUser(null);
+    clearTokens();
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
 
-    // Strict session restore: require both user and token.
-    // Prevents UI from entering authenticated routes with no bearer token,
-    // which causes repeated 403 loops.
-    const parsedUser = storedUser && storedToken ? JSON.parse(storedUser) : null;
-
-    if ((storedUser && !storedToken) || (!storedUser && storedToken)) {
-      localStorage.removeItem(userKey);
-      localStorage.removeItem(tokenKey);
+  // Schedule a proactive refresh ~60s before access token expiry
+  const scheduleProactiveRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
     }
 
-    setUser(parsedUser);
-    OpenAPI.TOKEN = storedToken || undefined;
-  }, [tokenKey, userKey]);
+    const token = getAccessToken();
+    if (!token) return;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp as number;
+      // Refresh 90s before expiry (TokenManager itself uses 60s buffer,
+      // but we want the proactive timer to fire a bit earlier)
+      const msUntilRefresh = (exp - 90) * 1000 - Date.now();
+
+      if (msUntilRefresh <= 0) {
+        // Already expired or about to — refresh immediately
+        refreshAccessToken();
+        return;
+      }
+
+      refreshTimerRef.current = setTimeout(async () => {
+        const pair = await refreshAccessToken();
+        if (pair) {
+          // Schedule again for the next cycle
+          scheduleProactiveRefresh();
+        }
+        // If pair is null, force-logout was already called by TokenManager
+      }, msUntilRefresh);
+    } catch {
+      // Malformed token — don't schedule
+    }
+  }, []);
+
+  // Initialise TokenManager whenever the backend changes
+  useEffect(() => {
+    initTokenManager(selectedBackend.baseUrl, logout);
+
+    const storedUser = localStorage.getItem(userKey);
+    const storedToken = getAccessToken();
+    const storedRefresh = getRefreshToken();
+
+    // Strict session restore: require user + access token + refresh token
+    if (storedUser && storedToken && storedRefresh) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+
+      // If the access token is already expired but we have a refresh token,
+      // attempt a silent refresh immediately
+      if (isAccessTokenExpired()) {
+        refreshAccessToken().then((pair) => {
+          if (!pair) {
+            // Refresh failed — clear stale session
+            setUser(null);
+            clearTokens();
+          } else {
+            scheduleProactiveRefresh();
+          }
+        });
+      } else {
+        scheduleProactiveRefresh();
+      }
+    } else {
+      // Incomplete session — wipe everything
+      setUser(null);
+      clearTokens();
+    }
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, [selectedBackend.baseUrl, userKey, logout, scheduleProactiveRefresh]);
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -76,19 +155,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(userData);
       localStorage.setItem(userKey, JSON.stringify(userData));
-      localStorage.setItem(tokenKey, data.access_token);
-      OpenAPI.TOKEN = data.access_token;
+      storeTokens({
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+      });
+
+      scheduleProactiveRefresh();
     } finally {
       setIsLoading(false);
     }
-  }, [selectedBackend.baseUrl, tokenKey, userKey]);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem(userKey);
-    localStorage.removeItem(tokenKey);
-    OpenAPI.TOKEN = undefined;
-  }, [tokenKey, userKey]);
+  }, [selectedBackend.baseUrl, userKey, scheduleProactiveRefresh]);
 
   const value: AuthContextType = {
     user,
