@@ -39,6 +39,8 @@ type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entit
 import { useEntities } from '@/hooks/useEntities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Loader2 } from 'lucide-react';
 
 export default function EntitiesPage() {
@@ -46,12 +48,16 @@ export default function EntitiesPage() {
   const [statusFilter, setStatusFilter] = useState<EntityStatus | 'all'>('all');
   
   const { entities, isLoading } = useEntities();
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id;
+  const canCreate = useOperationAllowed('subordinates', 'create');
+  const canUpdate = useOperationAllowed('subordinates', 'update');
   const queryClient = useQueryClient();
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       SubordinatesService.changeSubordinateStatus(id, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subordinates'] });
+      queryClient.invalidateQueries({ queryKey: ['subordinates', instanceId] });
     },
   });
 
@@ -84,12 +90,14 @@ export default function EntitiesPage() {
             Manage registered RPs and OPs in the federation
           </p>
         </div>
-        <Button asChild>
-          <Link to="/entities/register">
-            <Plus className="w-4 h-4 mr-2" />
-            Register Entity
-          </Link>
-        </Button>
+        {canCreate && (
+          <Button asChild>
+            <Link to="/entities/register">
+              <Plus className="w-4 h-4 mr-2" />
+              Register Entity
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -178,15 +186,19 @@ export default function EntitiesPage() {
                         <DropdownMenuItem asChild>
                           <Link to={`/entities/${entity.id}`}>View Details</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
-                          Set Pending
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
-                          Set Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'rejected' })}>
-                          Set Rejected
-                        </DropdownMenuItem>
+                        {canUpdate && (
+                          <>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
+                              Set Pending
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
+                              Set Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'rejected' })}>
+                              Set Rejected
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         <DropdownMenuItem>
                           <ExternalLink className="w-4 h-4 mr-2" />
                           View Entity Config

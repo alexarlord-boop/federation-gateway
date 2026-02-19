@@ -6,19 +6,22 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinateMetadataPoliciesService } from '@/client/services/SubordinateMetadataPoliciesService';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 export const useSubordinateMetadataPolicies = (subordinateId: string) => {
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id;
   const queryClient = useQueryClient();
   const idNum = Number(subordinateId);
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['subordinate-metadata-policies', subordinateId] });
+    queryClient.invalidateQueries({ queryKey: ['subordinate-metadata-policies', instanceId, subordinateId] });
 
   // Full policies
   const query = useQuery({
-    queryKey: ['subordinate-metadata-policies', subordinateId],
+    queryKey: ['subordinate-metadata-policies', instanceId, subordinateId],
     queryFn: () => SubordinateMetadataPoliciesService.getSubordinateMetadataPolicies(idNum),
-    enabled: !!subordinateId,
+    enabled: !!subordinateId && !!instanceId,
   });
 
   const updateAll = useMutation({

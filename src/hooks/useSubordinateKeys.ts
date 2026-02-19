@@ -6,18 +6,21 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinateKeysService } from '@/client/services/SubordinateKeysService';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 export const useSubordinateKeys = (subordinateId: string) => {
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id;
   const queryClient = useQueryClient();
   const idNum = Number(subordinateId);
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['subordinate-keys', subordinateId] });
+    queryClient.invalidateQueries({ queryKey: ['subordinate-keys', instanceId, subordinateId] });
 
   const query = useQuery({
-    queryKey: ['subordinate-keys', subordinateId],
+    queryKey: ['subordinate-keys', instanceId, subordinateId],
     queryFn: () => SubordinateKeysService.getSubordinateJwks(idNum),
-    enabled: !!subordinateId,
+    enabled: !!subordinateId && !!instanceId,
   });
 
   const setJwks = useMutation({

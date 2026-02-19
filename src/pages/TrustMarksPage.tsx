@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
 import { useTrustMarkSpecs, useTrustMarkSubjects } from '@/hooks/useTrustMarkIssuance';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
 
 // ── Trust Mark Types Tab ────────────────────────────────
@@ -26,6 +27,8 @@ import { useToast } from '@/hooks/use-toast';
 function TrustMarkTypesTab() {
   const { trustMarkTypes, isLoading, error, create, remove } = useTrustMarkTypes();
   const { toast } = useToast();
+  const canCreate = useOperationAllowed('federation_trust_marks', 'create');
+  const canDelete = useOperationAllowed('federation_trust_marks', 'delete');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newType, setNewType] = useState('');
 
@@ -65,6 +68,7 @@ function TrustMarkTypesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
+        {canCreate && (
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="w-4 h-4 mr-2" />Add Type</Button>
@@ -89,6 +93,7 @@ function TrustMarkTypesTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {trustMarkTypes.length === 0 ? (
@@ -114,6 +119,7 @@ function TrustMarkTypesTab() {
                 <TableCell className="font-mono text-sm break-all">{tm.trust_mark_type}</TableCell>
                 <TableCell className="text-muted-foreground">{tm.description || '—'}</TableCell>
                 <TableCell>
+                  {canDelete && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon"><Trash2 className="w-4 h-4 text-destructive" /></Button>
@@ -129,6 +135,7 @@ function TrustMarkTypesTab() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -144,6 +151,8 @@ function TrustMarkTypesTab() {
 function IssuanceSpecsTab() {
   const { specs, isLoading, error, create, remove } = useTrustMarkSpecs();
   const { toast } = useToast();
+  const canCreate = useOperationAllowed('trust_mark_issuance', 'create');
+  const canDelete = useOperationAllowed('trust_mark_issuance', 'delete');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newSpecType, setNewSpecType] = useState('');
   const [expandedSpec, setExpandedSpec] = useState<number | null>(null);
@@ -184,6 +193,7 @@ function IssuanceSpecsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
+        {canCreate && (
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="w-4 h-4 mr-2" />Add Spec</Button>
@@ -207,6 +217,7 @@ function IssuanceSpecsTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {specs.length === 0 ? (
@@ -230,6 +241,7 @@ function IssuanceSpecsTab() {
                   </div>
                   <div className="flex items-center gap-2">
                     {spec.lifetime && <Badge variant="outline">{spec.lifetime}s lifetime</Badge>}
+                    {canDelete && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><Trash2 className="w-4 h-4 text-destructive" /></Button>
@@ -245,6 +257,7 @@ function IssuanceSpecsTab() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -266,6 +279,9 @@ function IssuanceSpecsTab() {
 function SpecSubjectsPanel({ specId }: { specId: number }) {
   const { subjects, isLoading, create, remove, changeStatus } = useTrustMarkSubjects(specId);
   const { toast } = useToast();
+  const canCreate = useOperationAllowed('trust_mark_issuance', 'create');
+  const canDelete = useOperationAllowed('trust_mark_issuance', 'delete');
+  const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
   const [newEntityId, setNewEntityId] = useState('');
 
   const handleAdd = async () => {
@@ -302,24 +318,30 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
                 <TableCell className="font-mono text-xs break-all">{sub.entity_id}</TableCell>
                 <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
                 <TableCell className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => changeStatus.mutate({ subjectId: sub.id as number, status: sub.status === 'active' ? 'suspended' : 'active' })}>
-                    {sub.status === 'active' ? 'Suspend' : 'Activate'}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => remove.mutate(sub.id as number)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  {canUpdate && (
+                    <Button variant="ghost" size="sm" onClick={() => changeStatus.mutate({ subjectId: sub.id as number, status: sub.status === 'active' ? 'suspended' : 'active' })}>
+                      {sub.status === 'active' ? 'Suspend' : 'Activate'}
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" onClick={() => remove.mutate(sub.id as number)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+      {canCreate && (
       <div className="flex gap-2">
         <Input placeholder="https://entity.example.org" value={newEntityId} onChange={(e) => setNewEntityId(e.target.value)} className="flex-1" />
         <Button size="sm" onClick={handleAdd} disabled={!newEntityId || create.isPending}>
           {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" />Add</>}
         </Button>
       </div>
+      )}
     </div>
   );
 }

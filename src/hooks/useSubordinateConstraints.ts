@@ -9,18 +9,21 @@ import { SubordinateConstraintsService } from '@/client/services/SubordinateCons
 import type { Constraints } from '@/client/models/Constraints';
 import type { NamingConstraints } from '@/client/models/NamingConstraints';
 import type { AllowedEntityTypes } from '@/client/models/AllowedEntityTypes';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 export const useSubordinateConstraints = (subordinateId: string) => {
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id;
   const queryClient = useQueryClient();
   const idNum = Number(subordinateId);
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['subordinate-constraints', subordinateId] });
+    queryClient.invalidateQueries({ queryKey: ['subordinate-constraints', instanceId, subordinateId] });
 
   const query = useQuery<Constraints>({
-    queryKey: ['subordinate-constraints', subordinateId],
+    queryKey: ['subordinate-constraints', instanceId, subordinateId],
     queryFn: () => SubordinateConstraintsService.getSubordinateConstraints(idNum),
-    enabled: !!subordinateId,
+    enabled: !!subordinateId && !!instanceId,
   });
 
   const updateAll = useMutation({

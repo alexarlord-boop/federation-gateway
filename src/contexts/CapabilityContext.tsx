@@ -52,6 +52,14 @@ export function CapabilityProvider({ children }: CapabilityProviderProps) {
           trust_anchors: { enabled: true, operations: ['list', 'create', 'read', 'update'] },
           trust_marks: { enabled: true, operations: ['list', 'create', 'read'] },
           jwks_management: { enabled: true, operations: ['list_keys', 'add_key', 'delete_key'] },
+          // Settings-relevant features (graceful degradation — show all tabs)
+          entity_configuration: { enabled: true, operations: ['view', 'update'] },
+          authority_hints: { enabled: true, operations: ['list', 'create', 'delete'] },
+          keys: { enabled: true, operations: ['list', 'create', 'delete', 'rotate'] },
+          general_constraints: { enabled: true, operations: ['view', 'update', 'delete'] },
+          general_metadata_policies: { enabled: true, operations: ['view', 'update'] },
+          entity_configuration_trust_marks: { enabled: true, operations: ['list', 'create', 'delete'] },
+          entity_configuration_metadata: { enabled: true, operations: ['view', 'update'] },
         },
         rbac: {
           supported: false,

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { TrustAnchorDisplay } from '@/hooks/useTrustAnchors';
-import { setActiveInstance } from '@/lib/api-config';
+import { setActiveInstance, getActiveInstanceId } from '@/lib/api-config';
 
 interface TrustAnchorContextType {
   activeTrustAnchor: TrustAnchorDisplay | null;
@@ -12,16 +13,27 @@ interface TrustAnchorContextType {
 const TrustAnchorContext = createContext<TrustAnchorContextType | undefined>(undefined);
 
 export function TrustAnchorProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [trustAnchors, setTrustAnchors] = useState<TrustAnchorDisplay[]>([]);
   const [activeTrustAnchor, setActiveTrustAnchorState] = useState<TrustAnchorDisplay | null>(null);
 
-  // When the active instance changes, point the generated OpenAPI client
-  // at /api/v1/proxy/{instanceId} so every Admin API call routes through
-  // the gateway proxy automatically.
+  // When the active instance changes, update the module-level variable read
+  // by the OpenAPI.BASE getter and invalidate the query cache so active
+  // queries refetch from the new instance.
   const setActiveTrustAnchor = useCallback((ta: TrustAnchorDisplay | null) => {
+    const previousId = getActiveInstanceId();
+    const nextId = ta?.id ?? null;
+
     setActiveTrustAnchorState(ta);
-    setActiveInstance(ta?.id ?? null);
-  }, []);
+    setActiveInstance(nextId);
+
+    // On instance switch: cancel in-flight requests targeting the old
+    // instance and mark all queries stale so active ones refetch.
+    if (previousId !== nextId) {
+      queryClient.cancelQueries();
+      queryClient.invalidateQueries();
+    }
+  }, [queryClient]);
 
   // On unmount (user logs out → TrustAnchorProvider unmounts), reset to
   // the gateway's own base so login / auth calls still work.

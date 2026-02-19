@@ -29,6 +29,8 @@ import { useGeneralMetadataPolicies } from '@/hooks/useGeneralMetadataPolicies';
 import { useCriticalPolicyOperators } from '@/hooks/useCriticalPolicyOperators';
 import { useEntityConfigTrustMarks } from '@/hooks/useEntityConfigTrustMarks';
 import { useEntityConfigMetadata } from '@/hooks/useEntityConfigMetadata';
+import { useCapabilities } from '@/contexts/CapabilityContext';
+import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import {
   Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw,
 } from 'lucide-react';
@@ -38,7 +40,15 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { activeTrustAnchor } = useTrustAnchor();
   const { toast } = useToast();
+  const { isFeatureEnabled } = useCapabilities();
   const [theme, setTheme] = useState(() => localStorage.getItem('ui_theme') || 'theme-default');
+
+  // Capability flags — tabs are hidden when their backend feature is disabled
+  const showAuthorityHints = isFeatureEnabled('authority_hints');
+  const showEntityConfig = isFeatureEnabled('entity_configuration');
+  const showKeys = isFeatureEnabled('keys') || isFeatureEnabled('jwks_management');
+  const showConstraints = isFeatureEnabled('general_constraints');
+  const showPolicies = isFeatureEnabled('general_metadata_policies');
 
   const applyTheme = (value: string) => {
     const root = document.documentElement;
@@ -58,38 +68,46 @@ export default function SettingsPage() {
       <Tabs defaultValue="general" className="space-y-6">
         <TabsList className="flex-wrap">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="entity-config">Entity Config</TabsTrigger>
-          <TabsTrigger value="keys">Keys &amp; KMS</TabsTrigger>
-          <TabsTrigger value="constraints">Constraints</TabsTrigger>
-          <TabsTrigger value="policies">Metadata Policies</TabsTrigger>
+          {showEntityConfig && <TabsTrigger value="entity-config">Entity Config</TabsTrigger>}
+          {showKeys && <TabsTrigger value="keys">Keys &amp; KMS</TabsTrigger>}
+          {showConstraints && <TabsTrigger value="constraints">Constraints</TabsTrigger>}
+          {showPolicies && <TabsTrigger value="policies">Metadata Policies</TabsTrigger>}
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         {/* ───────── GENERAL ───────── */}
         <TabsContent value="general" className="space-y-6">
           <AppearanceSection theme={theme} applyTheme={applyTheme} />
-          <AuthorityHintsSection />
+          {showAuthorityHints && <AuthorityHintsSection />}
         </TabsContent>
 
         {/* ───────── ENTITY CONFIGURATION ───────── */}
-        <TabsContent value="entity-config" className="space-y-6">
-          {!activeTrustAnchor ? <NoInstanceCard /> : <EntityConfigSection />}
-        </TabsContent>
+        {showEntityConfig && (
+          <TabsContent value="entity-config" className="space-y-6">
+            {!activeTrustAnchor ? <NoInstanceCard /> : <EntityConfigSection />}
+          </TabsContent>
+        )}
 
         {/* ───────── KEYS & KMS ───────── */}
-        <TabsContent value="keys" className="space-y-6">
-          {!activeTrustAnchor ? <NoInstanceCard /> : <KeyManagementSection />}
-        </TabsContent>
+        {showKeys && (
+          <TabsContent value="keys" className="space-y-6">
+            {!activeTrustAnchor ? <NoInstanceCard /> : <KeyManagementSection />}
+          </TabsContent>
+        )}
 
         {/* ───────── CONSTRAINTS ───────── */}
-        <TabsContent value="constraints" className="space-y-6">
-          {!activeTrustAnchor ? <NoInstanceCard /> : <GeneralConstraintsSection />}
-        </TabsContent>
+        {showConstraints && (
+          <TabsContent value="constraints" className="space-y-6">
+            {!activeTrustAnchor ? <NoInstanceCard /> : <GeneralConstraintsSection />}
+          </TabsContent>
+        )}
 
         {/* ───────── METADATA POLICIES ───────── */}
-        <TabsContent value="policies" className="space-y-6">
-          {!activeTrustAnchor ? <NoInstanceCard /> : <MetadataPoliciesSection />}
-        </TabsContent>
+        {showPolicies && (
+          <TabsContent value="policies" className="space-y-6">
+            {!activeTrustAnchor ? <NoInstanceCard /> : <MetadataPoliciesSection />}
+          </TabsContent>
+        )}
 
         {/* ───────── ACCOUNT ───────── */}
         <TabsContent value="account" className="space-y-6">
@@ -174,6 +192,8 @@ function AppearanceSection({ theme, applyTheme }: { theme: string; applyTheme: (
 function AuthorityHintsSection() {
   const { hints, isLoading, addHint, deleteHint } = useAuthorityHints();
   const { toast } = useToast();
+  const canCreate = useOperationAllowed('authority_hints', 'create');
+  const canDelete = useOperationAllowed('authority_hints', 'delete');
   const [newHint, setNewHint] = useState('');
 
   const handleAdd = async () => {
@@ -210,9 +230,11 @@ function AuthorityHintsSection() {
             {hints?.map((hint: any) => (
               <div key={hint.id} className="flex items-center justify-between p-2 rounded bg-muted">
                 <span className="text-sm font-mono">{hint.entity_id}</span>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(hint.id)}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
+                {canDelete && (
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(hint.id)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                )}
               </div>
             ))}
             {hints?.length === 0 && (
@@ -220,17 +242,19 @@ function AuthorityHintsSection() {
             )}
           </div>
         )}
-        <div className="flex gap-2">
-          <Input
-            placeholder="https://superior-federation.example.org"
-            value={newHint}
-            onChange={e => setNewHint(e.target.value)}
-          />
-          <Button onClick={handleAdd} disabled={!newHint || addHint.isPending}>
-            {addHint.isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4 mr-2" />}
-            Add
-          </Button>
-        </div>
+        {canCreate && (
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://superior-federation.example.org"
+              value={newHint}
+              onChange={e => setNewHint(e.target.value)}
+            />
+            <Button onClick={handleAdd} disabled={!newHint || addHint.isPending}>
+              {addHint.isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4 mr-2" />}
+              Add
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
