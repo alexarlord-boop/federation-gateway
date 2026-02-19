@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BackendProvider } from "@/contexts/BackendContext";
 import { TrustAnchorProvider } from "@/contexts/TrustAnchorContext";
 import { CapabilityProvider } from "@/contexts/CapabilityContext";
+import { CapabilityGuard } from "@/components/CapabilityGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
@@ -52,20 +53,40 @@ function AppRoutes() {
         </ProtectedRoute>
       }>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/entities" element={<EntitiesPage />} />
-        <Route path="/entities/register" element={<EntityRegisterPage />} />
-        <Route path="/entities/:id" element={<EntityDetailPage />} />
+        <Route path="/entities" element={
+          <CapabilityGuard capability="subordinates" fallback="placeholder">
+            <EntitiesPage />
+          </CapabilityGuard>
+        } />
+        <Route path="/entities/register" element={
+          <CapabilityGuard capability="subordinates" operation="create" fallback="placeholder">
+            <EntityRegisterPage />
+          </CapabilityGuard>
+        } />
+        <Route path="/entities/:id" element={
+          <CapabilityGuard capability="subordinates" fallback="placeholder">
+            <EntityDetailPage />
+          </CapabilityGuard>
+        } />
         <Route path="/trust-anchors" element={
           <ProtectedRoute adminOnly>
-            <TrustAnchorsPage />
+            <CapabilityGuard capability="trust_anchors" fallback="placeholder">
+              <TrustAnchorsPage />
+            </CapabilityGuard>
           </ProtectedRoute>
         } />
         <Route path="/approvals" element={
           <ProtectedRoute adminOnly>
-            <ApprovalsPage />
+            <CapabilityGuard capability="subordinates" fallback="placeholder">
+              <ApprovalsPage />
+            </CapabilityGuard>
           </ProtectedRoute>
         } />
-        <Route path="/trust-marks" element={<TrustMarksPage />} />
+        <Route path="/trust-marks" element={
+          <CapabilityGuard capability="trust_marks" fallback="placeholder">
+            <TrustMarksPage />
+          </CapabilityGuard>
+        } />
         <Route path="/users" element={
           <ProtectedRoute adminOnly>
             <UsersPage />

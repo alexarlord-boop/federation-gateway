@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
+import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { cn } from '@/lib/utils';
 import {
   Collapsible,
@@ -112,25 +113,17 @@ export function AppSidebar() {
     );
   };
 
-  // Check if nav item should be shown based on features and permissions
+  // Check admin-only permission (feature gating is handled by CapabilityGuard)
   const shouldShowNavItem = (item: NavItem): boolean => {
-    // Check admin permission
     if (item.adminOnly && !isAdmin) return false;
-    
-    // Check feature availability
-    if (item.feature && !isFeatureEnabled(item.feature)) return false;
-    
     return true;
   };
 
-  // Check if child nav item should be shown
+  // Check if child nav item should be shown (feature gating handled by CapabilityGuard)
   const shouldShowChildItem = (child: { feature?: string; operation?: string }): boolean => {
+    // CapabilityGuard wraps the parent; children still do operation-level checks
     if (!child.feature) return true;
-    
-    if (child.operation) {
-      return hasOperation(child.feature, child.operation);
-    }
-    
+    if (child.operation) return hasOperation(child.feature, child.operation);
     return isFeatureEnabled(child.feature);
   };
 
@@ -256,7 +249,15 @@ export function AppSidebar() {
                 </span>
               </div>
               <div className="space-y-1">
-                {filteredItems.map(renderNavItem)}
+                {filteredItems.map((item) =>
+                  item.feature ? (
+                    <CapabilityGuard key={item.href} capability={item.feature}>
+                      {renderNavItem(item)}
+                    </CapabilityGuard>
+                  ) : (
+                    renderNavItem(item)
+                  )
+                )}
               </div>
             </div>
           );

@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { 
   ArrowLeft, 
   Building2, 
@@ -9,14 +10,27 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Plus,
+  Key,
+  Shield,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
 import { useToast } from '@/hooks/use-toast';
 import { useEntityDetail } from '@/hooks/useEntityDetail';
+import { useSubordinateConstraints } from '@/hooks/useSubordinateConstraints';
+import { useSubordinateKeys } from '@/hooks/useSubordinateKeys';
+import { useSubordinateMetadataPolicies } from '@/hooks/useSubordinateMetadataPolicies';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +50,285 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+
+/* ─── Subordinate Constraints Tab ─── */
+function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string }) {
+  const { toast } = useToast();
+  const {
+    constraints, isLoading, error,
+    copyFromGeneral, deleteAll,
+    setMaxPathLength, deleteMaxPathLength,
+    addAllowedEntityType, deleteAllowedEntityType,
+  } = useSubordinateConstraints(subordinateId);
+
+  const [newMaxPath, setNewMaxPath] = useState('');
+  const [newEntityType, setNewEntityType] = useState('');
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <Card><CardContent className="py-8 text-center text-muted-foreground">Failed to load constraints</CardContent></Card>;
+
+  const maxPath = constraints?.max_path_length;
+  const naming = constraints?.naming_constraints;
+  const allowed: string[] = (constraints as any)?.allowed_entity_types ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => copyFromGeneral.mutateAsync().then(() =>
+            toast({ title: 'Copied', description: 'General constraints applied to this subordinate' }))
+            .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Copy failed' }))}
+          disabled={copyFromGeneral.isPending}
+        >
+          {copyFromGeneral.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
+          Copy from General
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => deleteAll.mutateAsync().then(() =>
+            toast({ title: 'Cleared', description: 'All constraints removed' }))
+            .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Delete failed' }))}
+          disabled={deleteAll.isPending}
+        >
+          <Trash2 className="w-4 h-4 mr-2" /> Clear All
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Max Path Length */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Max Path Length</CardTitle>
+            <CardDescription>Maximum depth of the trust chain below this subordinate</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-2xl font-mono">{maxPath != null ? maxPath : <span className="text-muted-foreground text-base">Not set</span>}</p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={0}
+                placeholder="e.g. 2"
+                value={newMaxPath}
+                onChange={e => setNewMaxPath(e.target.value)}
+                className="w-24"
+              />
+              <Button
+                size="sm"
+                disabled={!newMaxPath || setMaxPathLength.isPending}
+                onClick={() => setMaxPathLength.mutateAsync(Number(newMaxPath)).then(() => { setNewMaxPath(''); toast({ title: 'Updated' }); })}
+              >
+                Set
+              </Button>
+              {maxPath != null && (
+                <Button size="sm" variant="ghost" onClick={() => deleteMaxPathLength.mutateAsync()}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Naming Constraints */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Naming Constraints</CardTitle>
+            <CardDescription>Permitted / excluded entity ID patterns</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {naming ? (
+              <ScrollArea className="h-40 rounded-md border p-3">
+                <pre className="text-xs font-mono">{JSON.stringify(naming, null, 2)}</pre>
+              </ScrollArea>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not configured</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Allowed Entity Types */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Allowed Entity Types</CardTitle>
+          <CardDescription>Entity types this subordinate may register as</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {allowed.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {allowed.map(t => (
+                <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                  {t}
+                  <button
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    onClick={() => deleteAllowedEntityType.mutateAsync(t)}
+                  >
+                    <XCircle className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No restrictions — all types allowed</p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="openid_relying_party"
+              value={newEntityType}
+              onChange={e => setNewEntityType(e.target.value)}
+              className="max-w-xs"
+            />
+            <Button
+              size="sm"
+              disabled={!newEntityType.trim() || addAllowedEntityType.isPending}
+              onClick={() => addAllowedEntityType.mutateAsync(newEntityType.trim()).then(() => { setNewEntityType(''); toast({ title: 'Added' }); })}
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ─── Subordinate Metadata Policies Tab ─── */
+function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: string }) {
+  const { toast } = useToast();
+  const {
+    policies, isLoading, error,
+    copyFromGeneral, deleteAll, updateAll,
+  } = useSubordinateMetadataPolicies(subordinateId);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <Card><CardContent className="py-8 text-center text-muted-foreground">Failed to load metadata policies</CardContent></Card>;
+
+  const policyEntries = Object.entries(policies as Record<string, any>);
+
+  const startEdit = () => {
+    setDraft(JSON.stringify(policies, null, 2));
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    try {
+      const parsed = JSON.parse(draft);
+      await updateAll.mutateAsync(parsed);
+      setEditing(false);
+      toast({ title: 'Saved', description: 'Metadata policies updated' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e?.message ?? 'Invalid JSON or save failed' });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => copyFromGeneral.mutateAsync().then(() =>
+            toast({ title: 'Copied', description: 'General policies applied to this subordinate' }))
+            .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Copy failed' }))}
+          disabled={copyFromGeneral.isPending}
+        >
+          {copyFromGeneral.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+          Copy from General
+        </Button>
+        {!editing && (
+          <Button variant="outline" size="sm" onClick={startEdit}>
+            Edit JSON
+          </Button>
+        )}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => deleteAll.mutateAsync().then(() =>
+            toast({ title: 'Cleared', description: 'All metadata policies removed' }))
+            .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Delete failed' }))}
+          disabled={deleteAll.isPending}
+        >
+          <Trash2 className="w-4 h-4 mr-2" /> Clear All
+        </Button>
+      </div>
+
+      {editing ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Edit Metadata Policies (JSON)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              className="font-mono text-xs min-h-[300px]"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={saveEdit} disabled={updateAll.isPending}>
+                {updateAll.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : policyEntries.length > 0 ? (
+        <div className="space-y-4">
+          {policyEntries.map(([entityType, claims]) => (
+            <Card key={entityType}>
+              <CardHeader>
+                <CardTitle className="text-base font-mono">{entityType}</CardTitle>
+                <CardDescription>{Object.keys(claims as Record<string, any>).length} claim(s)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Claim</TableHead>
+                      <TableHead>Operators</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(claims as Record<string, any>).map(([claim, operators]) => (
+                      <TableRow key={claim}>
+                        <TableCell className="font-mono text-sm">{claim}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(operators as Record<string, any>).map(([op, val]) => (
+                              <Badge key={op} variant="outline" className="text-xs">
+                                {op}: {JSON.stringify(val)}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FileText className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-muted-foreground">No metadata policies configured for this subordinate</p>
+            <p className="text-sm text-muted-foreground mt-1">Use "Copy from General" to inherit federation-wide policies</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 export default function EntityDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -211,6 +504,8 @@ export default function EntityDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           <TabsTrigger value="jwks">JWKS</TabsTrigger>
+          <TabsTrigger value="constraints">Constraints</TabsTrigger>
+          <TabsTrigger value="policies">Metadata Policies</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
@@ -302,6 +597,14 @@ export default function EntityDetailPage() {
                     </ScrollArea>
                 </CardContent>
             </Card>
+        </TabsContent>
+
+        <TabsContent value="constraints">
+          <SubordinateConstraintsTab subordinateId={id!} />
+        </TabsContent>
+
+        <TabsContent value="policies">
+          <SubordinateMetadataPoliciesTab subordinateId={id!} />
         </TabsContent>
         
       </Tabs>
