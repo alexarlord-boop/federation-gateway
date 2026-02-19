@@ -33,43 +33,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { useQuery } from '@tanstack/react-query';
-import { OpenAPI } from '@/client';
-import { GATEWAY_BASE } from '@/lib/api-config';
+import { useGatewayUsers } from '@/hooks/useGatewayUsers';
 import { useToast } from '@/hooks/use-toast';
 
-// TODO: Create a dedicated UsersService when backend exposes GET /api/v1/users
-// TODO: Create user CRUD endpoints in the Auth Gateway (POST /api/v1/users, PATCH, DELETE)
-interface GatewayUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  organization_name?: string;
-  status?: string;
-  created_at?: string;
-}
 
-function useUsers() {
-  const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-  return useQuery<GatewayUser[]>({
-    queryKey: ['users', GATEWAY_BASE, token],
-    queryFn: async () => {
-      if (!token) return [];
-      // TODO: Replace with generated service once backend endpoint exists
-      const res = await fetch(`${GATEWAY_BASE}/api/v1/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 403 || res.status === 404) return [];
-      if (!res.ok) throw new Error('Failed to load users');
-      return res.json();
-    },
-  });
-}
 
 export default function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const { data: users, isLoading, error } = useUsers();
+  const { users, isLoading, error } = useGatewayUsers();
   const { toast } = useToast();
 
   return (

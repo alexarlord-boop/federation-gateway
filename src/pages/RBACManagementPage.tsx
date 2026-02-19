@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -6,40 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Shield, Users, Lock, Settings } from 'lucide-react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
-import { OpenAPI } from '@/client';
-import { GATEWAY_BASE } from '@/lib/api-config';
-
-interface FeatureConfigItem {
-  feature_name: string;
-  enabled: boolean;
-  reason?: string | null;
-  operations: string[];
-}
+import { useRBACFeatures } from '@/hooks/useRBACFeatures';
 
 export default function RBACManagementPage() {
   const { capabilities } = useCapabilities();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigItem[]>([]);
+  const { features: featureConfigs, toggleFeature, isLoading: isFeaturesLoading } = useRBACFeatures();
   const [isSavingFeature, setIsSavingFeature] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadFeatureConfigs = async () => {
-      try {
-        const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-        const res = await fetch(`${GATEWAY_BASE}/api/v1/rbac/features`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
-        if (!res.ok) return;
-        const data = await res.json();
-        setFeatureConfigs(data);
-      } catch {
-        setFeatureConfigs([]);
-      }
-    };
-
-    loadFeatureConfigs();
-  }, []);
 
   if (!capabilities) {
     return (
@@ -52,25 +25,14 @@ export default function RBACManagementPage() {
   const roles = capabilities.rbac?.roles || [];
   const features = Object.entries(capabilities.features || {});
 
-  const updateFeature = async (featureName: string, enabled: boolean) => {
+  const handleToggleFeature = async (featureName: string, enabled: boolean) => {
     setIsSavingFeature(featureName);
     try {
-      const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-      const response = await fetch(`${GATEWAY_BASE}/api/v1/rbac/features/${featureName}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          enabled,
-          reason: enabled ? null : 'Disabled by administrator',
-        }),
+      await toggleFeature.mutateAsync({
+        featureName,
+        enabled,
+        reason: enabled ? null : 'Disabled by administrator',
       });
-
-      if (!response.ok) return;
-      const updated = await response.json();
-      setFeatureConfigs((prev) => prev.map((f) => (f.feature_name === featureName ? updated : f)));
     } finally {
       setIsSavingFeature(null);
     }
@@ -285,7 +247,7 @@ export default function RBACManagementPage() {
                     <Switch
                       checked={enabled}
                       disabled={isSavingFeature === featureName}
-                      onCheckedChange={(checked) => updateFeature(featureName, checked)}
+                      onCheckedChange={(checked) => handleToggleFeature(featureName, checked)}
                     />
                   </div>
                   );

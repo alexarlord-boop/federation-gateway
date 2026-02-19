@@ -38,12 +38,13 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
+import { useGatewayTrustAnchorConfig } from '@/hooks/useGatewayTrustAnchors';
+import { useDebugContext } from '@/hooks/useDebugContext';
 import { useCreateSubordinate, useSubordinates } from '@/hooks/useSubordinates';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';
-import { OpenAPI } from '@/client';
 import { useBackend } from '@/contexts/BackendContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -260,26 +261,34 @@ function ConfigureTrustAnchorDialog({
   onSaved: () => void;
 }) {
   const { selectedBackend } = useBackend();
+  const { config, updateConfig } = useGatewayTrustAnchorConfig(
+    target?.id ?? null,
+    selectedBackend.baseUrl,
+  );
   const [organizationName, setOrganizationName] = useState('');
   const [homepageUri, setHomepageUri] = useState('');
   const [contacts, setContacts] = useState('');
   const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
   const [jwksText, setJwksText] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const { toast } = useToast();
 
-  const loadConfig = async (id: string) => {
-    const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-    const res = await fetch(`${selectedBackend.baseUrl}/api/v1/admin/trust-anchors/${id}/config`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    setOrganizationName(data.organization_name || '');
-    setHomepageUri(data.homepage_uri || '');
-    setContacts((data.contacts || []).join(', '));
-    setAdminApiBaseUrl(data.admin_api_base_url || '');
-    setJwksText(data.jwks ? JSON.stringify(data.jwks, null, 2) : '');
+  // Populate form fields when config loads
+  const populateFromConfig = () => {
+    if (config && !loaded) {
+      setOrganizationName(config.organization_name || '');
+      setHomepageUri(config.homepage_uri || '');
+      setContacts((config.contacts || []).join(', '));
+      setAdminApiBaseUrl(config.admin_api_base_url || '');
+      setJwksText(config.jwks ? JSON.stringify(config.jwks, null, 2) : '');
+      setLoaded(true);
+    }
   };
+
+  // Reset loaded state when target changes
+  if (!target) {
+    if (loaded) setLoaded(false);
+  }
 
   const handleSave = async () => {
     if (!target) return;
@@ -293,30 +302,21 @@ function ConfigureTrustAnchorDialog({
       }
     }
 
-    const payload = {
-      organization_name: organizationName || undefined,
-      homepage_uri: homepageUri || undefined,
-      contacts: contacts
-        ? contacts.split(',').map((c: string) => c.trim()).filter(Boolean)
-        : [],
-      admin_api_base_url: adminApiBaseUrl || undefined,
-      jwks,
-    };
-    const token = typeof OpenAPI.TOKEN === 'string' ? OpenAPI.TOKEN : undefined;
-    const res = await fetch(`${selectedBackend.baseUrl}/api/v1/admin/trust-anchors/${target.id}/config`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
+    try {
+      await updateConfig.mutateAsync({
+        organization_name: organizationName || undefined,
+        homepage_uri: homepageUri || undefined,
+        contacts: contacts
+          ? contacts.split(',').map((c: string) => c.trim()).filter(Boolean)
+          : [],
+        admin_api_base_url: adminApiBaseUrl || undefined,
+        jwks,
+      });
+      toast({ title: 'Saved', description: 'TA configuration updated.' });
+      onSaved();
+    } catch {
       toast({ variant: 'destructive', title: 'Failed', description: 'Could not save configuration.' });
-      return;
     }
-    toast({ title: 'Saved', description: 'TA configuration updated.' });
-    onSaved();
   };
 
   return (
@@ -336,7 +336,7 @@ function ConfigureTrustAnchorDialog({
               placeholder="Example NREN"
               value={organizationName}
               onChange={(e) => setOrganizationName(e.target.value)}
-              onFocus={() => target && loadConfig(target.id)}
+              onFocus={populateFromConfig}
               className="mt-1"
             />
           </div>
@@ -525,13 +525,7 @@ export default function TrustAnchorsPage() {
     | null
   >(null);
   // Sync the context state with the debug API
-  const { data: currentCtxData } = useQuery({
-    queryKey: ['debug-context', selectedBackend.id],
-    queryFn: async () => {
-        const res = await fetch(`${selectedBackend.baseUrl}/api/debug/context`);
-        return res.json();
-    }
-  });
+  const { context: currentCtxData } = useDebugContext(selectedBackend.id, selectedBackend.baseUrl);
 
   // My-level TAs (static config from mock data)
   const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor, deleteTrustAnchor } = useTrustAnchors();
