@@ -117,7 +117,7 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         <Route path="/trust-marks" element={
-          <CapabilityGuard capability="trust_marks" fallback="placeholder">
+          <CapabilityGuard capability="federation_trust_marks" fallback="placeholder">
             <TrustMarksPage />
           </CapabilityGuard>
         } />

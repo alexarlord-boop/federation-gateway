@@ -69,7 +69,7 @@ const sidebarSections: SidebarSection[] = [
         title: 'Trust Marks', 
         href: '/trust-marks', 
         icon: Award,
-        feature: 'trust_marks',
+        feature: 'federation_trust_marks',
       },
     ],
   },
@@ -212,7 +212,7 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-sidebar flex flex-col">
+    <aside className="w-64 h-screen sticky top-0 bg-sidebar flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
@@ -236,7 +236,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
         {sidebarSections.map((section) => {
           const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;

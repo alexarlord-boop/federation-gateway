@@ -142,22 +142,11 @@ async def get_capabilities(db: Session = Depends(get_db)):
             permissions=role_permissions,
         ))
 
-    # Canonical UI feature aliases to keep frontend stable across backend tag differences
+    # Ensure gateway-local trust_anchors feature is present even if not
+    # in the OAS (it is seeded separately in rbac_seed.py)
     if "trust_anchors" not in features and "general_constraints" in features:
         features["trust_anchors"] = features["general_constraints"]
 
-    if "trust_marks" not in features:
-        if "trust_mark_issuance" in features:
-            features["trust_marks"] = features["trust_mark_issuance"]
-        elif "federation_trust_marks" in features:
-            features["trust_marks"] = features["federation_trust_marks"]
-
-    if "jwks_management" not in features:
-        if "keys" in features:
-            features["jwks_management"] = features["keys"]
-        elif "subordinate_keys" in features:
-            features["jwks_management"] = features["subordinate_keys"]
-    
     return CapabilityManifest(
         version="1.0.0",
         implementation=ImplementationInfo(

@@ -16,12 +16,98 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Shield, Users, Lock, Settings, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
+import { Shield, Users, Lock, Settings, Plus, Trash2, Loader2, Pencil, Navigation, PanelTop, Columns3 } from 'lucide-react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { useRBACFeatures } from '@/hooks/useRBACFeatures';
 import { useRBACRoles, type RBACRole } from '@/hooks/useRBACRoles';
 import { useRBACPermissions } from '@/hooks/useRBACPermissions';
 import { useToast } from '@/hooks/use-toast';
+
+// ---------------------------------------------------------------------------
+// Feature → UI mapping: describes which sidebar items, pages, and tabs each
+// feature flag controls.  Rendered in the Features tab so admins know exactly
+// what toggling a feature will hide/show.
+// ---------------------------------------------------------------------------
+interface FeatureUIMapping {
+  description: string;
+  /** Sidebar entries that disappear when the feature is off */
+  sidebar?: string[];
+  /** Top-level page routes affected */
+  pages?: string[];
+  /** Tabs inside another page (format: "Page → Tab") */
+  tabs?: string[];
+}
+
+const FEATURE_UI_MAP: Record<string, FeatureUIMapping> = {
+  subordinates: {
+    description: 'Leaf-entity management: registration, approval, and detail views',
+    sidebar: ['Leaf Entities', 'All Entities', 'Register New', 'Approvals'],
+    pages: ['/entities', '/entities/register', '/entities/:id', '/approvals'],
+  },
+  trust_anchors: {
+    description: 'Trust Anchor and Intermediate Authority management',
+    sidebar: ['TAs and IAs'],
+    pages: ['/trust-anchors'],
+  },
+  federation_trust_marks: {
+    description: 'Federation Trust Mark type management',
+    sidebar: ['Trust Marks'],
+    pages: ['/trust-marks'],
+    tabs: ['Trust Marks → Types'],
+  },
+  trust_mark_issuance: {
+    description: 'Trust Mark issuance specifications and delegation',
+    tabs: ['Trust Marks → Issuance Specs'],
+  },
+  entity_configuration: {
+    description: 'Self-issued entity configuration (metadata, trust marks)',
+    tabs: ['Settings → Entity Config'],
+  },
+  entity_configuration_metadata: {
+    description: 'Metadata claims inside the entity configuration statement',
+    tabs: ['Settings → Entity Config → Metadata'],
+  },
+  entity_configuration_trust_marks: {
+    description: 'Trust marks listed in the entity configuration statement',
+    tabs: ['Settings → Entity Config → Trust Marks'],
+  },
+  authority_hints: {
+    description: 'Authority hint management for the federation entity',
+    tabs: ['Settings → General → Authority Hints'],
+  },
+  keys: {
+    description: 'Cryptographic key lifecycle (create, rotate, revoke)',
+    tabs: ['Settings → Keys & KMS'],
+  },
+  general_constraints: {
+    description: 'Global constraint policies applied to all subordinates',
+    tabs: ['Settings → Constraints'],
+  },
+  general_metadata_policies: {
+    description: 'Global metadata policies applied to all subordinates',
+    tabs: ['Settings → Metadata Policies'],
+  },
+  subordinate_keys: {
+    description: 'Per-subordinate JWKS management',
+    tabs: ['Entity Detail → JWKS'],
+  },
+  subordinate_metadata: {
+    description: 'Per-subordinate metadata overrides',
+    tabs: ['Entity Detail → Metadata'],
+  },
+  subordinate_constraints: {
+    description: 'Per-subordinate constraint policies',
+    tabs: ['Entity Detail → Constraints'],
+  },
+  subordinate_metadata_policies: {
+    description: 'Per-subordinate metadata policies',
+    tabs: ['Entity Detail → Metadata Policies'],
+  },
+  subordinate_critical_metadata_policies: {
+    description: 'Critical metadata policy operators for subordinates',
+    tabs: ['Entity Detail → Metadata Policies (critical)'],
+  },
+};
 
 export default function RBACManagementPage() {
   const { capabilities } = useCapabilities();
@@ -460,18 +546,63 @@ export default function RBACManagementPage() {
                   const enabled = feature?.enabled ?? capabilityFeature.enabled;
                   const reason = feature?.reason ?? capabilityFeature.reason;
                   const operations = feature?.operations ?? capabilityFeature.operations ?? [];
+                  const uiMap = FEATURE_UI_MAP[featureName];
 
                   return (
-                    <div key={featureName} className="flex items-center justify-between p-4 rounded-lg border">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
+                    <div key={featureName} className="flex items-start justify-between gap-4 p-4 rounded-lg border">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold capitalize">{featureName.replace(/_/g, ' ')}</h3>
                           <Badge variant={enabled ? 'default' : 'secondary'}>
                             {enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
                         </div>
-                        {reason && <p className="text-sm text-muted-foreground">{reason}</p>}
-                        <div className="flex flex-wrap gap-1 mt-2">
+
+                        {/* Description */}
+                        {uiMap?.description && (
+                          <p className="text-sm text-muted-foreground">{uiMap.description}</p>
+                        )}
+                        {!uiMap?.description && reason && (
+                          <p className="text-sm text-muted-foreground">{reason}</p>
+                        )}
+
+                        {/* Affected UI areas */}
+                        {uiMap && (uiMap.sidebar || uiMap.pages || uiMap.tabs) && (
+                          <div className="space-y-1.5 text-xs text-muted-foreground">
+                            {uiMap.sidebar && uiMap.sidebar.length > 0 && (
+                              <div className="flex items-start gap-1.5">
+                                <Navigation className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                <span>
+                                  <span className="font-medium text-foreground/70">Sidebar:</span>{' '}
+                                  {uiMap.sidebar.join(', ')}
+                                </span>
+                              </div>
+                            )}
+                            {uiMap.pages && uiMap.pages.length > 0 && (
+                              <div className="flex items-start gap-1.5">
+                                <PanelTop className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                <span>
+                                  <span className="font-medium text-foreground/70">Pages:</span>{' '}
+                                  {uiMap.pages.map((p) => (
+                                    <code key={p} className="mx-0.5 px-1 py-0.5 rounded bg-muted font-mono">{p}</code>
+                                  ))}
+                                </span>
+                              </div>
+                            )}
+                            {uiMap.tabs && uiMap.tabs.length > 0 && (
+                              <div className="flex items-start gap-1.5">
+                                <Columns3 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                <span>
+                                  <span className="font-medium text-foreground/70">Tabs:</span>{' '}
+                                  {uiMap.tabs.join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Operations */}
+                        <div className="flex flex-wrap gap-1">
                           {operations.map((op) => (
                             <Badge key={op} variant="outline" className="text-xs">{op}</Badge>
                           ))}
@@ -481,6 +612,7 @@ export default function RBACManagementPage() {
                         checked={enabled}
                         disabled={isSavingFeature === featureName}
                         onCheckedChange={(checked) => handleToggleFeature(featureName, checked)}
+                        className="mt-1"
                       />
                     </div>
                   );

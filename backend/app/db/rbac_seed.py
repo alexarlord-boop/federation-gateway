@@ -56,6 +56,32 @@ def seed_rbac_data(db: Session, spec_path: str = None):
             }
         })
     
+    # Add gateway-local features not found in the OAS
+    gateway_local_features = [
+        {
+            "feature_name": "trust_anchors",
+            "enabled": True,
+            "reason": None,
+            "operations": ["list", "create", "read", "update", "delete"],
+            "config_metadata": {
+                "description": "Manage Trust Anchors and Intermediate Authorities (gateway-local)",
+                "openapi_path": "/api/v1/admin/trust-anchors",
+                "endpoints": [
+                    "GET /api/v1/admin/trust-anchors",
+                    "POST /api/v1/admin/trust-anchors",
+                    "GET /api/v1/admin/trust-anchors/{id}",
+                    "DELETE /api/v1/admin/trust-anchors/{id}",
+                    "PUT /api/v1/admin/trust-anchors/{id}/config",
+                ],
+                "tag": "trust-anchors",
+            },
+        },
+    ]
+    for gw_feat in gateway_local_features:
+        # Only add if not already present from OAS
+        if gw_feat["feature_name"] not in {c["feature_name"] for c in feature_configs}:
+            feature_configs.append(gw_feat)
+
     # Create or update feature configurations
     for config_data in feature_configs:
         existing = db.query(FeatureConfig).filter_by(

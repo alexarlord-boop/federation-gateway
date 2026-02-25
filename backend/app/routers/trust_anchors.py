@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
 
 
 @router.get("", response_model=list[TrustAnchorResponse])
-def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permission("general_constraints", "list"))):
+def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permission("trust_anchors", "list"))):
     anchors = db.query(TrustAnchor).all()
     result = []
     for a in anchors:
@@ -49,7 +49,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
 def create_trust_anchor(
     payload: TrustAnchorCreate,
     db: Session = Depends(get_db),
-    user=Depends(require_permission("general_constraints", "create")),
+    user=Depends(require_permission("trust_anchors", "create")),
 ):
     anchor = TrustAnchor(
         id=f"ta-{uuid.uuid4().hex[:6]}",
@@ -82,7 +82,7 @@ def create_trust_anchor(
 def delete_trust_anchor(
     ta_id: str,
     db: Session = Depends(get_db),
-    user=Depends(require_permission("general_constraints", "delete")),
+    user=Depends(require_permission("trust_anchors", "delete")),
 ):
     anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
     if not anchor:
@@ -96,7 +96,7 @@ def delete_trust_anchor(
 def get_trust_anchor_config(
     ta_id: str,
     db: Session = Depends(get_db),
-    user=Depends(require_permission("general_constraints", "list")),
+    user=Depends(require_permission("trust_anchors", "read")),
 ):
     anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
     if not anchor:
@@ -125,7 +125,7 @@ def update_trust_anchor_config(
     ta_id: str,
     payload: TrustAnchorConfig,
     db: Session = Depends(get_db),
-    user=Depends(require_permission("general_constraints", "update")),
+    user=Depends(require_permission("trust_anchors", "update")),
 ):
     anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
     if not anchor:

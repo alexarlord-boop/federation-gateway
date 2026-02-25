@@ -48,7 +48,7 @@ export default function SettingsPage() {
   // Capability flags — tabs are hidden when their backend feature is disabled
   const showAuthorityHints = isFeatureEnabled('authority_hints');
   const showEntityConfig = isFeatureEnabled('entity_configuration');
-  const showKeys = isFeatureEnabled('keys') || isFeatureEnabled('jwks_management');
+  const showKeys = isFeatureEnabled('keys');
   const showConstraints = isFeatureEnabled('general_constraints');
   const showPolicies = isFeatureEnabled('general_metadata_policies');
 
