@@ -5,6 +5,7 @@ from jose import JWTError
 from app.db.database import get_db
 from app.auth.security import decode_access_token
 from app.models.user import User
+from app.models.rbac import FeatureConfig
 
 security = HTTPBearer()
 
@@ -62,8 +63,28 @@ def user_has_permission(user: User, feature: str, operation: str) -> bool:
     return False
 
 
+def require_feature_enabled(feature: str):
+    """FastAPI dependency that blocks requests when a feature flag is disabled."""
+    def _require_feature_enabled(db: Session = Depends(get_db)) -> None:
+        config = db.query(FeatureConfig).filter(
+            FeatureConfig.feature_name == feature
+        ).first()
+        if config is not None and not config.enabled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Feature '{feature}' is currently disabled",
+            )
+    return _require_feature_enabled
+
+
 def require_permission(feature: str, operation: str):
-    def _require_permission(current_user: User = Depends(get_current_user)) -> User:
+    """Checks both feature-flag enablement AND RBAC permission."""
+    _feature_gate = require_feature_enabled(feature)
+
+    def _require_permission(
+        current_user: User = Depends(get_current_user),
+        _feature_ok: None = Depends(_feature_gate),
+    ) -> User:
         if user_has_permission(current_user, feature, operation):
             return current_user
 
