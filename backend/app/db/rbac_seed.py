@@ -39,7 +39,7 @@ def seed_rbac_data(db: Session, spec_path: str = None):
         reason = None
         
         # Example: Disable features not yet implemented
-        if feature_name in ['authority_hints', 'federation_discovery', 'entity_statements']:
+        if feature_name in ['federation_discovery', 'entity_statements']:
             enabled = False
             reason = "Not implemented in this backend version"
         
