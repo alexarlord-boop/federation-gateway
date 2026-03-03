@@ -34,9 +34,11 @@ import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw,
+  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw, Eye,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ValidityBadge } from '@/components/trust-marks/ValidityBadge';
+import { JwtDetailDialog } from '@/components/trust-marks/JwtDetailDialog';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -311,6 +313,7 @@ function EntityConfigSection() {
   const [lifetimeVal, setLifetimeVal] = useState('');
   const [newTmId, setNewTmId] = useState('');
   const [newTmTrust, setNewTmTrust] = useState('');
+  const [viewJwt, setViewJwt] = useState<string | null>(null);
   const [metaDraft, setMetaDraft] = useState('');
   const [metaEditing, setMetaEditing] = useState(false);
 
@@ -325,11 +328,11 @@ function EntityConfigSection() {
         <CardContent className="space-y-3">
           {lifetimeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
             <>
-              <p className="text-2xl font-mono">{(lifetime as any) ?? <span className="text-muted-foreground text-base">Not set</span>}</p>
+              <p className="text-2xl font-mono">{(lifetime as any)?.lifetime_seconds ?? <span className="text-muted-foreground text-base">Not set</span>}</p>
               <div className="flex gap-2">
                 <Input type="number" min={60} placeholder="e.g. 86400" value={lifetimeVal} onChange={e => setLifetimeVal(e.target.value)} className="w-36" />
                 <Button size="sm" disabled={!lifetimeVal || updateLifetime.isPending}
-                  onClick={() => updateLifetime.mutateAsync(Number(lifetimeVal) as any).then(() => { setLifetimeVal(''); toast({ title: 'Updated' }); })}>
+                  onClick={() => updateLifetime.mutateAsync({ lifetime_seconds: Number(lifetimeVal) } as any).then(() => { setLifetimeVal(''); toast({ title: 'Updated' }); })}>
                   Set
                 </Button>
               </div>
@@ -401,13 +404,20 @@ function EntityConfigSection() {
                 <div className="space-y-2">
                   {trustMarks.map((tm: any) => (
                     <div key={tm.id} className="flex items-center justify-between p-2 rounded bg-muted">
-                      <div>
-                        <span className="text-sm font-mono">{tm.id ?? tm.trust_mark_id}</span>
-                        {tm.trust_mark && <span className="text-xs text-muted-foreground ml-2">(JWT present)</span>}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-mono truncate">{tm.id ?? tm.trust_mark_id}</span>
+                        {tm.trust_mark && <ValidityBadge jwt={tm.trust_mark} />}
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeTm.mutateAsync(tm.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-1 ml-2 shrink-0">
+                        {tm.trust_mark && (
+                          <Button variant="ghost" size="icon" title="View JWT" onClick={() => setViewJwt(tm.trust_mark)}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => removeTm.mutateAsync(tm.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -430,6 +440,13 @@ function EntityConfigSection() {
           )}
         </CardContent>
       </Card>
+
+      {/* JWT detail viewer */}
+      <JwtDetailDialog
+        jwt={viewJwt ?? ''}
+        open={viewJwt !== null}
+        onClose={() => setViewJwt(null)}
+      />
 
       {/* Entity Config Metadata */}
       <Card>

@@ -107,8 +107,11 @@ _HOP_BY_HOP = frozenset(
         "upgrade",
         "proxy-authorization",
         "proxy-authenticate",
-        # Our own auth — replaced by gateway identity headers
-        "authorization",
+        # NOTE: authorization is intentionally NOT stripped here.
+        # When proxying to the same-origin backend the upstream endpoints
+        # need the user's Bearer token to authenticate the request.
+        # For external Admin APIs that supply their own api_key, the
+        # _build_upstream_headers function overwrites Authorization below.
     }
 )
 

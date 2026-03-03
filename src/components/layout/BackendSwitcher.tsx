@@ -11,10 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { useBackend } from '@/contexts/BackendContext';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 export function BackendSwitcher() {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
   const { trustAnchors } = useTrustAnchors();
+  const { setActiveTrustAnchor } = useTrustAnchor();
 
   useEffect(() => {
     const discovered = trustAnchors
@@ -29,6 +31,15 @@ export function BackendSwitcher() {
       registerBackends(discovered);
     }
   }, [registerBackends, trustAnchors]);
+
+  // Sync the active backend → TrustAnchorContext so pages that gate on
+  // activeTrustAnchor (Settings, Trust Marks) know which instance is live.
+  useEffect(() => {
+    const matched = trustAnchors.find((ta) => `ta:${ta.id}` === selectedBackend.id);
+    // Fall back to first available TA when selectedBackend is the default gateway
+    const active = matched ?? (trustAnchors.length > 0 ? trustAnchors[0] : null);
+    setActiveTrustAnchor(active);
+  }, [selectedBackend.id, trustAnchors, setActiveTrustAnchor]);
 
   return (
     <div className="px-3 pb-2">

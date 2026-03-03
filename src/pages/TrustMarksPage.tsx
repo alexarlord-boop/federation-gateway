@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Award, Info, Loader2, Plus, Trash2, ChevronRight, Users, FileText } from 'lucide-react';
+import {
+  Award, Info, Loader2, Plus, Trash2, ChevronRight, Users, FileText,
+  Clock, ExternalLink,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -19,8 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
 import { useTrustMarkSpecs, useTrustMarkSubjects } from '@/hooks/useTrustMarkIssuance';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { useCapabilities } from '@/contexts/CapabilityContext';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
+import type { TrustMarkType } from '@/client/models/TrustMarkType';
+// Trust mark feature components
+import { SelfTrustMarksTab } from '@/components/trust-marks/SelfTrustMarksTab';
+import { TrustMarkTypeDetailSheet } from '@/components/trust-marks/TrustMarkTypeDetailSheet';
+import { OwnersTab } from '@/components/trust-marks/OwnersTab';
+import { IssuersTab } from '@/components/trust-marks/IssuersTab';
 
 // ── Trust Mark Types Tab ────────────────────────────────
 
@@ -31,13 +42,16 @@ function TrustMarkTypesTab() {
   const canDelete = useOperationAllowed('federation_trust_marks', 'delete');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newType, setNewType] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [detailType, setDetailType] = useState<TrustMarkType | null>(null);
 
   const handleCreate = async () => {
     if (!newType) return;
     try {
-      await create.mutateAsync({ trust_mark_type: newType });
+      await create.mutateAsync({ trust_mark_type: newType, description: newDesc || undefined } as any);
       toast({ title: 'Created', description: 'Trust mark type added' });
       setNewType('');
+      setNewDesc('');
       setIsCreateOpen(false);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to create trust mark type' });
@@ -47,7 +61,7 @@ function TrustMarkTypesTab() {
   const handleDelete = async (id: number) => {
     try {
       await remove.mutateAsync(id);
-      toast({ title: 'Deleted', description: 'Trust mark type removed' });
+      toast({ title: 'Deleted' });
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete trust mark type' });
     }
@@ -84,6 +98,10 @@ function TrustMarkTypesTab() {
                 <Input id="tm-type" placeholder="https://federation.example.org/trust-marks/member" value={newType} onChange={(e) => setNewType(e.target.value)} />
                 <p className="text-xs text-muted-foreground">A URI that uniquely identifies this trust mark type.</p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="tm-desc">Description <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="tm-desc" placeholder="Members of the federation" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
@@ -119,29 +137,40 @@ function TrustMarkTypesTab() {
                 <TableCell className="font-mono text-sm break-all">{tm.trust_mark_type}</TableCell>
                 <TableCell className="text-muted-foreground">{tm.description || '—'}</TableCell>
                 <TableCell>
-                  {canDelete && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon"><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Trust Mark Type?</AlertDialogTitle>
-                        <AlertDialogDescription>This will permanently remove this trust mark type.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(tm.id as number)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" onClick={() => setDetailType(tm)}>
+                      <Users className="w-3 h-3 mr-1" />Manage
+                    </Button>
+                    {canDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon"><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Trust Mark Type?</AlertDialogTitle>
+                          <AlertDialogDescription>This will permanently remove this trust mark type.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(tm.id as number)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+      {/* Detail sheet for per-type owner/issuer management */}
+      <TrustMarkTypeDetailSheet
+        type={detailType}
+        open={detailType !== null}
+        onClose={() => setDetailType(null)}
+      />
     </div>
   );
 }
@@ -209,6 +238,8 @@ function IssuanceSpecsTab() {
                 <Input id="spec-type" placeholder="https://federation.example.org/trust-marks/member" value={newSpecType} onChange={(e) => setNewSpecType(e.target.value)} />
               </div>
             </div>
+            {/* Lifetime hint */}
+            <p className="text-xs text-muted-foreground px-1">Additional fields (lifetime, ref, logo URI) can be updated after creation.</p>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button onClick={handleCreate} disabled={!newSpecType || create.isPending}>
@@ -240,7 +271,17 @@ function IssuanceSpecsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {spec.lifetime && <Badge variant="outline">{spec.lifetime}s lifetime</Badge>}
+                    {spec.lifetime && (
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="w-3 h-3" />{spec.lifetime}s
+                      </Badge>
+                    )}
+                    {(spec as any).ref && (
+                      <a href={(spec as any).ref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                        className="text-muted-foreground hover:text-foreground">
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                     {canDelete && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -317,17 +358,25 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
               <TableRow key={sub.id}>
                 <TableCell className="font-mono text-xs break-all">{sub.entity_id}</TableCell>
                 <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
-                <TableCell className="flex gap-1">
-                  {canUpdate && (
-                    <Button variant="ghost" size="sm" onClick={() => changeStatus.mutate({ subjectId: sub.id as number, status: sub.status === 'active' ? 'suspended' : 'active' })}>
-                      {sub.status === 'active' ? 'Suspend' : 'Activate'}
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button variant="ghost" size="icon" onClick={() => remove.mutate(sub.id as number)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {canUpdate && (
+                      <div className="flex items-center gap-1.5">
+                        <Switch
+                          checked={sub.status === 'active'}
+                          onCheckedChange={(checked) =>
+                            changeStatus.mutate({ subjectId: sub.id as number, status: checked ? 'active' : 'suspended' })
+                          }
+                        />
+                        <span className="text-xs text-muted-foreground">{sub.status === 'active' ? 'Active' : 'Suspended'}</span>
+                      </div>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(sub.id as number)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -350,6 +399,13 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
 
 export default function TrustMarksPage() {
   const { activeTrustAnchor } = useTrustAnchor();
+  const { isFeatureEnabled } = useCapabilities();
+
+  const showSelf = isFeatureEnabled('entity_configuration_trust_marks');
+  const showFederation = isFeatureEnabled('federation_trust_marks');
+  const showIssuance = isFeatureEnabled('trust_mark_issuance');
+
+  const defaultTab = showSelf ? 'self' : showFederation ? 'types' : 'issuance';
 
   if (!activeTrustAnchor) {
     return (
@@ -367,7 +423,7 @@ export default function TrustMarksPage() {
         <div className="page-header mb-0">
           <h1 className="page-title">Trust Marks</h1>
           <p className="page-description">
-            Manage trust mark types and issuance for <span className="font-medium">{activeTrustAnchor.name}</span>
+            Manage trust marks for <span className="font-medium">{activeTrustAnchor.name}</span>
           </p>
         </div>
       </div>
@@ -377,19 +433,26 @@ export default function TrustMarksPage() {
         <div>
           <p className="font-medium text-info">Trust Mark Management</p>
           <p className="text-sm text-muted-foreground">
-            Trust marks indicate compliance with specific policies. <strong>Types</strong> define what
-            marks exist. <strong>Issuance Specs</strong> control who can receive them.
+            <strong>My Trust Marks</strong> shows entity-config-level trust marks with JWT validity.
+            <strong> Types / Owners / Issuers</strong> manage the federation-wide registry.
+            <strong> Issuance</strong> controls which entities may receive each mark.
           </p>
         </div>
       </div>
 
-      <Tabs defaultValue="types" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="types">Trust Mark Types</TabsTrigger>
-          <TabsTrigger value="issuance">Issuance Specs</TabsTrigger>
+          {showSelf && <TabsTrigger value="self">My Trust Marks</TabsTrigger>}
+          {showFederation && <TabsTrigger value="types">Types</TabsTrigger>}
+          {showFederation && <TabsTrigger value="owners">Owners</TabsTrigger>}
+          {showFederation && <TabsTrigger value="issuers">Issuers</TabsTrigger>}
+          {showIssuance && <TabsTrigger value="issuance">Issuance</TabsTrigger>}
         </TabsList>
-        <TabsContent value="types"><TrustMarkTypesTab /></TabsContent>
-        <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>
+        {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
+        {showFederation && <TabsContent value="types"><TrustMarkTypesTab /></TabsContent>}
+        {showFederation && <TabsContent value="owners"><OwnersTab /></TabsContent>}
+        {showFederation && <TabsContent value="issuers"><IssuersTab /></TabsContent>}
+        {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
       </Tabs>
     </div>
   );
