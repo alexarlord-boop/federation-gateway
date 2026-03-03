@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronDown,
   Network,
-  Leaf
+  Leaf,
+  PanelLeftClose,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
@@ -21,6 +22,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 import { BackendSwitcher } from './BackendSwitcher';
 
@@ -99,7 +102,12 @@ const sidebarSections: SidebarSection[] = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  open?: boolean;
+  onToggle?: () => void;
+}
+
+export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
   const { user, isAdmin, logout } = useAuth();
   const { isFeatureEnabled, hasOperation, capabilities } = useCapabilities();
   const location = useLocation();
@@ -212,11 +220,17 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="w-64 h-screen sticky top-0 bg-sidebar flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border">
+    <aside
+      className={cn(
+        'h-screen sticky top-0 bg-sidebar flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden',
+        open ? 'w-64' : 'w-0',
+      )}
+      aria-hidden={!open}
+    >
+      {/* Logo + collapse button */}
+      <div className="p-6 border-b border-sidebar-border flex items-center justify-between min-w-64">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
             <Network className="w-6 h-6 text-sidebar-primary-foreground" />
           </div>
           <div>
@@ -224,9 +238,19 @@ export function AppSidebar() {
             <p className="text-xs text-sidebar-foreground/60">Registry</p>
           </div>
         </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onToggle} className="h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 shrink-0">
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Hide sidebar <kbd className="ml-1 text-[10px] opacity-60">⌘B</kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
-      <div className="pt-4 px-2">
+      <div className="pt-4 px-2 min-w-64">
         <BackendSwitcher />
         {capabilities && (
           <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md text-[10px] text-muted-foreground">
@@ -236,7 +260,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-6 min-w-64">
         {sidebarSections.map((section) => {
           const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;
@@ -265,7 +289,7 @@ export function AppSidebar() {
       </nav>
 
       {/* User section */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border min-w-64">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
             <span className="text-sm font-medium text-sidebar-foreground">
