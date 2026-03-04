@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import {
   Award, Info, Loader2, Plus, Trash2, ChevronRight, Users, FileText,
-  Clock, ExternalLink,
+  Clock, ExternalLink, Pencil, Tag,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,13 +20,16 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
 import { useTrustMarkSpecs, useTrustMarkSubjects } from '@/hooks/useTrustMarkIssuance';
+import { useTrustMarkSubjectClaims } from '@/hooks/useTrustMarkSubjectClaims';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
 import type { TrustMarkType } from '@/client/models/TrustMarkType';
+import type { TrustMarkSpec } from '@/client/models/TrustMarkSpec';
 // Trust mark feature components
 import { SelfTrustMarksTab } from '@/components/trust-marks/SelfTrustMarksTab';
 import { TrustMarkTypeDetailSheet } from '@/components/trust-marks/TrustMarkTypeDetailSheet';
@@ -166,11 +169,13 @@ function TrustMarkTypesTab() {
         </Table>
       )}
       {/* Detail sheet for per-type owner/issuer management */}
-      <TrustMarkTypeDetailSheet
-        type={detailType}
-        open={detailType !== null}
-        onClose={() => setDetailType(null)}
-      />
+      {detailType && (
+        <TrustMarkTypeDetailSheet
+          type={detailType}
+          open={true}
+          onClose={() => setDetailType(null)}
+        />
+      )}
     </div>
   );
 }
@@ -178,20 +183,29 @@ function TrustMarkTypesTab() {
 // ── Trust Mark Issuance Specs Tab ───────────────────────
 
 function IssuanceSpecsTab() {
-  const { specs, isLoading, error, create, remove } = useTrustMarkSpecs();
+  const { specs, isLoading, error, create, remove, patch } = useTrustMarkSpecs();
   const { toast } = useToast();
   const canCreate = useOperationAllowed('trust_mark_issuance', 'create');
   const canDelete = useOperationAllowed('trust_mark_issuance', 'delete');
+  const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newSpecType, setNewSpecType] = useState('');
+  const [createForm, setCreateForm] = useState({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
   const [expandedSpec, setExpandedSpec] = useState<number | null>(null);
+  const [editSpec, setEditSpec] = useState<TrustMarkSpec | null>(null);
+  const [editForm, setEditForm] = useState({ description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
 
   const handleCreate = async () => {
-    if (!newSpecType) return;
+    if (!createForm.trust_mark_type) return;
     try {
-      await create.mutateAsync({ trust_mark_type: newSpecType });
+      const payload: Record<string, any> = { trust_mark_type: createForm.trust_mark_type };
+      if (createForm.description) payload.description = createForm.description;
+      if (createForm.lifetime) payload.lifetime = Number(createForm.lifetime);
+      if (createForm.ref) payload.ref = createForm.ref;
+      if (createForm.logo_uri) payload.logo_uri = createForm.logo_uri;
+      if (createForm.delegation_jwt) payload.delegation_jwt = createForm.delegation_jwt;
+      await create.mutateAsync(payload as any);
       toast({ title: 'Created', description: 'Issuance spec added' });
-      setNewSpecType('');
+      setCreateForm({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
       setIsCreateOpen(false);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to create issuance spec' });
@@ -204,6 +218,23 @@ function IssuanceSpecsTab() {
       toast({ title: 'Deleted', description: 'Issuance spec removed' });
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete issuance spec' });
+    }
+  };
+
+  const handlePatch = async () => {
+    if (!editSpec) return;
+    try {
+      const data: Record<string, any> = {};
+      if (editForm.description !== '') data.description = editForm.description;
+      if (editForm.lifetime !== '') data.lifetime = Number(editForm.lifetime);
+      if (editForm.ref !== '') data.ref = editForm.ref;
+      if (editForm.logo_uri !== '') data.logo_uri = editForm.logo_uri;
+      if (editForm.delegation_jwt !== '') data.delegation_jwt = editForm.delegation_jwt;
+      await patch.mutateAsync({ id: editSpec.id as number, data });
+      toast({ title: 'Updated', description: 'Issuance spec updated' });
+      setEditSpec(null);
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update issuance spec' });
     }
   };
 
@@ -234,15 +265,35 @@ function IssuanceSpecsTab() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="spec-type">Trust Mark Type</Label>
-                <Input id="spec-type" placeholder="https://federation.example.org/trust-marks/member" value={newSpecType} onChange={(e) => setNewSpecType(e.target.value)} />
+                <Label htmlFor="spec-type">Trust Mark Type <span className="text-destructive">*</span></Label>
+                <Input id="spec-type" placeholder="https://federation.example.org/trust-marks/member" value={createForm.trust_mark_type} onChange={(e) => setCreateForm((f) => ({ ...f, trust_mark_type: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="spec-desc">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input id="spec-desc" placeholder="Human-readable description" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="spec-lifetime">Lifetime (seconds)</Label>
+                  <Input id="spec-lifetime" type="number" placeholder="e.g. 86400" value={createForm.lifetime} onChange={(e) => setCreateForm((f) => ({ ...f, lifetime: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="spec-logo">Logo URI</Label>
+                  <Input id="spec-logo" placeholder="https://..." value={createForm.logo_uri} onChange={(e) => setCreateForm((f) => ({ ...f, logo_uri: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="spec-ref">Reference URL</Label>
+                <Input id="spec-ref" placeholder="https://..." value={createForm.ref} onChange={(e) => setCreateForm((f) => ({ ...f, ref: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="spec-delegation">Delegation JWT <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Textarea id="spec-delegation" placeholder="eyJ..." className="font-mono text-xs" rows={2} value={createForm.delegation_jwt} onChange={(e) => setCreateForm((f) => ({ ...f, delegation_jwt: e.target.value }))} />
               </div>
             </div>
-            {/* Lifetime hint */}
-            <p className="text-xs text-muted-foreground px-1">Additional fields (lifetime, ref, logo URI) can be updated after creation.</p>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={!newSpecType || create.isPending}>
+              <Button onClick={handleCreate} disabled={!createForm.trust_mark_type || create.isPending}>
                 {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
               </Button>
             </DialogFooter>
@@ -276,11 +327,16 @@ function IssuanceSpecsTab() {
                         <Clock className="w-3 h-3" />{spec.lifetime}s
                       </Badge>
                     )}
-                    {(spec as any).ref && (
-                      <a href={(spec as any).ref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    {spec.ref && (
+                      <a href={spec.ref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                         className="text-muted-foreground hover:text-foreground">
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
+                    )}
+                    {canUpdate && (
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditForm({ description: spec.description ?? '', lifetime: spec.lifetime?.toString() ?? '', ref: spec.ref ?? '', logo_uri: spec.logo_uri ?? '', delegation_jwt: spec.delegation_jwt ?? '' }); setEditSpec(spec); }}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                     )}
                     {canDelete && (
                     <AlertDialog>
@@ -311,6 +367,132 @@ function IssuanceSpecsTab() {
           ))}
         </div>
       )}
+
+      {/* Edit spec dialog */}
+      <Dialog open={!!editSpec} onOpenChange={(open) => { if (!open) setEditSpec(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Issuance Spec</DialogTitle>
+            <DialogDescription className="font-mono text-xs break-all">{editSpec?.trust_mark_type}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-desc">Description</Label>
+              <Input id="edit-desc" placeholder="Human-readable description" value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-lifetime">Lifetime (seconds)</Label>
+              <Input id="edit-lifetime" type="number" placeholder="e.g. 86400" value={editForm.lifetime} onChange={(e) => setEditForm((f) => ({ ...f, lifetime: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-ref">Reference URL</Label>
+              <Input id="edit-ref" placeholder="https://..." value={editForm.ref} onChange={(e) => setEditForm((f) => ({ ...f, ref: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-logo">Logo URI</Label>
+              <Input id="edit-logo" placeholder="https://..." value={editForm.logo_uri} onChange={(e) => setEditForm((f) => ({ ...f, logo_uri: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-delegation">Delegation JWT</Label>
+              <Textarea id="edit-delegation" placeholder="eyJ..." className="font-mono text-xs" rows={3} value={editForm.delegation_jwt} onChange={(e) => setEditForm((f) => ({ ...f, delegation_jwt: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSpec(null)}>Cancel</Button>
+            <Button onClick={handlePatch} disabled={patch.isPending}>
+              {patch.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Per-subject additional claims panel ─────────────────
+
+function SubjectClaimsPanel({ specId, subjectId }: { specId: number; subjectId: number }) {
+  const { claims, isLoading, updateAll, remove } = useTrustMarkSubjectClaims(specId, subjectId);
+  const { toast } = useToast();
+  const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
+  const [newClaim, setNewClaim] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [newCrit, setNewCrit] = useState(false);
+
+  const handleAdd = async () => {
+    if (!newClaim || !newValue) return;
+    try {
+      let parsed: any;
+      try { parsed = JSON.parse(newValue); } catch { parsed = newValue; }
+      const next = [...(claims ?? []), { claim: newClaim, value: parsed, crit: newCrit }] as any;
+      await updateAll.mutateAsync(next);
+      toast({ title: 'Claim added' });
+      setNewClaim(''); setNewValue(''); setNewCrit(false);
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add claim' });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await remove.mutateAsync(id);
+      toast({ title: 'Claim deleted' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete claim' });
+    }
+  };
+
+  if (isLoading) return <div className="py-2 flex justify-center"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+
+  return (
+    <div className="mx-3 mb-2 space-y-2 bg-muted/30 rounded-md p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium">Additional Claims</span>
+      </div>
+      {claims && claims.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="py-1 h-7">Claim</TableHead>
+              <TableHead className="py-1 h-7">Value</TableHead>
+              <TableHead className="py-1 h-7 w-12">Crit</TableHead>
+              {canUpdate && <TableHead className="py-1 h-7 w-8" />}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {claims.map((c) => (
+              <TableRow key={c.id as number}>
+                <TableCell className="py-1 font-mono text-xs">{c.claim}</TableCell>
+                <TableCell className="py-1 font-mono text-xs break-all max-w-[200px]">{JSON.stringify(c.value)}</TableCell>
+                <TableCell className="py-1 text-xs">{c.crit ? 'Yes' : '—'}</TableCell>
+                {canUpdate && (
+                  <TableCell className="py-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(c.id as number)}>
+                      <Trash2 className="w-3 h-3 text-destructive" />
+                    </Button>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <p className="text-xs text-muted-foreground">No additional claims for this subject.</p>
+      )}
+      {canUpdate && (
+        <div className="flex gap-2 items-center pt-1">
+          <Input className="h-7 text-xs" placeholder="claim_name" value={newClaim} onChange={(e) => setNewClaim(e.target.value)} />
+          <Input className="h-7 text-xs" placeholder='"value" or true or 42' value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+          <div className="flex items-center gap-1 shrink-0">
+            <Switch checked={newCrit} onCheckedChange={setNewCrit} />
+            <span className="text-xs">crit</span>
+          </div>
+          <Button size="sm" className="h-7 text-xs shrink-0" onClick={handleAdd} disabled={!newClaim || !newValue || updateAll.isPending}>
+            {updateAll.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Plus className="w-3 h-3 mr-1" />Add</>}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -324,6 +506,7 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
   const canDelete = useOperationAllowed('trust_mark_issuance', 'delete');
   const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
   const [newEntityId, setNewEntityId] = useState('');
+  const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(null);
 
   const handleAdd = async () => {
     if (!newEntityId) return;
@@ -350,36 +533,60 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
             <TableRow>
               <TableHead>Entity ID</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[90px]" />
               <TableHead className="w-[120px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {subjects.map((sub) => (
-              <TableRow key={sub.id}>
-                <TableCell className="font-mono text-xs break-all">{sub.entity_id}</TableCell>
-                <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {canUpdate && (
-                      <div className="flex items-center gap-1.5">
-                        <Switch
-                          checked={sub.status === 'active'}
-                          onCheckedChange={(checked) =>
-                            changeStatus.mutate({ subjectId: sub.id as number, status: checked ? 'active' : 'suspended' })
-                          }
-                        />
-                        <span className="text-xs text-muted-foreground">{sub.status === 'active' ? 'Active' : 'Suspended'}</span>
-                      </div>
-                    )}
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(sub.id as number)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
+            {subjects.map((sub) => {
+              const subId = sub.id as number;
+              const isExpanded = expandedSubjectId === subId;
+              return (
+                <Fragment key={subId}>
+                  <TableRow>
+                    <TableCell className="font-mono text-xs break-all">{sub.entity_id}</TableCell>
+                    <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
+                    <TableCell>
+                      <Button
+                        variant={isExpanded ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setExpandedSubjectId(isExpanded ? null : subId)}
+                      >
+                        <Tag className="w-3 h-3 mr-1" />Claims
                       </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {canUpdate && (
+                          <div className="flex items-center gap-1.5">
+                            <Switch
+                              checked={sub.status === 'active'}
+                              onCheckedChange={(checked) =>
+                                changeStatus.mutate({ subjectId: subId, status: checked ? 'active' : 'suspended' })
+                              }
+                            />
+                            <span className="text-xs text-muted-foreground">{sub.status === 'active' ? 'Active' : 'Suspended'}</span>
+                          </div>
+                        )}
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" onClick={() => remove.mutate(subId)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="p-0 pb-1">
+                        <SubjectClaimsPanel specId={specId} subjectId={subId} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       )}
