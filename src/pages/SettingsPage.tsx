@@ -599,11 +599,17 @@ function EntityConfigSection() {
 function KeyManagementSection() {
   const { toast } = useToast();
   const {
-    keys, keysLoading, deleteKey, triggerRotation,
+    keys, keysLoading, addKey, deleteKey, triggerRotation,
     kmsInfo, kmsInfoLoading, updateAlgorithm,
     rotationOptions, rotationLoading, updateRotation,
     publishedJwks, jwksLoading,
   } = useKeyManagement();
+  const [rotIntervalDraft, setRotIntervalDraft] = useState('');
+  const [rotAutoRotateDraft, setRotAutoRotateDraft] = useState<boolean | null>(null);
+  const [addKeyDraft, setAddKeyDraft] = useState('');
+
+  const autoRotate = rotAutoRotateDraft ?? ((rotationOptions as any)?.auto_rotate ?? false);
+  const rotInterval = (rotationOptions as any)?.rotation_interval_seconds;
 
   return (
     <div className="space-y-6">
@@ -649,26 +655,62 @@ function KeyManagementSection() {
           <CardDescription>Configure automatic rotation and trigger manual rotation</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {rotationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : rotationOptions ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground text-xs">Auto Rotate</Label>
-                <p className="font-mono mt-1">{(rotationOptions as any).auto_rotate ? 'Enabled' : 'Disabled'}</p>
+          {rotationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">Auto Rotate</p>
+                    <p className="text-xs text-muted-foreground">Automatically rotate keys on schedule</p>
+                  </div>
+                  <Switch
+                    checked={autoRotate}
+                    onCheckedChange={(v) => {
+                      setRotAutoRotateDraft(v);
+                      updateRotation.mutateAsync({ ...(rotationOptions as any), auto_rotate: v })
+                        .then(() => { setRotAutoRotateDraft(null); toast({ title: v ? 'Auto-rotate enabled' : 'Auto-rotate disabled' }); })
+                        .catch(() => { setRotAutoRotateDraft(null); toast({ variant: 'destructive', title: 'Failed to update' }); });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Rotation Interval (seconds)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={60}
+                      placeholder={rotInterval != null ? String(rotInterval) : 'e.g. 2592000'}
+                      value={rotIntervalDraft}
+                      onChange={e => setRotIntervalDraft(e.target.value)}
+                      className="w-36 font-mono text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!rotIntervalDraft || updateRotation.isPending}
+                      onClick={() => {
+                        updateRotation.mutateAsync({ ...(rotationOptions as any), rotation_interval_seconds: Number(rotIntervalDraft) })
+                          .then(() => { setRotIntervalDraft(''); toast({ title: 'Interval updated' }); })
+                          .catch(() => toast({ variant: 'destructive', title: 'Failed to update interval' }));
+                      }}
+                    >
+                      {updateRotation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Set'}
+                    </Button>
+                  </div>
+                  {rotInterval != null && (
+                    <p className="text-xs text-muted-foreground">Current: {rotInterval}s ({Math.round(rotInterval / 86400)}d)</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground text-xs">Rotation Interval</Label>
-                <p className="font-mono mt-1">{(rotationOptions as any).rotation_interval_seconds ?? '—'}s</p>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => triggerRotation.mutateAsync({}).then(() => toast({ title: 'Rotation triggered' }))}
+                disabled={triggerRotation.isPending}
+              >
+                {triggerRotation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCw className="w-4 h-4 mr-2" />}
+                Trigger Key Rotation Now
+              </Button>
             </div>
-          ) : null}
-          <Button
-            variant="outline"
-            onClick={() => triggerRotation.mutateAsync({}).then(() => toast({ title: 'Rotation triggered' }))}
-            disabled={triggerRotation.isPending}
-          >
-            {triggerRotation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCw className="w-4 h-4 mr-2" />}
-            Trigger Key Rotation
-          </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -706,6 +748,38 @@ function KeyManagementSection() {
               </TableBody>
             </Table>
           ) : <p className="text-sm text-muted-foreground">No keys found</p>}
+        </CardContent>
+      </Card>
+
+      {/* Add Public Key */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Public Key</CardTitle>
+          <CardDescription>Paste a JWK JSON object to register a new public key</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            className="font-mono text-xs min-h-[120px]"
+            placeholder={'{\n  "kty": "EC",\n  "kid": "my-key-1",\n  "crv": "P-256",\n  "x": "...",\n  "y": "..."\n}'}
+            value={addKeyDraft}
+            onChange={e => setAddKeyDraft(e.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={!addKeyDraft.trim() || addKey.isPending}
+            onClick={() => {
+              let jwk: any;
+              try { jwk = JSON.parse(addKeyDraft); } catch {
+                toast({ variant: 'destructive', title: 'Invalid JSON' }); return;
+              }
+              addKey.mutateAsync({ key: jwk })
+                .then(() => { setAddKeyDraft(''); toast({ title: 'Key added' }); })
+                .catch((e: any) => toast({ variant: 'destructive', title: 'Failed to add key', description: e?.message }));
+            }}
+          >
+            {addKey.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+            Add Key
+          </Button>
         </CardContent>
       </Card>
 
@@ -941,9 +1015,12 @@ function GeneralConstraintsSection() {
 /* ─── Metadata Policies ─── */
 function MetadataPoliciesSection() {
   const { toast } = useToast();
-  const { policies, isLoading, updateAll } = useGeneralMetadataPolicies();
+  const { policies, isLoading, updateAll, deleteEntityTypePolicy, updateEntityTypePolicy } = useGeneralMetadataPolicies();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [addingEntityType, setAddingEntityType] = useState(false);
+  const [newEntityType, setNewEntityType] = useState('');
+  const [newEntityPolicy, setNewEntityPolicy] = useState('{}');
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
@@ -963,9 +1040,60 @@ function MetadataPoliciesSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {!editing && <Button variant="outline" size="sm" onClick={startEdit}><FileText className="w-4 h-4 mr-2" /> Edit JSON</Button>}
+        {!editing && !addingEntityType && (
+          <Button size="sm" onClick={() => setAddingEntityType(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Entity Type
+          </Button>
+        )}
       </div>
+
+      {addingEntityType && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Add Entity Type Policy</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Entity Type</Label>
+              <Input
+                placeholder="openid_relying_party"
+                value={newEntityType}
+                onChange={e => setNewEntityType(e.target.value)}
+                className="max-w-xs font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Policy JSON</Label>
+              <Textarea
+                className="font-mono text-xs min-h-[120px]"
+                placeholder={'\{\n  "scope": { "subset_of": ["openid", "profile"] }\n}'}
+                value={newEntityPolicy}
+                onChange={e => setNewEntityPolicy(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Map of claim → operator object</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={!newEntityType.trim() || updateEntityTypePolicy.isPending}
+                onClick={() => {
+                  let parsed: any;
+                  try { parsed = JSON.parse(newEntityPolicy); } catch {
+                    toast({ variant: 'destructive', title: 'Invalid JSON' }); return;
+                  }
+                  updateEntityTypePolicy.mutateAsync({ entityType: newEntityType.trim(), data: parsed })
+                    .then(() => { setAddingEntityType(false); setNewEntityType(''); setNewEntityPolicy('{}'); toast({ title: 'Entity type policy added' }); })
+                    .catch((e: any) => toast({ variant: 'destructive', title: 'Failed', description: e?.message }));
+                }}
+              >
+                {updateEntityTypePolicy.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setAddingEntityType(false); setNewEntityType(''); setNewEntityPolicy('{}'); }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {editing ? (
         <Card>
@@ -984,9 +1112,21 @@ function MetadataPoliciesSection() {
         <div className="space-y-4">
           {policyEntries.map(([entityType, claims]) => (
             <Card key={entityType}>
-              <CardHeader>
-                <CardTitle className="text-base font-mono">{entityType}</CardTitle>
-                <CardDescription>{Object.keys(claims as Record<string, any>).length} claim(s)</CardDescription>
+              <CardHeader className="flex-row items-start justify-between space-y-0 pb-3">
+                <div>
+                  <CardTitle className="text-base font-mono">{entityType}</CardTitle>
+                  <CardDescription>{Object.keys(claims as Record<string, any>).length} claim(s)</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Delete entity type policy"
+                  onClick={() => deleteEntityTypePolicy.mutateAsync(entityType)
+                    .then(() => toast({ title: 'Deleted', description: entityType }))
+                    .catch(() => toast({ variant: 'destructive', title: 'Failed to delete' }))}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>
