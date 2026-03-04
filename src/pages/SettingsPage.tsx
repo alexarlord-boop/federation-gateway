@@ -318,17 +318,27 @@ function EntityConfigSection() {
   const [metaEditing, setMetaEditing] = useState(false);
   const [tmEndpoints, setTmEndpoints] = useState<Record<string, string>>({});
 
-  const TRUST_MARK_ENDPOINT_FIELDS = [
-    { claim: 'trust_mark_status_endpoint', label: 'Trust Mark Status Endpoint', hint: 'Checks whether a trust mark is still valid' },
-    { claim: 'trust_mark_list_endpoint',   label: 'Trust Mark List Endpoint',   hint: 'Lists all trust marks issued by this authority' },
-    { claim: 'trust_mark_endpoint',        label: 'Trust Mark Fetch Endpoint',  hint: 'Fetches a specific trust mark JWT' },
+  // All federation_entity metadata endpoint fields (§5.1.1 + §8.x)
+  const FEDERATION_ENDPOINT_FIELDS = [
+    { claim: 'federation_fetch_endpoint',            label: 'Fetch Endpoint',                hint: 'MUST for Trust Anchors & intermediates. Used to download Subordinate Statements.' },
+    { claim: 'federation_list_endpoint',             label: 'List Endpoint',                 hint: 'MUST for Trust Anchors & intermediates. Lists Immediate Subordinates.' },
+    { claim: 'federation_resolve_endpoint',          label: 'Resolve Endpoint',              hint: 'Optional. Returns Resolved Metadata + Trust Chain for a given subject.' },
+    { claim: 'federation_historical_keys_endpoint',  label: 'Historical Keys Endpoint',      hint: 'Optional. Allows retrieval of previously used signing keys.' },
+    { claim: 'federation_trust_mark_status_endpoint', label: 'Trust Mark Status Endpoint',  hint: 'Trust Mark Issuers SHOULD publish this. Checks whether a trust mark is still active.' },
+    { claim: 'federation_trust_mark_list_endpoint',   label: 'Trust Mark List Endpoint',    hint: 'Optional for Trust Mark Issuers. Lists entities that hold a particular trust mark.' },
+    { claim: 'federation_trust_mark_endpoint',        label: 'Trust Mark Fetch Endpoint',   hint: 'Optional for Trust Mark Issuers. Returns the trust mark JWT for a subject.' },
   ];
 
-  const currentTmEndpoints: Record<string, string> = {
-    trust_mark_status_endpoint: (metadata as any)?.federation_entity?.trust_mark_status_endpoint ?? '',
-    trust_mark_list_endpoint:   (metadata as any)?.federation_entity?.trust_mark_list_endpoint ?? '',
-    trust_mark_endpoint:        (metadata as any)?.federation_entity?.trust_mark_endpoint ?? '',
-  };
+  const currentFedEndpoints: Record<string, string> = Object.fromEntries(
+    FEDERATION_ENDPOINT_FIELDS.map(({ claim }) => [
+      claim,
+      (metadata as any)?.federation_entity?.[claim] ?? '',
+    ])
+  );
+
+  // Keep old alias for backwards compat in render
+  const TRUST_MARK_ENDPOINT_FIELDS = FEDERATION_ENDPOINT_FIELDS;
+  const currentTmEndpoints: Record<string, string> = currentFedEndpoints;
 
   return (
     <div className="space-y-6">
@@ -461,13 +471,14 @@ function EntityConfigSection() {
         onClose={() => setViewJwt(null)}
       />
 
-      {/* Trust Mark Public Endpoints shortcut */}
+      {/* Federation Entity Metadata Endpoints (§5.1.1) */}
       <Card>
         <CardHeader>
-          <CardTitle>Trust Mark Public Endpoints</CardTitle>
+          <CardTitle>Federation Entity Endpoints</CardTitle>
           <CardDescription>
-            Publish the URLs of the public trust mark endpoints in the <code className="text-xs bg-muted px-1 rounded">federation_entity</code> metadata.
-            These are required for §8.4 status checks, §8.5 listing, and §8.6 fetch.
+            URLs published under the <code className="text-xs bg-muted px-1 rounded">federation_entity</code> metadata key.
+            Trust Anchors and intermediates MUST publish fetch and list endpoints.
+            Trust Mark Issuers SHOULD publish the trust mark status endpoint.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -527,11 +538,14 @@ function EntityConfigSection() {
         </CardContent>
       </Card>
 
+      {/* Informational Metadata (§5.2.2) */}
+      <InformationalMetadataCard metadata={metadata} updateClaim={updateClaim} deleteMetaClaim={deleteMetaClaim} metaLoading={metaLoading} />
+
       {/* Entity Config Metadata */}
       <Card>
         <CardHeader>
-          <CardTitle>Entity Metadata</CardTitle>
-          <CardDescription>Metadata published in your entity configuration (per entity type)</CardDescription>
+          <CardTitle>Entity Metadata (Raw)</CardTitle>
+          <CardDescription>Full metadata JSON published in the entity configuration (per entity type)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {metaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : metaEditing ? (
@@ -719,6 +733,7 @@ function GeneralConstraintsSection() {
   const {
     constraints, isLoading,
     setMaxPathLength, deleteMaxPathLength,
+    setNamingConstraints, deleteNamingConstraints,
     addAllowedEntityType, deleteAllowedEntityType,
   } = useGeneralConstraints();
   const {
@@ -728,11 +743,15 @@ function GeneralConstraintsSection() {
   const [newMaxPath, setNewMaxPath] = useState('');
   const [newEntityType, setNewEntityType] = useState('');
   const [newOp, setNewOp] = useState('');
+  const [newPermitted, setNewPermitted] = useState('');
+  const [newExcluded, setNewExcluded] = useState('');
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   const maxPath = constraints?.max_path_length;
   const naming = constraints?.naming_constraints;
+  const permitted: string[] = naming?.permitted ?? [];
+  const excluded: string[] = naming?.excluded ?? [];
   const allowed: string[] = (constraints as any)?.allowed_entity_types ?? [];
 
   return (
@@ -765,15 +784,86 @@ function GeneralConstraintsSection() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Naming Constraints</CardTitle>
-            <CardDescription>Permitted / excluded entity ID patterns</CardDescription>
+            <CardDescription>
+              URI domain patterns that subordinate entity identifiers must match.
+              A leading dot means any subdomain, e.g. <code className="text-xs bg-muted px-1 rounded">.example.com</code>.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {naming ? (
-              <ScrollArea className="h-40 rounded-md border p-3">
-                <pre className="text-xs font-mono">{JSON.stringify(naming, null, 2)}</pre>
-              </ScrollArea>
-            ) : (
-              <p className="text-sm text-muted-foreground">Not configured</p>
+          <CardContent className="space-y-4">
+            {/* Permitted */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Permitted</Label>
+              {permitted.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {permitted.map(p => (
+                    <Badge key={p} variant="secondary" className="font-mono gap-1 pr-1">
+                      {p}
+                      <button
+                        className="ml-1 rounded-full hover:bg-muted p-0.5"
+                        onClick={() => {
+                          const next = permitted.filter(x => x !== p);
+                          setNamingConstraints.mutateAsync({ permitted: next.length ? next : undefined, excluded: excluded.length ? excluded : undefined })
+                            .then(() => toast({ title: 'Updated' }));
+                        }}
+                      ><XCircle className="w-3 h-3" /></button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">None — no domain restrictions on permitted patterns</p>
+              )}
+              <div className="flex gap-2">
+                <Input placeholder=".example.com" value={newPermitted} onChange={e => setNewPermitted(e.target.value)} className="max-w-xs font-mono text-sm" />
+                <Button size="sm" disabled={!newPermitted.trim() || setNamingConstraints.isPending}
+                  onClick={() => {
+                    const next = [...permitted, newPermitted.trim()];
+                    setNamingConstraints.mutateAsync({ permitted: next, excluded: excluded.length ? excluded : undefined })
+                      .then(() => { setNewPermitted(''); toast({ title: 'Permitted pattern added' }); });
+                  }}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+            <Separator />
+            {/* Excluded */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Excluded</Label>
+              {excluded.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {excluded.map(e => (
+                    <Badge key={e} variant="destructive" className="font-mono gap-1 pr-1 bg-destructive/10 text-destructive border-destructive/30">
+                      {e}
+                      <button
+                        className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"
+                        onClick={() => {
+                          const next = excluded.filter(x => x !== e);
+                          setNamingConstraints.mutateAsync({ permitted: permitted.length ? permitted : undefined, excluded: next.length ? next : undefined })
+                            .then(() => toast({ title: 'Updated' }));
+                        }}
+                      ><XCircle className="w-3 h-3" /></button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">None — no domains excluded</p>
+              )}
+              <div className="flex gap-2">
+                <Input placeholder="east.example.com" value={newExcluded} onChange={ev => setNewExcluded(ev.target.value)} className="max-w-xs font-mono text-sm" />
+                <Button size="sm" variant="outline" disabled={!newExcluded.trim() || setNamingConstraints.isPending}
+                  onClick={() => {
+                    const next = [...excluded, newExcluded.trim()];
+                    setNamingConstraints.mutateAsync({ permitted: permitted.length ? permitted : undefined, excluded: next })
+                      .then(() => { setNewExcluded(''); toast({ title: 'Excluded pattern added' }); });
+                  }}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+            {(permitted.length > 0 || excluded.length > 0) && (
+              <Button size="sm" variant="ghost" className="text-destructive"
+                onClick={() => deleteNamingConstraints.mutateAsync().then(() => toast({ title: 'Naming constraints cleared' }))}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear all naming constraints
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -931,5 +1021,151 @@ function MetadataPoliciesSection() {
         </Card>
       )}
     </div>
+  );
+}
+
+/* ─── Informational Metadata (§5.2.2) ─── */
+function InformationalMetadataCard({
+  metadata,
+  updateClaim,
+  deleteMetaClaim,
+  metaLoading,
+}: {
+  metadata: any;
+  updateClaim: any;
+  deleteMetaClaim: any;
+  metaLoading: boolean;
+}) {
+  const { toast } = useToast();
+  const entityType = 'federation_entity';
+
+  const SINGLE_FIELDS: { claim: string; label: string; placeholder: string; hint: string }[] = [
+    { claim: 'organization_name', label: 'Organization Name', placeholder: 'My Federation Operator', hint: 'RECOMMENDED. Human-readable name of the organization owning this entity.' },
+    { claim: 'display_name',      label: 'Display Name',      placeholder: 'FedOps',                 hint: 'Human-readable name presented to end-users.' },
+    { claim: 'description',       label: 'Description',       placeholder: 'Brief description…',     hint: 'Short human-readable description of this entity.' },
+    { claim: 'logo_uri',          label: 'Logo URI',          placeholder: 'https://…/logo.svg',     hint: 'URL pointing to a logo image for this entity.' },
+    { claim: 'policy_uri',        label: 'Policy URI',        placeholder: 'https://…/policy.html',  hint: 'URL for documentation of conditions and policies relevant to this entity.' },
+    { claim: 'information_uri',   label: 'Information URI',   placeholder: 'https://…/info',         hint: 'URL for additional information about this entity.' },
+    { claim: 'organization_uri',  label: 'Organization URI',  placeholder: 'https://…',              hint: 'URL of a web page for the organization owning this entity.' },
+  ];
+
+  // contacts is an array — manage as a list
+  const savedContacts: string[] = metadata?.[entityType]?.contacts ?? [];
+  const [newContact, setNewContact] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  if (metaLoading) return <Card><CardContent className="py-6"><Loader2 className="w-4 h-4 animate-spin" /></CardContent></Card>;
+
+  const saved = (claim: string): string => metadata?.[entityType]?.[claim] ?? '';
+  const draftVal = (claim: string) => drafts[claim] ?? saved(claim);
+  const isDirty = (claim: string) => draftVal(claim) !== saved(claim);
+
+  const saveField = (claim: string) => {
+    const val = draftVal(claim);
+    const action = val
+      ? updateClaim.mutateAsync({ entityType, claim, value: val })
+      : deleteMetaClaim.mutateAsync({ entityType, claim });
+    action
+      .then(() => {
+        setDrafts(p => { const n = { ...p }; delete n[claim]; return n; });
+        toast({ title: 'Saved', description: claim });
+      })
+      .catch(() => toast({ variant: 'destructive', title: 'Error', description: `Failed to update ${claim}` }));
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Informational Metadata</CardTitle>
+        <CardDescription>
+          Common metadata parameters published under{' '}
+          <code className="text-xs bg-muted px-1 rounded">federation_entity</code>.
+          These fields describe the organization and are visible to federation participants.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {SINGLE_FIELDS.map(({ claim, label, placeholder, hint }) => (
+          <div key={claim} className="space-y-1.5">
+            <Label htmlFor={`info-${claim}`}>{label}</Label>
+            <div className="flex gap-2">
+              <Input
+                id={`info-${claim}`}
+                placeholder={placeholder}
+                value={draftVal(claim)}
+                onChange={e => setDrafts(p => ({ ...p, [claim]: e.target.value }))}
+                className="flex-1 text-sm"
+              />
+              <Button size="sm" disabled={!isDirty(claim) || updateClaim.isPending} onClick={() => saveField(claim)}>
+                {updateClaim.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+              </Button>
+              {saved(claim) && (
+                <Button size="sm" variant="ghost" onClick={() => {
+                  deleteMetaClaim.mutateAsync({ entityType, claim })
+                    .then(() => { setDrafts(p => { const n = { ...p }; delete n[claim]; return n; }); toast({ title: 'Cleared', description: claim }); });
+                }}>
+                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{hint}</p>
+          </div>
+        ))}
+
+        <Separator />
+
+        {/* contacts — array field */}
+        <div className="space-y-2">
+          <Label>Contacts</Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            JSON array with contact persons/emails for this entity.
+          </p>
+          {savedContacts.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {savedContacts.map((c: string) => (
+                <Badge key={c} variant="secondary" className="gap-1 pr-1">
+                  {c}
+                  <button
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    onClick={() => {
+                      const next = savedContacts.filter(x => x !== c);
+                      (next.length
+                        ? updateClaim.mutateAsync({ entityType, claim: 'contacts', value: next })
+                        : deleteMetaClaim.mutateAsync({ entityType, claim: 'contacts' })
+                      ).then(() => toast({ title: 'Contact removed' }));
+                    }}
+                  ><XCircle className="w-3 h-3" /></button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No contacts configured</p>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="ops@example.org"
+              value={newContact}
+              onChange={e => setNewContact(e.target.value)}
+              className="max-w-xs text-sm"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newContact.trim()) {
+                  e.preventDefault();
+                  const next = [...savedContacts, newContact.trim()];
+                  updateClaim.mutateAsync({ entityType, claim: 'contacts', value: next })
+                    .then(() => { setNewContact(''); toast({ title: 'Contact added' }); });
+                }
+              }}
+            />
+            <Button size="sm" disabled={!newContact.trim() || updateClaim.isPending}
+              onClick={() => {
+                const next = [...savedContacts, newContact.trim()];
+                updateClaim.mutateAsync({ entityType, claim: 'contacts', value: next })
+                  .then(() => { setNewContact(''); toast({ title: 'Contact added' }); });
+              }}>
+              <Plus className="w-4 h-4 mr-1" /> Add
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
