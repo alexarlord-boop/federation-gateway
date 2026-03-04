@@ -305,7 +305,7 @@ function EntityConfigSection() {
     trustMarks, isLoading: tmLoading, create: createTm, remove: removeTm,
   } = useEntityConfigTrustMarks();
   const {
-    metadata, isLoading: metaLoading, updateAll: updateMeta,
+    metadata, isLoading: metaLoading, updateAll: updateMeta, updateClaim, deleteClaim: deleteMetaClaim,
   } = useEntityConfigMetadata();
 
   const [newClaimKey, setNewClaimKey] = useState('');
@@ -316,6 +316,19 @@ function EntityConfigSection() {
   const [viewJwt, setViewJwt] = useState<string | null>(null);
   const [metaDraft, setMetaDraft] = useState('');
   const [metaEditing, setMetaEditing] = useState(false);
+  const [tmEndpoints, setTmEndpoints] = useState<Record<string, string>>({});
+
+  const TRUST_MARK_ENDPOINT_FIELDS = [
+    { claim: 'trust_mark_status_endpoint', label: 'Trust Mark Status Endpoint', hint: 'Checks whether a trust mark is still valid' },
+    { claim: 'trust_mark_list_endpoint',   label: 'Trust Mark List Endpoint',   hint: 'Lists all trust marks issued by this authority' },
+    { claim: 'trust_mark_endpoint',        label: 'Trust Mark Fetch Endpoint',  hint: 'Fetches a specific trust mark JWT' },
+  ];
+
+  const currentTmEndpoints: Record<string, string> = {
+    trust_mark_status_endpoint: (metadata as any)?.federation_entity?.trust_mark_status_endpoint ?? '',
+    trust_mark_list_endpoint:   (metadata as any)?.federation_entity?.trust_mark_list_endpoint ?? '',
+    trust_mark_endpoint:        (metadata as any)?.federation_entity?.trust_mark_endpoint ?? '',
+  };
 
   return (
     <div className="space-y-6">
@@ -447,6 +460,72 @@ function EntityConfigSection() {
         open={viewJwt !== null}
         onClose={() => setViewJwt(null)}
       />
+
+      {/* Trust Mark Public Endpoints shortcut */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Trust Mark Public Endpoints</CardTitle>
+          <CardDescription>
+            Publish the URLs of the public trust mark endpoints in the <code className="text-xs bg-muted px-1 rounded">federation_entity</code> metadata.
+            These are required for §8.4 status checks, §8.5 listing, and §8.6 fetch.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {metaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+            <>
+              {TRUST_MARK_ENDPOINT_FIELDS.map(({ claim, label, hint }) => {
+                const saved = currentTmEndpoints[claim];
+                const draft = tmEndpoints[claim] ?? saved;
+                const isDirty = draft !== saved;
+                return (
+                  <div key={claim} className="space-y-1.5">
+                    <Label htmlFor={`tme-${claim}`}>{label}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id={`tme-${claim}`}
+                        placeholder="https://"
+                        value={draft}
+                        onChange={(e) => setTmEndpoints((p) => ({ ...p, [claim]: e.target.value }))}
+                        className="flex-1 font-mono text-sm"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={!isDirty || updateClaim.isPending}
+                        onClick={() => {
+                          if (!draft) {
+                            deleteMetaClaim.mutateAsync({ entityType: 'federation_entity', claim }).then(() => {
+                              setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
+                              toast({ title: 'Cleared', description: label });
+                            });
+                          } else {
+                            updateClaim.mutateAsync({ entityType: 'federation_entity', claim, value: draft }).then(() => {
+                              setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
+                              toast({ title: 'Saved', description: label });
+                            });
+                          }
+                        }}
+                      >
+                        {updateClaim.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                      </Button>
+                      {saved && (
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          deleteMetaClaim.mutateAsync({ entityType: 'federation_entity', claim }).then(() => {
+                            setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
+                            toast({ title: 'Cleared', description: label });
+                          });
+                        }}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{hint}</p>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Entity Config Metadata */}
       <Card>
