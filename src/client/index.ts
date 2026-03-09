@@ -22,6 +22,7 @@ export type { AddTrustMarkOwnerCreate } from './models/AddTrustMarkOwnerCreate';
 export type { AddTrustMarkSpec } from './models/AddTrustMarkSpec';
 export type { AddTrustMarkSubject } from './models/AddTrustMarkSubject';
 export type { AddTrustMarkType } from './models/AddTrustMarkType';
+export type { SelfIssuedTrustMarkSpec } from './models/SelfIssuedTrustMarkSpec';
 export type { AllowedEntityTypes } from './models/AllowedEntityTypes';
 export type { AnyValue } from './models/AnyValue';
 export type { AuthorityHint } from './models/AuthorityHint';

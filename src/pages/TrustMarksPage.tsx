@@ -602,6 +602,23 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
   );
 }
 
+// ── Federation Trust Marks Tab (sub-tabbed) ─────────────
+
+function FederationTrustMarksTab() {
+  return (
+    <Tabs defaultValue="types" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="types">Types</TabsTrigger>
+        <TabsTrigger value="owners">Owners</TabsTrigger>
+        <TabsTrigger value="issuers">Issuers</TabsTrigger>
+      </TabsList>
+      <TabsContent value="types"><TrustMarkTypesTab /></TabsContent>
+      <TabsContent value="owners"><OwnersTab /></TabsContent>
+      <TabsContent value="issuers"><IssuersTab /></TabsContent>
+    </Tabs>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function TrustMarksPage() {
@@ -612,7 +629,7 @@ export default function TrustMarksPage() {
   const showFederation = isFeatureEnabled('federation_trust_marks');
   const showIssuance = isFeatureEnabled('trust_mark_issuance');
 
-  const defaultTab = showSelf ? 'self' : showFederation ? 'types' : 'issuance';
+  const defaultTab = showSelf ? 'self' : showFederation ? 'federation' : 'issuance';
 
   if (!activeTrustAnchor) {
     return (
@@ -640,9 +657,9 @@ export default function TrustMarksPage() {
         <div>
           <p className="font-medium text-info">Trust Mark Management</p>
           <p className="text-sm text-muted-foreground">
-            <strong>My Trust Marks</strong> shows entity-config-level trust marks with JWT validity.
-            <strong> Types / Owners / Issuers</strong> manage the federation-wide registry.
-            <strong> Issuance</strong> controls which entities may receive each mark.
+            <strong>My Trust Marks</strong> shows the trust marks your entity holds and publishes in its own entity configuration.
+            <strong> Federation Trust Marks</strong> manages the registry of types, owners, and issuers used across the federation.
+            <strong> Issuance</strong> controls which entities may receive each mark you issue.
           </p>
         </div>
       </div>
@@ -650,15 +667,11 @@ export default function TrustMarksPage() {
       <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList>
           {showSelf && <TabsTrigger value="self">My Trust Marks</TabsTrigger>}
-          {showFederation && <TabsTrigger value="types">Types</TabsTrigger>}
-          {showFederation && <TabsTrigger value="owners">Owners</TabsTrigger>}
-          {showFederation && <TabsTrigger value="issuers">Issuers</TabsTrigger>}
+          {showFederation && <TabsTrigger value="federation">Federation Trust Marks</TabsTrigger>}
           {showIssuance && <TabsTrigger value="issuance">Issuance</TabsTrigger>}
         </TabsList>
         {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
-        {showFederation && <TabsContent value="types"><TrustMarkTypesTab /></TabsContent>}
-        {showFederation && <TabsContent value="owners"><OwnersTab /></TabsContent>}
-        {showFederation && <TabsContent value="issuers"><IssuersTab /></TabsContent>}
+        {showFederation && <TabsContent value="federation"><FederationTrustMarksTab /></TabsContent>}
         {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
       </Tabs>
     </div>

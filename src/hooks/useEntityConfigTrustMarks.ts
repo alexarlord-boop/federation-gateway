@@ -31,8 +31,16 @@ export const useEntityConfigTrustMarks = () => {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateTrustMark }) =>
+    mutationFn: ({ id, data }: { id: number; data: AddTrustMark }) =>
       EntityConfigurationTrustMarksService.updateEntityConfigurationTrustMark(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entity-config-trust-marks', instanceId] });
+    },
+  });
+
+  const patch = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateTrustMark }) =>
+      EntityConfigurationTrustMarksService.patchEntityConfigurationTrustMark(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entity-config-trust-marks', instanceId] });
     },
@@ -52,6 +60,7 @@ export const useEntityConfigTrustMarks = () => {
     error: query.error,
     create,
     update,
+    patch,
     remove,
   };
 };

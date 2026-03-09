@@ -66,18 +66,44 @@ export class EntityConfigurationTrustMarksService {
         });
     }
     /**
-     * Update a trust mark
+     * Replace a trust mark (full replace)
      * @param trustMarkId A unique identifier for a Trust Mark
-     * @param requestBody Update a trust mark. Only `trust_mark_issuer` and/or `trust_mark` can be updated.
-     * @returns TrustMark Successful response - returns the updated trust mark.
+     * @param requestBody Replace a trust mark configuration entirely.
+     * @returns TrustMark Successful response - returns the replaced trust mark.
      * @throws ApiError
      */
     public static updateEntityConfigurationTrustMark(
         trustMarkId: InternalID,
-        requestBody: UpdateTrustMark,
+        requestBody: AddTrustMark,
     ): CancelablePromise<TrustMark> {
         return __request(OpenAPI, {
             method: 'PUT',
+            url: '/api/v1/admin/entity-configuration/trust-marks/{trustMarkID}',
+            path: {
+                'trustMarkID': trustMarkId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `Invalid request parameters`,
+                404: `The requested resource was not found`,
+                500: `Internal server error`,
+            },
+        });
+    }
+    /**
+     * Partially update a trust mark
+     * @param trustMarkId A unique identifier for a Trust Mark
+     * @param requestBody Partially update a trust mark configuration. Only provided fields will be updated.
+     * @returns TrustMark Successful response - returns the updated trust mark.
+     * @throws ApiError
+     */
+    public static patchEntityConfigurationTrustMark(
+        trustMarkId: InternalID,
+        requestBody: UpdateTrustMark,
+    ): CancelablePromise<TrustMark> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
             url: '/api/v1/admin/entity-configuration/trust-marks/{trustMarkID}',
             path: {
                 'trustMarkID': trustMarkId,

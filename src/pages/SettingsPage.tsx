@@ -311,12 +311,12 @@ function EntityConfigSection() {
   const [newClaimKey, setNewClaimKey] = useState('');
   const [newClaimValue, setNewClaimValue] = useState('');
   const [lifetimeVal, setLifetimeVal] = useState('');
-  const [newTmId, setNewTmId] = useState('');
+  const [newTmType, setNewTmType] = useState('');
+  const [newTmIssuer, setNewTmIssuer] = useState('');
   const [newTmTrust, setNewTmTrust] = useState('');
   const [viewJwt, setViewJwt] = useState<string | null>(null);
   const [metaDraft, setMetaDraft] = useState('');
   const [metaEditing, setMetaEditing] = useState(false);
-  const [tmEndpoints, setTmEndpoints] = useState<Record<string, string>>({});
 
   // All federation_entity metadata endpoint fields (§5.1.1 + §8.x)
   const FEDERATION_ENDPOINT_FIELDS = [
@@ -447,17 +447,22 @@ function EntityConfigSection() {
               ) : (
                 <p className="text-sm text-muted-foreground">No trust marks</p>
               )}
-              <div className="flex gap-2">
-                <Input placeholder="trust_mark_id" value={newTmId} onChange={e => setNewTmId(e.target.value)} className="max-w-[250px]" />
-                <Input placeholder="trust_mark JWT (optional)" value={newTmTrust} onChange={e => setNewTmTrust(e.target.value)} className="flex-1" />
-                <Button size="sm" disabled={!newTmId || createTm.isPending}
-                  onClick={() => {
-                    createTm.mutateAsync({ trust_mark_id: newTmId, trust_mark: newTmTrust || undefined } as any)
-                      .then(() => { setNewTmId(''); setNewTmTrust(''); toast({ title: 'Trust mark added' }); })
-                      .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add trust mark' }));
-                  }}>
-                  <Plus className="w-4 h-4 mr-1" /> Add
-                </Button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input placeholder="trust_mark_type URI" value={newTmType} onChange={e => setNewTmType(e.target.value)} className="flex-1" />
+                  <Input placeholder="trust_mark_issuer entity ID" value={newTmIssuer} onChange={e => setNewTmIssuer(e.target.value)} className="flex-1" />
+                </div>
+                <div className="flex gap-2">
+                  <Input placeholder="trust_mark JWT (optional)" value={newTmTrust} onChange={e => setNewTmTrust(e.target.value)} className="flex-1" />
+                  <Button size="sm" disabled={!newTmType || createTm.isPending}
+                    onClick={() => {
+                      createTm.mutateAsync({ trust_mark_type: newTmType, trust_mark_issuer: newTmIssuer || undefined, trust_mark: newTmTrust || undefined })
+                        .then(() => { setNewTmType(''); setNewTmIssuer(''); setNewTmTrust(''); toast({ title: 'Trust mark added' }); })
+                        .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add trust mark' }));
+                    }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -477,8 +482,7 @@ function EntityConfigSection() {
           <CardTitle>Federation Entity Endpoints</CardTitle>
           <CardDescription>
             URLs published under the <code className="text-xs bg-muted px-1 rounded">federation_entity</code> metadata key.
-            Trust Anchors and intermediates MUST publish fetch and list endpoints.
-            Trust Mark Issuers SHOULD publish the trust mark status endpoint.
+            These are derived from the server configuration and are read-only here.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -486,49 +490,16 @@ function EntityConfigSection() {
             <>
               {TRUST_MARK_ENDPOINT_FIELDS.map(({ claim, label, hint }) => {
                 const saved = currentTmEndpoints[claim];
-                const draft = tmEndpoints[claim] ?? saved;
-                const isDirty = draft !== saved;
                 return (
                   <div key={claim} className="space-y-1.5">
                     <Label htmlFor={`tme-${claim}`}>{label}</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id={`tme-${claim}`}
-                        placeholder="https://"
-                        value={draft}
-                        onChange={(e) => setTmEndpoints((p) => ({ ...p, [claim]: e.target.value }))}
-                        className="flex-1 font-mono text-sm"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={!isDirty || updateClaim.isPending}
-                        onClick={() => {
-                          if (!draft) {
-                            deleteMetaClaim.mutateAsync({ entityType: 'federation_entity', claim }).then(() => {
-                              setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
-                              toast({ title: 'Cleared', description: label });
-                            });
-                          } else {
-                            updateClaim.mutateAsync({ entityType: 'federation_entity', claim, value: draft }).then(() => {
-                              setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
-                              toast({ title: 'Saved', description: label });
-                            });
-                          }
-                        }}
-                      >
-                        {updateClaim.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
-                      </Button>
-                      {saved && (
-                        <Button size="sm" variant="ghost" onClick={() => {
-                          deleteMetaClaim.mutateAsync({ entityType: 'federation_entity', claim }).then(() => {
-                            setTmEndpoints((p) => { const n = { ...p }; delete n[claim]; return n; });
-                            toast({ title: 'Cleared', description: label });
-                          });
-                        }}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
+                    <Input
+                      id={`tme-${claim}`}
+                      readOnly
+                      value={saved ?? ''}
+                      placeholder="(not configured)"
+                      className="flex-1 font-mono text-sm bg-muted/50 cursor-default"
+                    />
                     <p className="text-xs text-muted-foreground">{hint}</p>
                   </div>
                 );
