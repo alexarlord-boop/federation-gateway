@@ -71,8 +71,8 @@ function AdditionalClaimsEditor({
         </div>
       )}
       <div className="flex gap-1.5">
-        <Input className="h-7 text-xs" placeholder="claim_name" value={key} onChange={e => setKey(e.target.value)} />
-        <Input className="h-7 text-xs flex-1" placeholder='"value" or true or 42' value={val} onChange={e => setVal(e.target.value)} />
+        <Input className="h-7 text-xs flex-1 min-w-0" placeholder="claim_name" value={key} onChange={e => setKey(e.target.value)} />
+        <Input className="h-7 text-xs flex-1 min-w-0" placeholder="string, number, or true/false" value={val} onChange={e => setVal(e.target.value)} />
         <Button size="sm" className="h-7 text-xs px-2" onClick={handleAdd} disabled={!key}>
           <Plus className="w-3 h-3" />
         </Button>
