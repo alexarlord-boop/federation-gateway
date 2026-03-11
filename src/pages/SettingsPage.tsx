@@ -453,10 +453,11 @@ function EntityConfigSection() {
                   <Input placeholder="trust_mark_issuer entity ID" value={newTmIssuer} onChange={e => setNewTmIssuer(e.target.value)} className="flex-1" />
                 </div>
                 <div className="flex gap-2">
-                  <Input placeholder="trust_mark JWT (optional)" value={newTmTrust} onChange={e => setNewTmTrust(e.target.value)} className="flex-1" />
-                  <Button size="sm" disabled={!newTmType || createTm.isPending}
+                  <Input placeholder="trust_mark JWT (optional if type + issuer given)" value={newTmTrust} onChange={e => setNewTmTrust(e.target.value)} className="flex-1" />
+                  <Button size="sm"
+                    disabled={!(newTmTrust || (newTmType && newTmIssuer)) || createTm.isPending}
                     onClick={() => {
-                      createTm.mutateAsync({ trust_mark_type: newTmType, trust_mark_issuer: newTmIssuer || undefined, trust_mark: newTmTrust || undefined })
+                      createTm.mutateAsync({ trust_mark_type: newTmType || undefined, trust_mark_issuer: newTmIssuer || undefined, trust_mark: newTmTrust || undefined })
                         .then(() => { setNewTmType(''); setNewTmIssuer(''); setNewTmTrust(''); toast({ title: 'Trust mark added' }); })
                         .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add trust mark' }));
                     }}>

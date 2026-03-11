@@ -241,7 +241,7 @@ export default function RBACManagementPage() {
           </TabsTrigger>
           <TabsTrigger value="permissions" className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
-            Permissions
+            Role Matrix
           </TabsTrigger>
           <TabsTrigger value="features" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -450,36 +450,6 @@ export default function RBACManagementPage() {
         <TabsContent value="permissions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>All Permissions</CardTitle>
-              <CardDescription>
-                {allPermissions.length} permissions generated from backend features (auto-seeded from OpenAPI spec)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isPermsLoading ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
-              ) : (
-                <div className="space-y-4">
-                  {Array.from(permissionsByFeature.entries()).map(([feature, perms]) => (
-                    <div key={feature} className="space-y-2">
-                      <h3 className="font-semibold capitalize">{feature.replace(/_/g, ' ')}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {perms.map((p) => (
-                          <Badge key={`${p.feature}:${p.operation}`} variant="outline" className="font-mono">
-                            {p.feature}:{p.operation}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Cross-reference: which role has which permissions */}
-          <Card>
-            <CardHeader>
               <CardTitle>Role / Permission Matrix</CardTitle>
               <CardDescription>Quick overview of which roles have access to which feature groups</CardDescription>
             </CardHeader>
@@ -540,7 +510,7 @@ export default function RBACManagementPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {features.map(([featureName, capabilityFeature]) => {
                   const feature = featureStateMap.get(featureName);
                   const enabled = feature?.enabled ?? capabilityFeature.enabled;
