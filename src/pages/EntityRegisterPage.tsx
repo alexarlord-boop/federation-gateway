@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
+import { gatewayFetch } from '@/lib/gateway-fetch';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
@@ -32,17 +33,18 @@ export default function EntityRegisterPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    entityId: 'https://idp.example.org',
+    entityId: '',
     trustAnchorId: '',
-    displayName: 'Friendly name for this entity',
-    organizationName: 'Organization',
-    description: 'Brief description of this entity...',
-    contactEmail: 'tech@example.org',
-    contactName: 'Contact name',
-    policyUri: 'https://example.org/policy',
+    displayName: '',
+    organizationName: '',
+    description: '',
+    contactEmail: '',
+    contactName: '',
+    policyUri: '',
     entityTypes: ['openid_provider'] as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -58,42 +60,56 @@ export default function EntityRegisterPage() {
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
 
+  const KNOWN_REGISTRY_TYPES: EntityType[] = [
+    'openid_provider', 'openid_relying_party', 'federation_entity',
+    'oauth_authorization_server', 'oauth_client', 'oauth_resource',
+  ];
+
   const handleFetchConfig = async () => {
     if (!formData.entityId) return;
-    
     setIsLoading(true);
-    // Simulate fetching entity configuration
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock fetched config
-    setFetchedConfig({
-      iss: formData.entityId,
-      sub: formData.entityId,
-      metadata: {
-        federation_entity: {
-          organization_name: 'Detected Organization',
-          contacts: ['tech@example.org'],
-        },
-        openid_provider: {
-          issuer: formData.entityId,
-          authorization_endpoint: `${formData.entityId}/authorize`,
-          token_endpoint: `${formData.entityId}/token`,
-        }
-      },
-      jwks: {
-        keys: [{ kty: 'RSA', use: 'sig', kid: 'key-1' }]
+    setFetchError(null);
+    try {
+      const result = await gatewayFetch<{ payload: Record<string, unknown>; raw_jwt: string }>({
+        path: `/api/v1/admin/resolve?entity_id=${encodeURIComponent(formData.entityId)}`,
+        softFail: [404, 422, 502, 503, 504],
+      });
+      if (result === null) {
+        const msg = 'Could not fetch entity configuration — enter details manually in the next step.';
+        setFetchError(msg);
+        setFetchedConfig({ iss: formData.entityId, metadata: null, _fetchFailed: true });
+      } else {
+        const payload = result.payload as any;
+        const fedEntity = payload.metadata?.federation_entity ?? {};
+        const contacts: unknown[] = fedEntity.contacts ?? [];
+        const firstContact = contacts[0];
+        const firstEmail =
+          typeof firstContact === 'string'
+            ? firstContact
+            : typeof firstContact === 'object' && firstContact !== null
+              ? (firstContact as any).email ?? ''
+              : '';
+        const detectedTypes = KNOWN_REGISTRY_TYPES.filter(
+          (t) => t in (payload.metadata ?? {}),
+        );
+        setFetchedConfig(payload);
+        setFormData((prev) => ({
+          ...prev,
+          organizationName: fedEntity.organization_name ?? prev.organizationName,
+          contactEmail: firstEmail || prev.contactEmail,
+          entityTypes: isIntermediate
+            ? ['federation_entity']
+            : detectedTypes.length > 0 ? detectedTypes : prev.entityTypes,
+        }));
       }
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      organizationName: 'Detected Organization',
-      contactEmail: 'tech@example.org',
-      entityTypes: isIntermediate ? ['federation_entity'] : prev.entityTypes,
-    }));
-    
-    setIsLoading(false);
-    setCurrentStep(1);
+    } catch {
+      const msg = 'Failed to reach the entity endpoint — enter details manually in the next step.';
+      setFetchError(msg);
+      setFetchedConfig({ iss: formData.entityId, metadata: null, _fetchFailed: true });
+    } finally {
+      setIsLoading(false);
+      setCurrentStep(1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -264,15 +280,27 @@ export default function EntityRegisterPage() {
       case 1:
         return (
           <div className="space-y-6">
-            <div className="p-4 bg-success/10 border border-success/30 rounded-lg flex items-start gap-3">
-              <Check className="w-5 h-5 text-success mt-0.5" />
-              <div>
-                <p className="font-medium text-success">Configuration Retrieved</p>
-                <p className="text-sm text-muted-foreground">
-                  Entity configuration was successfully fetched from the endpoint.
-                </p>
+            {fetchedConfig?._fetchFailed ? (
+              <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+                <div>
+                  <p className="font-medium text-warning">Configuration Not Available</p>
+                  <p className="text-sm text-muted-foreground">
+                    {fetchError ?? 'Could not fetch entity configuration.'} Review and complete the fields in the next step.
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 bg-success/10 border border-success/30 rounded-lg flex items-start gap-3">
+                <Check className="w-5 h-5 text-success mt-0.5" />
+                <div>
+                  <p className="font-medium text-success">Configuration Retrieved</p>
+                  <p className="text-sm text-muted-foreground">
+                    Entity configuration was successfully fetched from the endpoint.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>

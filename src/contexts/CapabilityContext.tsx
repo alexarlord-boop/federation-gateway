@@ -93,8 +93,9 @@ export function CapabilityProvider({ children }: CapabilityProviderProps) {
     // On error React Query keeps data undefined; we supply fallback below
   });
 
-  // Resolved manifest: real data, or fallback on error / first load
-  const capabilities = manifest ?? (rawError ? FALLBACK_MANIFEST : null);
+  // Use real data when available; null during load or on error (consumers
+  // already guard with `?? false`, so features are safely hidden on error).
+  const capabilities = manifest ?? null;
 
   const isFeatureEnabled = useCallback(
     (feature: string): boolean => {

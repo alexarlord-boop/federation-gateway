@@ -5,56 +5,43 @@
  * and deleting trust mark *types* — the top-level definitions that
  * describe what kinds of trust marks exist in the federation.
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { FederationTrustMarksService } from '@/client/services/FederationTrustMarksService';
 import type { TrustMarkType } from '@/client/models/TrustMarkType';
 import type { AddTrustMarkType } from '@/client/models/AddTrustMarkType';
-import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { useInstanceId, instanceQuery, useInstanceMutation } from '@/lib/instance-query';
 
 export const useTrustMarkType = (typeId: number) => {
-  const { activeTrustAnchor } = useTrustAnchor();
-  const instanceId = activeTrustAnchor?.id;
-  return useQuery<TrustMarkType>({
-    queryKey: ['trust-mark-type', instanceId, typeId],
-    queryFn: () => FederationTrustMarksService.getTrustMarkType(typeId),
-    enabled: !!instanceId && !!typeId,
-  });
+  const instanceId = useInstanceId();
+  return useQuery(
+    instanceQuery(
+      ['trust-mark-type', instanceId, typeId > 0 ? typeId : undefined],
+      () => FederationTrustMarksService.getTrustMarkType(typeId),
+    ),
+  );
 };
 
 export const useTrustMarkTypes = () => {
-  const { activeTrustAnchor } = useTrustAnchor();
-  const instanceId = activeTrustAnchor?.id;
-  const queryClient = useQueryClient();
+  const instanceId = useInstanceId();
+  const key = ['trust-mark-types', instanceId] as const;
 
-  const query = useQuery<TrustMarkType[]>({
-    queryKey: ['trust-mark-types', instanceId],
-    queryFn: () => FederationTrustMarksService.getTrustMarkTypes(),
-    enabled: !!instanceId,
-  });
+  const query = useQuery(instanceQuery(key, () => FederationTrustMarksService.getTrustMarkTypes()));
 
-  const create = useMutation({
-    mutationFn: (data: AddTrustMarkType) =>
-      FederationTrustMarksService.createTrustMarkType(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trust-mark-types', instanceId] });
-    },
-  });
+  const create = useInstanceMutation(
+    (data: AddTrustMarkType) => FederationTrustMarksService.createTrustMarkType(data),
+    () => [key],
+  );
 
-  const update = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AddTrustMarkType }) =>
+  const update = useInstanceMutation(
+    ({ id, data }: { id: number; data: AddTrustMarkType }) =>
       FederationTrustMarksService.updateTrustMarkType(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trust-mark-types', instanceId] });
-    },
-  });
+    () => [key],
+  );
 
-  const remove = useMutation({
-    mutationFn: (id: number) =>
-      FederationTrustMarksService.deleteTrustMarkType(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trust-mark-types', instanceId] });
-    },
-  });
+  const remove = useInstanceMutation(
+    (id: number) => FederationTrustMarksService.deleteTrustMarkType(id),
+    () => [key],
+  );
 
   return {
     trustMarkTypes: query.data ?? [],

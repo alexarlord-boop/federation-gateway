@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,21 +26,18 @@ import { useKeyManagement } from '@/hooks/useKeyManagement';
 import { useGeneralConstraints } from '@/hooks/useGeneralConstraints';
 import { useGeneralMetadataPolicies } from '@/hooks/useGeneralMetadataPolicies';
 import { useCriticalPolicyOperators } from '@/hooks/useCriticalPolicyOperators';
-import { useEntityConfigTrustMarks } from '@/hooks/useEntityConfigTrustMarks';
 import { useEntityConfigMetadata } from '@/hooks/useEntityConfigMetadata';
+import { SelfTrustMarksTab } from '@/components/trust-marks/SelfTrustMarksTab';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw, Eye,
+  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ValidityBadge } from '@/components/trust-marks/ValidityBadge';
-import { JwtDetailDialog } from '@/components/trust-marks/JwtDetailDialog';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
   const { activeTrustAnchor } = useTrustAnchor();
   const { toast } = useToast();
   const { isFeatureEnabled, isLoading: capLoading } = useCapabilities();
@@ -95,7 +91,6 @@ export default function SettingsPage() {
           {showKeys && <TabsTrigger value="keys">Keys &amp; KMS</TabsTrigger>}
           {showConstraints && <TabsTrigger value="constraints">Constraints</TabsTrigger>}
           {showPolicies && <TabsTrigger value="policies">Metadata Policies</TabsTrigger>}
-          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         {/* ───────── GENERAL ───────── */}
@@ -142,41 +137,6 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        {/* ───────── ACCOUNT ───────── */}
-        <TabsContent value="account" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Your personal information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue={user?.name} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue={user?.email} disabled />
-                </div>
-              </div>
-              {user?.organizationName && (
-                <div className="space-y-2">
-                  <Label htmlFor="org">Organization</Label>
-                  <Input id="org" defaultValue={user.organizationName} disabled />
-                </div>
-              )}
-              <Button>Save Changes</Button>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-              <CardDescription>Manage your password and security settings</CardDescription>
-            </CardHeader>
-            <CardContent><Button variant="outline">Update Password</Button></CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
@@ -302,19 +262,12 @@ function EntityConfigSection() {
     lifetime, lifetimeLoading, updateLifetime,
   } = useEntityConfiguration();
   const {
-    trustMarks, isLoading: tmLoading, create: createTm, remove: removeTm,
-  } = useEntityConfigTrustMarks();
-  const {
     metadata, isLoading: metaLoading, updateAll: updateMeta, updateClaim, deleteClaim: deleteMetaClaim,
   } = useEntityConfigMetadata();
 
   const [newClaimKey, setNewClaimKey] = useState('');
   const [newClaimValue, setNewClaimValue] = useState('');
   const [lifetimeVal, setLifetimeVal] = useState('');
-  const [newTmType, setNewTmType] = useState('');
-  const [newTmIssuer, setNewTmIssuer] = useState('');
-  const [newTmTrust, setNewTmTrust] = useState('');
-  const [viewJwt, setViewJwt] = useState<string | null>(null);
   const [metaDraft, setMetaDraft] = useState('');
   const [metaEditing, setMetaEditing] = useState(false);
 
@@ -414,75 +367,18 @@ function EntityConfigSection() {
         </CardContent>
       </Card>
 
-      {/* Entity Config Trust Marks */}
+      {/* Entity Configuration Trust Marks */}
       <Card>
         <CardHeader>
           <CardTitle>Entity Configuration Trust Marks</CardTitle>
-          <CardDescription>Trust marks included in your own entity configuration statement</CardDescription>
+          <CardDescription>Trust marks published in your entity configuration statement</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {tmLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-            <>
-              {trustMarks.length > 0 ? (
-                <div className="space-y-2">
-                  {trustMarks.map((tm: any) => (
-                    <div key={tm.id} className="flex items-center justify-between p-2 rounded bg-muted">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="min-w-0">
-                          <span className="text-sm font-mono truncate block" title={tm.trust_mark_type}>{tm.trust_mark_type}</span>
-                          {tm.trust_mark_issuer && (
-                            <span className="text-xs text-muted-foreground font-mono truncate block" title={tm.trust_mark_issuer}>{tm.trust_mark_issuer}</span>
-                          )}
-                        </div>
-                        {tm.trust_mark && <ValidityBadge jwt={tm.trust_mark} />}
-                      </div>
-                      <div className="flex items-center gap-1 ml-2 shrink-0">
-                        {tm.trust_mark && (
-                          <Button variant="ghost" size="icon" title="View JWT" onClick={() => setViewJwt(tm.trust_mark)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => removeTm.mutateAsync(tm.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No trust marks</p>
-              )}
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input placeholder="trust_mark_type URI" value={newTmType} onChange={e => setNewTmType(e.target.value)} className="flex-1" />
-                  <Input placeholder="trust_mark_issuer entity ID" value={newTmIssuer} onChange={e => setNewTmIssuer(e.target.value)} className="flex-1" />
-                </div>
-                <div className="flex gap-2">
-                  <Input placeholder="trust_mark JWT (optional if type + issuer given)" value={newTmTrust} onChange={e => setNewTmTrust(e.target.value)} className="flex-1" />
-                  <Button size="sm"
-                    disabled={!(newTmTrust || (newTmType && newTmIssuer)) || createTm.isPending}
-                    onClick={() => {
-                      createTm.mutateAsync({ trust_mark_type: newTmType || undefined, trust_mark_issuer: newTmIssuer || undefined, trust_mark: newTmTrust || undefined })
-                        .then(() => { setNewTmType(''); setNewTmIssuer(''); setNewTmTrust(''); toast({ title: 'Trust mark added' }); })
-                        .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add trust mark' }));
-                    }}>
-                    <Plus className="w-4 h-4 mr-1" /> Add
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+        <CardContent>
+          <SelfTrustMarksTab />
         </CardContent>
       </Card>
 
-      {/* JWT detail viewer */}
-      <JwtDetailDialog
-        jwt={viewJwt ?? ''}
-        open={viewJwt !== null}
-        onClose={() => setViewJwt(null)}
-      />
-
-      {/* Federation Entity Metadata Endpoints (§5.1.1) */}
+      {/* Federation Entity Metadata Endpoints (§5.1.1) */
       <Card>
         <CardHeader>
           <CardTitle>Federation Entity Endpoints</CardTitle>

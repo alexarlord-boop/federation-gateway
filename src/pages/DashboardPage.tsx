@@ -1,4 +1,4 @@
-import { Building2, Shield, ClipboardCheck, TrendingUp, Users, ArrowUpRight } from 'lucide-react';
+import { Building2, Shield, ClipboardCheck, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,14 +13,12 @@ function StatCard({
   value, 
   description, 
   icon: Icon, 
-  trend,
   href 
 }: { 
   title: string; 
   value: number | string; 
   description: string; 
   icon: React.ComponentType<{ className?: string }>;
-  trend?: { value: number; positive: boolean };
   href?: string;
 }) {
   const content = (
@@ -31,7 +29,6 @@ function StatCard({
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <p className="text-3xl font-bold mt-1">{value}</p>
             <p className="text-sm text-muted-foreground mt-1">{description}</p>
-            
           </div>
           <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
             <Icon className="w-6 h-6 text-accent" />
@@ -77,7 +74,6 @@ export default function DashboardPage() {
           value={isLoading ? "-" : totalEntities}
           description={`${isLoading ? "-" : activeEntities} active`}
           icon={Building2}
-          trend={{ value: 8, positive: true }}
           href="/entities"
         />
         <StatCard
