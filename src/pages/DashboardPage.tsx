@@ -1,4 +1,4 @@
-import { Building2, Shield, ClipboardCheck, Users } from 'lucide-react';
+import { Building2, Shield, ClipboardCheck, Users, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

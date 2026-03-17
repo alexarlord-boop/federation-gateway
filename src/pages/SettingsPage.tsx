@@ -378,7 +378,7 @@ function EntityConfigSection() {
         </CardContent>
       </Card>
 
-      {/* Federation Entity Metadata Endpoints (§5.1.1) */
+      {/* Federation Entity Metadata Endpoints (§5.1.1) */}
       <Card>
         <CardHeader>
           <CardTitle>Federation Entity Endpoints</CardTitle>
