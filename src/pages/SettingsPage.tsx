@@ -428,7 +428,12 @@ function EntityConfigSection() {
                   {trustMarks.map((tm: any) => (
                     <div key={tm.id} className="flex items-center justify-between p-2 rounded bg-muted">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-mono truncate">{tm.id ?? tm.trust_mark_id}</span>
+                        <div className="min-w-0">
+                          <span className="text-sm font-mono truncate block" title={tm.trust_mark_type}>{tm.trust_mark_type}</span>
+                          {tm.trust_mark_issuer && (
+                            <span className="text-xs text-muted-foreground font-mono truncate block" title={tm.trust_mark_issuer}>{tm.trust_mark_issuer}</span>
+                          )}
+                        </div>
                         {tm.trust_mark && <ValidityBadge jwt={tm.trust_mark} />}
                       </div>
                       <div className="flex items-center gap-1 ml-2 shrink-0">
