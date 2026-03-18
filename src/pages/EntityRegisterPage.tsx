@@ -153,7 +153,7 @@ export default function EntityRegisterPage() {
         await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
                registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
-             status: 'draft', // Submitted for review - demonstrates workflow state machine
+             status: 'pending', // Submitted for review
              trust_anchor_id: formData.trustAnchorId,
              metadata,
              description: formData.displayName // Use description for display name mapping
