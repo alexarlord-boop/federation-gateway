@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.user import User
 from app.models.trust_anchor import TrustAnchor
+from app.models.tenant import Tenant
 from app.auth.security import get_password_hash
 import json
 
@@ -55,6 +56,25 @@ def seed_data():
             ),
         ]
         db.add_all(trust_anchors)
+
+        # ── Tenants (mirror of trust_anchors for new data model) ──────────
+        tenants = [
+            Tenant(
+                id="tenant-1",
+                entity_id="https://ta.local.org",
+                name="Local Federation",
+                status="active",
+                admin_api_base_url="http://localhost:8765",
+            ),
+            Tenant(
+                id="tenant-2",
+                entity_id="https://ta.test.org",
+                name="Test Federation",
+                status="active",
+                admin_api_base_url="http://localhost:8765",
+            ),
+        ]
+        db.add_all(tenants)
 
         db.commit()
     finally:
