@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ArrowUpToLine, Server, Globe, ArrowDownToLine, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -273,9 +273,11 @@ function ConfigureTrustAnchorDialog({
   const [loaded, setLoaded] = useState(false);
   const { toast } = useToast();
 
-  // Populate form fields when config loads
-  const populateFromConfig = () => {
-    if (config && !loaded) {
+  // Auto-populate form fields whenever the dialog opens with a new target or
+  // when the config finishes loading.  The `loaded` flag prevents overwriting
+  // in-progress edits while the query is refetching.
+  useEffect(() => {
+    if (config && target && !loaded) {
       setOrganizationName(config.organization_name || '');
       setHomepageUri(config.homepage_uri || '');
       setContacts((config.contacts || []).join(', '));
@@ -283,12 +285,10 @@ function ConfigureTrustAnchorDialog({
       setJwksText(config.jwks ? JSON.stringify(config.jwks, null, 2) : '');
       setLoaded(true);
     }
-  };
-
-  // Reset loaded state when target changes
-  if (!target) {
-    if (loaded) setLoaded(false);
-  }
+    if (!target && loaded) {
+      setLoaded(false);
+    }
+  }, [config, target, loaded]);
 
   const handleSave = async () => {
     if (!target) return;
@@ -336,7 +336,6 @@ function ConfigureTrustAnchorDialog({
               placeholder="Example NREN"
               value={organizationName}
               onChange={(e) => setOrganizationName(e.target.value)}
-              onFocus={populateFromConfig}
               className="mt-1"
             />
           </div>

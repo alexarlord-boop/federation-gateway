@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useBackend } from '@/contexts/BackendContext';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { GATEWAY_BASE } from '@/lib/api-config';
 
 export function BackendSwitcher() {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
@@ -24,7 +25,11 @@ export function BackendSwitcher() {
       .map((ta) => ({
         id: `ta:${ta.id}`,
         name: ta.name,
-        baseUrl: ta.adminApiBaseUrl as string,
+        // Always use the gateway's own origin as the baseUrl so that the auth
+        // token scope key (derived from selectedBackend.baseUrl) never changes
+        // when switching instances.  Proxied calls to the Admin API go through
+        // GATEWAY_BASE/api/v1/proxy/{id} regardless of adminApiBaseUrl.
+        baseUrl: GATEWAY_BASE,
       }));
 
     if (discovered.length > 0) {
