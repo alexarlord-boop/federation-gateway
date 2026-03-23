@@ -90,7 +90,8 @@ def _resolve_instance(instance_id: str, db: Session) -> dict:
 
     return {
         "base_url": base_url,
-        "api_key": cfg.get("api_key"),  # Optional upstream auth
+        "api_key": cfg.get("api_key"),              # Optional Bearer token
+        "basic_credentials": cfg.get("basic_credentials"),  # Optional pre-encoded Basic creds
         "name": anchor.name,
     }
 
@@ -107,11 +108,9 @@ _HOP_BY_HOP = frozenset(
         "upgrade",
         "proxy-authorization",
         "proxy-authenticate",
-        # NOTE: authorization is intentionally NOT stripped here.
-        # When proxying to the same-origin backend the upstream endpoints
-        # need the user's Bearer token to authenticate the request.
-        # For external Admin APIs that supply their own api_key, the
-        # _build_upstream_headers function overwrites Authorization below.
+        # Strip the client's BFF Bearer JWT — LightHouse doesn't use it.
+        # Upstream auth (Basic or Bearer api_key) is injected below.
+        "authorization",
     }
 )
 
@@ -164,7 +163,9 @@ def _build_upstream_headers(
     headers["X-Gateway-User-Permissions"] = ",".join(permissions)
 
     # ---- Upstream auth ----
-    if instance.get("api_key"):
+    if instance.get("basic_credentials"):
+        headers["Authorization"] = f"Basic {instance['basic_credentials']}"
+    elif instance.get("api_key"):
         headers["Authorization"] = f"Bearer {instance['api_key']}"
 
     return headers

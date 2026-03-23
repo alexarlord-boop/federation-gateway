@@ -1,0 +1,14 @@
+# LightHouse configuration — managed in source control, not via shell writes.
+# All values here are overrideable via LH_* environment variables.
+
+server:
+  port: 8080
+
+storage:
+  data_dir: /data
+
+signing:
+  key_dir: /data/keys
+
+federation_data:
+  entity_id: "http://localhost:8081"

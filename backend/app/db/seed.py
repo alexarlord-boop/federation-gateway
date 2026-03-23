@@ -34,13 +34,13 @@ def seed_data():
         trust_anchors = [
             TrustAnchor(
                 id="ta-1",
-                name="Local Federation",
-                entity_id="https://ta.local.org",
-                description="Primary federation instance",
+                name="LightHouse",
+                entity_id="http://localhost:8080",
+                description="LightHouse federation node (oidfed/lighthouse)",
                 type="federation",
                 status="active",
-                subordinate_count=3,
-                config_json=json.dumps({"admin_api_base_url": "http://localhost:8765"}),
+                subordinate_count=0,
+                config_json=json.dumps({"admin_api_base_url": "http://lighthouse:8080"}),
                 jwks=None,
             ),
             TrustAnchor(
@@ -61,10 +61,10 @@ def seed_data():
         tenants = [
             Tenant(
                 id="tenant-1",
-                entity_id="https://ta.local.org",
-                name="Local Federation",
+                entity_id="http://localhost:8080",
+                name="LightHouse",
                 status="active",
-                admin_api_base_url="http://localhost:8765",
+                admin_api_base_url="http://lighthouse:8080",
             ),
             Tenant(
                 id="tenant-2",
