@@ -1,14 +1,24 @@
-# LightHouse configuration — managed in source control, not via shell writes.
+# LightHouse configuration (v0.20.0 schema).
 # All values here are overrideable via LH_* environment variables.
+
+entity_id: "http://localhost:8081"
 
 server:
   port: 8080
 
 storage:
+  driver: sqlite
   data_dir: /data
 
 signing:
-  key_dir: /data/keys
+  kms: filesystem
+  auto_generate_keys: true
+  filesystem:
+    key_dir: /data/keys
 
-federation_data:
-  entity_id: "http://localhost:8081"
+api:
+  admin:
+    enabled: true
+    users_enabled: false
+    actor_source: "header"
+    actor_header: "X-Gateway-User-Email"
