@@ -35,7 +35,7 @@ def seed_data():
             TrustAnchor(
                 id="ta-1",
                 name="LightHouse",
-                entity_id="http://localhost:8080",
+                entity_id="http://localhost:8081",
                 description="LightHouse federation node (oidfed/lighthouse)",
                 type="federation",
                 status="active",
@@ -61,7 +61,7 @@ def seed_data():
         tenants = [
             Tenant(
                 id="tenant-1",
-                entity_id="http://localhost:8080",
+                entity_id="http://localhost:8081",
                 name="LightHouse",
                 status="active",
                 admin_api_base_url="http://lighthouse:8080",
