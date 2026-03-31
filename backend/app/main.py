@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
-from app.routers import auth, subordinates, entity_configuration, debug, trust_anchors, capabilities, rbac, proxy, users, trust_marks
+from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, users
 from app.routers import resolve, tenants, tech_contacts, registrations
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
 # Import models so SQLAlchemy creates their tables via create_all
-import app.models.instance_data  # noqa: F401
 import app.models.tenant          # noqa: F401
 import app.models.tech_contact    # noqa: F401
 import app.models.entity_registration  # noqa: F401
@@ -64,12 +63,9 @@ app.add_middleware(
 app.include_router(capabilities.router)
 app.include_router(rbac.router)
 app.include_router(auth.router)
-app.include_router(subordinates.router)
-app.include_router(entity_configuration.router)
 app.include_router(debug.router)
 app.include_router(trust_anchors.router)
 app.include_router(users.router)
-app.include_router(trust_marks.router)
 app.include_router(resolve.router)
 # Tenant management, tech contacts, and registration workflow (BFF-owned).
 app.include_router(tenants.router)

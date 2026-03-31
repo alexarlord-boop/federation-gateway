@@ -4,7 +4,6 @@ import uuid
 import json
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
-from app.models.subordinate import Subordinate
 from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse, TrustAnchorConfig
 from app.auth.dependencies import require_permission
 
@@ -31,11 +30,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
                 description=a.description,
                 type=a.type,
                 status=a.status,
-                subordinate_count=db.query(Subordinate)
-                .filter(
-                    Subordinate.trust_anchor_id == a.id,
-                )
-                .count(),
+                subordinate_count=0,
                 admin_api_base_url=cfg.get("admin_api_base_url"),
                 created_at=a.created_at.isoformat() if a.created_at else None,
                 updated_at=a.updated_at.isoformat() if a.updated_at else None,
