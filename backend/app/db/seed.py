@@ -31,6 +31,10 @@ def seed_data():
         )
         db.add_all([admin, user])
 
+        # ── Trust Anchors ─────────────────────────────────────────────────
+        # Add one entry per LightHouse instance defined in docker-compose.yml.
+        # The admin_api_base_url must be the container-internal address
+        # (Docker service name + port) so the BFF proxy can reach it.
         trust_anchors = [
             TrustAnchor(
                 id="ta-1",
@@ -43,17 +47,18 @@ def seed_data():
                 config_json=json.dumps({"admin_api_base_url": "http://lighthouse:8080"}),
                 jwks=None,
             ),
-            TrustAnchor(
-                id="ta-2",
-                name="Test Federation",
-                entity_id="https://ta.test.org",
-                description="Testing environment",
-                type="test",
-                status="active",
-                subordinate_count=1,
-                config_json=json.dumps({"admin_api_base_url": "http://localhost:8765"}),
-                jwks=None,
-            ),
+            # To add a second instance, uncomment and adjust:
+            # TrustAnchor(
+            #     id="ta-2",
+            #     name="LightHouse (secondary)",
+            #     entity_id="http://localhost:8082",
+            #     description="Second LightHouse node",
+            #     type="federation",
+            #     status="active",
+            #     subordinate_count=0,
+            #     config_json=json.dumps({"admin_api_base_url": "http://lighthouse2:8080"}),
+            #     jwks=None,
+            # ),
         ]
         db.add_all(trust_anchors)
 
@@ -66,13 +71,13 @@ def seed_data():
                 status="active",
                 admin_api_base_url="http://lighthouse:8080",
             ),
-            Tenant(
-                id="tenant-2",
-                entity_id="https://ta.test.org",
-                name="Test Federation",
-                status="active",
-                admin_api_base_url="http://localhost:8765",
-            ),
+            # Tenant(
+            #     id="tenant-2",
+            #     entity_id="http://localhost:8082",
+            #     name="LightHouse (secondary)",
+            #     status="active",
+            #     admin_api_base_url="http://lighthouse2:8080",
+            # ),
         ]
         db.add_all(tenants)
 

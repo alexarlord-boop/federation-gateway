@@ -24,3 +24,19 @@ services:
       - ./lighthouse/data:/data
     environment:
       LH_CONFIG_FILE: "/config/config.yaml"
+
+  # To add a second LightHouse instance:
+  # 1. Uncomment this block and create lighthouse2/config.yaml + lighthouse2/data/
+  # 2. Uncomment the matching ta-2 / tenant-2 rows in backend/app/db/seed.py
+  # 3. Run: docker compose down -v && docker compose up -d
+  #
+  # lighthouse2:
+  #   image: oidfed/lighthouse:0.20.0
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8082:8080"
+  #   volumes:
+  #     - ./lighthouse2/config.yaml:/config/config.yaml:ro
+  #     - ./lighthouse2/data:/data
+  #   environment:
+  #     LH_CONFIG_FILE: "/config/config.yaml"
