@@ -392,9 +392,9 @@ function ConfigureTrustAnchorDialog({
 
 function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: ReturnType<typeof useTrustAnchors>['createTrustAnchor'] }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('Local Federation');
-  const [entityId, setEntityId] = useState('https://ta.local.org');
-  const [description, setDescription] = useState('Primary federation instance');
+  const [name, setName] = useState('');
+  const [entityId, setEntityId] = useState('');
+  const [description, setDescription] = useState('');
   const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
   const [type, setType] = useState('federation');
   const { toast } = useToast();
@@ -426,19 +426,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          if (!name) setName('Local Federation');
-          if (!entityId) setEntityId('https://ta.local.org');
-          if (!description) setDescription('Primary federation instance');
-          if (!adminApiBaseUrl) setAdminApiBaseUrl('');
-          if (!type) setType('federation');
-        }
-        setOpen(next);
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -481,8 +469,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="federation">Federation</SelectItem>
-                <SelectItem value="test">Test</SelectItem>
-                <SelectItem value="training">Training</SelectItem>
+                <SelectItem value="intermediate">Intermediate</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -528,7 +515,7 @@ export default function TrustAnchorsPage() {
 
   // My-level TAs (static config from mock data)
   const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor, deleteTrustAnchor } = useTrustAnchors();
-  const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'test' || ta.type === 'training');
+  const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'intermediate');
 
   // Superior TAs (via authority hints)
   const { hints: authorityHints, isLoading: isLoadingHints, deleteHint } = useAuthorityHints();

@@ -37,14 +37,22 @@ export function BackendSwitcher() {
     }
   }, [registerBackends, trustAnchors]);
 
+  // Only real (TA-backed) backends are shown and selectable.
+  const taBackends = backends.filter((b) => b.id.startsWith('ta:'));
+
   // Sync the active backend → TrustAnchorContext so pages that gate on
   // activeTrustAnchor (Settings, Trust Marks) know which instance is live.
+  // Also auto-select the first real TA when still on the placeholder default.
   useEffect(() => {
     const matched = trustAnchors.find((ta) => `ta:${ta.id}` === selectedBackend.id);
-    // Fall back to first available TA when selectedBackend is the default gateway
-    const active = matched ?? (trustAnchors.length > 0 ? trustAnchors[0] : null);
-    setActiveTrustAnchor(active);
-  }, [selectedBackend.id, trustAnchors, setActiveTrustAnchor]);
+    if (!matched && taBackends.length > 0) {
+      // Switch to first real instance silently (no reload needed — context
+      // invalidation in TrustAnchorContext handles refetching).
+      setSelectedBackend(taBackends[0].id);
+      return;
+    }
+    setActiveTrustAnchor(matched ?? (trustAnchors.length > 0 ? trustAnchors[0] : null));
+  }, [selectedBackend.id, trustAnchors, taBackends, setActiveTrustAnchor, setSelectedBackend]);
 
   return (
     <div className="px-3 pb-2">
@@ -65,7 +73,7 @@ export function BackendSwitcher() {
         <DropdownMenuContent className="w-[15rem]" align="start">
           <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {backends.map((backend) => (
+          {taBackends.map((backend) => (
             <DropdownMenuItem
               key={backend.id}
               className="cursor-pointer"
@@ -83,6 +91,11 @@ export function BackendSwitcher() {
               )}
             </DropdownMenuItem>
           ))}
+          {taBackends.length === 0 && (
+            <DropdownMenuItem disabled>
+              <span className="text-xs text-muted-foreground">No instances configured</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
