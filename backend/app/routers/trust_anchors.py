@@ -104,11 +104,11 @@ def get_trust_anchor_config(
             config.homepage_uri = cfg.get("homepage_uri")
             config.contacts = cfg.get("contacts")
             config.admin_api_base_url = cfg.get("admin_api_base_url")
-        except Exception:
-            pass
+        except Exception as e:
+            import sys
+            print(f"DEBUG config_json parse error: {e}", file=sys.stderr)
     if anchor.jwks:
         try:
-            import json
             config.jwks = json.loads(anchor.jwks)
         except Exception:
             pass
