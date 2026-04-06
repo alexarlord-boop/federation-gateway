@@ -9,13 +9,27 @@ jobs:
   e2e-bff:
     name: BFF-only E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: playwright-chromium-
       - name: Start full stack
-        run: docker compose up -d --wait || (sleep 15 && docker compose up -d)
+        run: docker compose up -d
+      - name: Wait for stack to be ready
+        run: |
+          echo "Waiting for UI at :8080..."
+          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
+            http://localhost:8080
+          echo "Waiting for BFF at :8765..."
+          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
+            http://localhost:8765/health || true
       - name: Install e2e deps
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run BFF tests
@@ -32,13 +46,27 @@ jobs:
   e2e-full:
     name: Full-stack E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: playwright-chromium-
       - name: Start full stack
-        run: docker compose up -d --wait || (sleep 15 && docker compose up -d)
+        run: docker compose up -d
+      - name: Wait for stack to be ready
+        run: |
+          echo "Waiting for UI at :8080..."
+          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
+            http://localhost:8080
+          echo "Waiting for BFF at :8765..."
+          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
+            http://localhost:8765/health || true
       - name: Install e2e deps
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run proxy tests
