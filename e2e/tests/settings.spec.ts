@@ -76,6 +76,7 @@ test.describe('Settings page @proxy', () => {
     await constraintsTab.click();
     await expect(constraintsTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('tabpanel')).toContainText(/allowed|constraint/i);
   });
 
   test('Metadata Policies tab displays correctly', async ({ instancePage: page }) => {
@@ -84,5 +85,6 @@ test.describe('Settings page @proxy', () => {
     await policiesTab.click();
     await expect(policiesTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('tabpanel')).toContainText(/policy|metadata/i);
   });
 });

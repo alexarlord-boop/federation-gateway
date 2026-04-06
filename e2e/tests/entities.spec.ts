@@ -42,13 +42,10 @@ test.describe('Entities page @proxy', () => {
     // The fetch will likely fail for fake entity, but we proceed anyway
     await expect(page.getByRole('button', { name: /next|continue/i }).or(page.getByRole('button', { name: /back/i }))).toBeVisible({ timeout: 10_000 });
 
-    // Skip to next step by clicking Next/continue (find navigation button)
-    const navButtons = page.getByRole('button').filter({ hasText: /next|continue|back/i });
-    const nextBtn = navButtons.filter({ hasText: /next|continue/i }).first();
-    
-    if (await nextBtn.isVisible()) {
-      await nextBtn.click();
-    }
+    // Skip to next step by clicking Next/continue
+    const nextBtn = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn).toBeVisible({ timeout: 5_000 });
+    await nextBtn.click();
 
     // Step 3: Enter additional details
     await expect(page.getByLabel(/display name/i)).toBeVisible({ timeout: 5_000 });
@@ -57,10 +54,9 @@ test.describe('Entities page @proxy', () => {
     await page.getByLabel(/technical contact email/i).fill('test@example.com');
 
     // Click next to go to review step
-    const nextBtn2 = page.getByRole('button').filter({ hasText: /next|continue/i }).first();
-    if (await nextBtn2.isVisible()) {
-      await nextBtn2.click();
-    }
+    const nextBtn2 = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn2).toBeVisible({ timeout: 5_000 });
+    await nextBtn2.click();
 
     // Step 4: Review & Submit - confirm checkbox and submit
     await expect(page.getByRole('heading', { name: /registration summary/i })).toBeVisible({ timeout: 5_000 });
@@ -90,7 +86,8 @@ test.describe('Entities page @proxy', () => {
     const firstEntityLink = page.locator('table tbody tr').first().locator('a[href*="/entities/"]');
     await expect(firstEntityLink).toBeVisible({ timeout: 10_000 });
     const href = await firstEntityLink.getAttribute('href');
-    await page.goto(`${APP_URL}${href}`);
+    expect(href).toBeTruthy();
+    await page.goto(`${APP_URL}${href!}`);
     await expect(page).toHaveURL(/\/entities\//);
   });
 
@@ -126,7 +123,9 @@ test.describe('Entities page @proxy', () => {
 
 test.describe.serial('Approvals page @proxy', () => {
   const testEntityId = `https://approval-test-${Date.now()}.example.com`;
-  let createdDisplayName: string | null = null;
+  const testEntityId2 = `https://approval-test2-${Date.now()}.example.com`;
+  let createdDisplayName1: string | null = null;
+  let createdDisplayName2: string | null = null;
 
   test('approvals page is accessible and shows heading', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
@@ -136,59 +135,78 @@ test.describe.serial('Approvals page @proxy', () => {
   });
 
   test('can register an entity with pending status for approval', async ({ instancePage: page }) => {
-    // Navigate to entities page
+    // Register entity 1
     await page.goto(`${APP_URL}/entities`);
     await page.getByRole('link', { name: /register entity/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
-    // Step 1: Enter entity ID
     await page.getByLabel(/entity id/i).fill(testEntityId);
 
-    // Select LightHouse trust anchor
     const trustAnchorSelect = page.locator('[role="button"]').filter({ hasText: /select a trust anchor/i }).first();
     await trustAnchorSelect.click();
     const lightHouseOption = page.getByRole('option', { name: /lighthouse/i });
     await lightHouseOption.click();
 
-    // Click fetch button
     await page.getByRole('button', { name: /fetch entity configuration/i }).click();
 
-    // Wait for next step to be available
     await expect(page.getByRole('button').filter({ hasText: /next|continue|back/i })).toBeVisible({ timeout: 10_000 });
 
-    // Navigate to step 3 (details)
-    const nextBtn = page.getByRole('button').filter({ hasText: /next|continue/i }).first();
-    if (await nextBtn.isVisible()) {
-      await nextBtn.click();
-    }
+    const nextBtn = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn).toBeVisible({ timeout: 5_000 });
+    await nextBtn.click();
 
-    // Fill required fields
-    const displayName = `Approval Test Entity ${Date.now()}`;
+    const displayName1 = `Approval Test Entity ${Date.now()}`;
     await expect(page.getByLabel(/display name/i)).toBeVisible({ timeout: 5_000 });
-    await page.getByLabel(/display name/i).fill(displayName);
+    await page.getByLabel(/display name/i).fill(displayName1);
     await page.getByLabel(/technical contact email/i).fill('approval@example.com');
 
-    // Continue to review step
-    const nextBtn2 = page.getByRole('button').filter({ hasText: /next|continue/i }).first();
-    if (await nextBtn2.isVisible()) {
-      await nextBtn2.click();
-    }
+    const nextBtn2 = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn2).toBeVisible({ timeout: 5_000 });
+    await nextBtn2.click();
 
-    // Review & submit
     await expect(page.getByRole('heading', { name: /registration summary/i })).toBeVisible({ timeout: 5_000 });
     await page.getByRole('checkbox').check();
-    
-    const submitButton = page.getByRole('button', { name: /submit|register/i }).first();
-    await submitButton.click();
+    await page.getByRole('button', { name: /submit|register/i }).first().click();
 
-    // Wait for redirect and capture entity ID from URL
     await expect(page).toHaveURL(/\/entities$/, { timeout: 10_000 });
-    
-    // The entity should now appear in list with pending status
-    await expect(page.getByText(new RegExp(displayName, 'i'))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(new RegExp(displayName1, 'i'))).toBeVisible({ timeout: 10_000 });
+    createdDisplayName1 = displayName1;
 
-    // Store display name for use in next test
-    createdDisplayName = displayName;
+    // Register entity 2
+    await page.getByRole('link', { name: /register entity/i }).click();
+    await expect(page).toHaveURL(/\/entities\/register/);
+
+    await page.getByLabel(/entity id/i).fill(testEntityId2);
+
+    const trustAnchorSelect2 = page.locator('[role="button"]').filter({ hasText: /select a trust anchor/i }).first();
+    await trustAnchorSelect2.click();
+    const lightHouseOption2 = page.getByRole('option', { name: /lighthouse/i });
+    await lightHouseOption2.click();
+
+    await page.getByRole('button', { name: /fetch entity configuration/i }).click();
+
+    await expect(page.getByRole('button').filter({ hasText: /next|continue|back/i })).toBeVisible({ timeout: 10_000 });
+
+    const nextBtn3 = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn3).toBeVisible({ timeout: 5_000 });
+    await nextBtn3.click();
+
+    const displayName2 = `Approval Test Entity2 ${Date.now()}`;
+    await expect(page.getByLabel(/display name/i)).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel(/display name/i).fill(displayName2);
+    await page.getByLabel(/technical contact email/i).fill('approval2@example.com');
+
+    const nextBtn4 = page.getByRole('button', { name: /next|continue/i }).first();
+    await expect(nextBtn4).toBeVisible({ timeout: 5_000 });
+    await nextBtn4.click();
+
+    await expect(page.getByRole('heading', { name: /registration summary/i })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('checkbox').check();
+    await page.getByRole('button', { name: /submit|register/i }).first().click();
+
+    await expect(page).toHaveURL(/\/entities$/, { timeout: 10_000 });
+    await expect(page.getByText(new RegExp(displayName2, 'i'))).toBeVisible({ timeout: 10_000 });
+    createdDisplayName2 = displayName2;
   });
 
   test('pending entity appears in approvals page pending tab', async ({ instancePage: page }) => {
@@ -203,8 +221,9 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click pending tab if not already selected
     await pendingTab.click();
 
-    // The newly created entity should appear in pending list
-    await expect(page.getByText(/approval test entity/i)).toBeVisible({ timeout: 10_000 });
+    // The newly created entities should appear in pending list
+    await expect(page.getByText(new RegExp(createdDisplayName1!, 'i'))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(new RegExp(createdDisplayName2!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
   test('can approve a pending entity from approvals page', async ({ instancePage: page }) => {
@@ -214,16 +233,14 @@ test.describe.serial('Approvals page @proxy', () => {
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
 
-    // Get all pending entity cards
-    const pendingCards = page.locator('article').filter({ has: page.getByRole('button', { name: /approve/i }) });
-    await expect(pendingCards.first()).toBeVisible({ timeout: 10_000 });
+    // Locate the card for entity 1 by its display name
+    const approveCard = page.locator('article, [data-testid], .card, li')
+      .filter({ hasText: createdDisplayName1! })
+      .filter({ has: page.getByRole('button', { name: /approve/i }) });
+    await expect(approveCard).toBeVisible({ timeout: 10_000 });
 
-    // Get the first pending card
-    const firstCard = pendingCards.first();
-    
-    // Click the Approve button
-    const approveButton = firstCard.getByRole('button', { name: /approve/i });
-    await approveButton.click();
+    // Click the Approve button on that card
+    await approveCard.getByRole('button', { name: /approve/i }).click();
 
     // Confirmation dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
@@ -241,16 +258,14 @@ test.describe.serial('Approvals page @proxy', () => {
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
 
-    // Get all pending entity cards (those with Reject button)
-    const pendingCards = page.locator('article').filter({ has: page.getByRole('button', { name: /reject/i }) });
-    await expect(pendingCards.first()).toBeVisible({ timeout: 10_000 });
+    // Locate the card for entity 2 by its display name
+    const rejectCard = page.locator('article, [data-testid], .card, li')
+      .filter({ hasText: createdDisplayName2! })
+      .filter({ has: page.getByRole('button', { name: /reject/i }) });
+    await expect(rejectCard).toBeVisible({ timeout: 10_000 });
 
-    // Get the first pending card
-    const firstCard = pendingCards.first();
-    
-    // Click the Reject button
-    const rejectButton = firstCard.getByRole('button', { name: /reject/i });
-    await rejectButton.click();
+    // Click the Reject button on that card
+    await rejectCard.getByRole('button', { name: /reject/i }).click();
 
     // Confirmation dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
@@ -267,6 +282,7 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click approved tab
     const approvedTab = page.getByRole('tab', { name: /approved/i });
     await approvedTab.click();
+    await expect(approvedTab).toHaveAttribute('aria-selected', 'true');
 
     const panel = page.getByRole('tabpanel');
     await expect(panel).toBeVisible({ timeout: 5_000 });
@@ -278,6 +294,7 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click rejected tab
     const rejectedTab = page.getByRole('tab', { name: /rejected/i });
     await rejectedTab.click();
+    await expect(rejectedTab).toHaveAttribute('aria-selected', 'true');
 
     const panel = page.getByRole('tabpanel');
     await expect(panel).toBeVisible({ timeout: 5_000 });

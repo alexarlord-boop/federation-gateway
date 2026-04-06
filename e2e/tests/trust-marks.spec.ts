@@ -31,7 +31,10 @@ test.describe('Trust Marks page @proxy', () => {
     // Wait for the Types tab to appear in the sub-tabs
     await expect(page.getByRole('tab', { name: /types/i })).toBeVisible({ timeout: 10_000 });
     // Click Types tab
-    await page.getByRole('tab', { name: /types/i }).first().click();
+    const typesTab = page.getByRole('tab', { name: /types/i }).first();
+    await typesTab.click();
+    await expect(typesTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tabpanel')).toBeVisible();
   });
 
   test('can open the add trust mark type form', async ({ instancePage: page }) => {
