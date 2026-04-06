@@ -46,14 +46,16 @@ test.describe('RBAC Management page @bff', () => {
     await page.goto(`${APP_URL}/rbac`);
     // Click "Create Role" button
     await page.getByRole('button', { name: /create role/i }).click();
-    // Fill in the form
-    await page.getByLabel(/role id/i).fill('auditor');
-    await page.getByLabel(/display name/i).fill('Auditor');
+    // Fill in the form with unique IDs to avoid duplicate key errors on re-runs
+    const roleId = `auditor-${Date.now()}`;
+    const roleName = `Auditor ${Date.now()}`;
+    await page.getByLabel(/role id/i).fill(roleId);
+    await page.getByLabel(/display name/i).fill(roleName);
     await page.getByLabel(/description/i).fill('Can view logs and audit data');
     // Click Create button
     await page.getByRole('button', { name: /^create$/i }).click();
     // Verify the new role appears in the list
-    await expect(page.getByText('Auditor')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(new RegExp(roleId, 'i'))).toBeVisible({ timeout: 5000 });
   });
 
   test('can select a role and see its permissions', async ({ authenticatedPage: page }) => {
@@ -88,7 +90,7 @@ test.describe('RBAC Management page @bff', () => {
     // Click to toggle
     await targetCheckbox.click();
     // Permission should be updated (note: actual API call will be made)
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
   });
 
   test('can view role/permission matrix', async ({ authenticatedPage: page }) => {
@@ -120,7 +122,7 @@ test.describe('RBAC Management page @bff', () => {
     // Click to toggle
     await firstSwitch.click();
     // Wait for potential API call
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     // The toggle state should have changed
     const newState = await firstSwitch.isChecked();
     // At least verify we can interact with it (state may or may not change depending on permissions)
@@ -138,6 +140,6 @@ test.describe('RBAC Management page @bff', () => {
     const affectedAreas = page.getByText(/sidebar:|pages:|tabs:/i);
     // At least one feature should have affected areas
     const count = await affectedAreas.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    expect(count).toBeGreaterThanOrEqual(1);
   });
 });
