@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures/index';
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:8080';
 
-test.describe('Users page @bff', () => {
+test.describe.serial('Users page @bff', () => {
   test('admin can navigate to /users', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/users`);
     await expect(page).toHaveURL(/\/users/);
@@ -38,7 +38,7 @@ test.describe('Users page @bff', () => {
     // Find the row with the test user email
     const userRow = page.locator('tr').filter({ hasText: 'e2e-test@example.com' });
     // Open dropdown menu for that row (MoreHorizontal button)
-    const moreButton = userRow.getByRole('button', { name: '' }).first();
+    const moreButton = userRow.getByRole('button', { name: /user actions/i });
     await moreButton.click();
     // Click "Delete User" in dropdown
     await page.getByRole('menuitem', { name: /delete user/i }).click();
@@ -46,5 +46,26 @@ test.describe('Users page @bff', () => {
     await page.getByRole('button', { name: /^delete$/i }).click();
     // Verify user is gone
     await expect(page.getByText('e2e-test@example.com')).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await page.goto(`${APP_URL}/login`);
+      await page.getByLabel(/email/i).fill('admin@oidfed.org');
+      await page.getByLabel(/password/i).fill('admin123');
+      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.goto(`${APP_URL}/users`);
+      const userRow = page.locator('tr').filter({ hasText: 'e2e-test@example.com' });
+      if (await userRow.count() > 0) {
+        await userRow.getByRole('button', { name: /user actions/i }).click();
+        await page.getByRole('menuitem', { name: /delete/i }).click();
+        await page.getByRole('button', { name: /^delete$/i }).click();
+      }
+    } finally {
+      await page.close();
+      await context.close();
+    }
   });
 });
