@@ -88,13 +88,10 @@ test.describe('Entities page @proxy', () => {
 
     // Click the first entity row to navigate to detail
     const firstEntityLink = page.locator('table tbody tr').first().locator('a[href*="/entities/"]');
+    await expect(firstEntityLink).toBeVisible({ timeout: 10_000 });
     const href = await firstEntityLink.getAttribute('href');
-    
-    if (href) {
-      await page.goto(`${APP_URL}${href}`);
-      // The detail page should be visible with entity information
-      await expect(page).toHaveURL(/\/entities\/\d+$/);
-    }
+    await page.goto(`${APP_URL}${href}`);
+    await expect(page).toHaveURL(/\/entities\//);
   });
 
   test('can filter entities by status', async ({ instancePage: page }) => {
@@ -108,9 +105,6 @@ test.describe('Entities page @proxy', () => {
     const pendingOption = page.getByRole('option', { name: /pending/i });
     await pendingOption.click();
 
-    // Verify URL changed or filter was applied
-    await page.waitForLoadState('networkidle');
-    
     // The table should still be visible (may be empty or filtered)
     await expect(page.locator('table')).toBeVisible();
   });
@@ -125,9 +119,6 @@ test.describe('Entities page @proxy', () => {
     const searchInput = page.getByPlaceholder(/search by entity id/i);
     await searchInput.fill('example');
 
-    // Wait for filter to apply
-    await page.waitForLoadState('networkidle');
-
     // Table should still be visible
     await expect(page.locator('table')).toBeVisible();
   });
@@ -135,7 +126,7 @@ test.describe('Entities page @proxy', () => {
 
 test.describe.serial('Approvals page @proxy', () => {
   const testEntityId = `https://approval-test-${Date.now()}.example.com`;
-  let createdEntityId: string | null = null;
+  let createdDisplayName: string | null = null;
 
   test('approvals page is accessible and shows heading', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
@@ -197,7 +188,7 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(page.getByText(new RegExp(displayName, 'i'))).toBeVisible({ timeout: 10_000 });
 
     // Store display name for use in next test
-    createdEntityId = displayName;
+    createdDisplayName = displayName;
   });
 
   test('pending entity appears in approvals page pending tab', async ({ instancePage: page }) => {
@@ -212,24 +203,8 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click pending tab if not already selected
     await pendingTab.click();
 
-    // Wait for pending entities to load
-    await page.waitForLoadState('networkidle');
-
     // The newly created entity should appear in pending list
-    if (createdEntityId) {
-      // Search for the entity by display name in the pending section
-      const entityCards = page.locator('[role="tab"]').filter({ hasText: /pending/i }).locator('..').locator('..').locator('text=/Approval Test Entity/');
-      // Check if any entity card contains text matching our created entity
-      try {
-        const hasEntity = await page.getByText(/approval test entity/i).count();
-        // The assertion here is soft - the entity might not appear immediately in all cases
-        if (hasEntity > 0) {
-          await expect(page.getByText(/approval test entity/i)).toBeVisible({ timeout: 5_000 });
-        }
-      } catch {
-        // Entity might not be visible yet, which is acceptable
-      }
-    }
+    await expect(page.getByText(/approval test entity/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test('can approve a pending entity from approvals page', async ({ instancePage: page }) => {
@@ -238,34 +213,25 @@ test.describe.serial('Approvals page @proxy', () => {
     // Make sure we're on the pending tab
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
-    await page.waitForLoadState('networkidle');
 
     // Get all pending entity cards
     const pendingCards = page.locator('article').filter({ has: page.getByRole('button', { name: /approve/i }) });
-    const cardCount = await pendingCards.count();
+    await expect(pendingCards.first()).toBeVisible({ timeout: 10_000 });
 
-    if (cardCount > 0) {
-      // Get the first pending card
-      const firstCard = pendingCards.first();
-      
-      // Click the Approve button
-      const approveButton = firstCard.getByRole('button', { name: /approve/i });
-      await approveButton.click();
+    // Get the first pending card
+    const firstCard = pendingCards.first();
+    
+    // Click the Approve button
+    const approveButton = firstCard.getByRole('button', { name: /approve/i });
+    await approveButton.click();
 
-      // Confirmation dialog should appear
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
-      await expect(page.getByText(/are you sure you want to approve/i)).toBeVisible();
+    // Confirmation dialog should appear
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/are you sure you want to approve/i)).toBeVisible();
 
-      // Click confirm approval in dialog
-      const confirmButton = page.getByRole('button', { name: /confirm approval/i });
-      await confirmButton.click();
-
-      // Wait for the operation to complete
-      await page.waitForLoadState('networkidle');
-
-      // Success toast should appear (optional: toasts may disappear quickly)
-      // The entity should move from pending to approved tab
-    }
+    // Click confirm approval in dialog
+    const confirmButton = page.getByRole('button', { name: /confirm approval/i });
+    await confirmButton.click();
   });
 
   test('can reject a pending entity from approvals page', async ({ instancePage: page }) => {
@@ -274,33 +240,25 @@ test.describe.serial('Approvals page @proxy', () => {
     // Make sure we're on the pending tab
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
-    await page.waitForLoadState('networkidle');
 
     // Get all pending entity cards (those with Reject button)
     const pendingCards = page.locator('article').filter({ has: page.getByRole('button', { name: /reject/i }) });
-    const cardCount = await pendingCards.count();
+    await expect(pendingCards.first()).toBeVisible({ timeout: 10_000 });
 
-    if (cardCount > 0) {
-      // Get the first pending card
-      const firstCard = pendingCards.first();
-      
-      // Click the Reject button
-      const rejectButton = firstCard.getByRole('button', { name: /reject/i });
-      await rejectButton.click();
+    // Get the first pending card
+    const firstCard = pendingCards.first();
+    
+    // Click the Reject button
+    const rejectButton = firstCard.getByRole('button', { name: /reject/i });
+    await rejectButton.click();
 
-      // Confirmation dialog should appear
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
-      await expect(page.getByText(/are you sure you want to reject/i)).toBeVisible();
+    // Confirmation dialog should appear
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/are you sure you want to reject/i)).toBeVisible();
 
-      // Click confirm rejection in dialog
-      const confirmButton = page.getByRole('button', { name: /confirm rejection/i });
-      await confirmButton.click();
-
-      // Wait for the operation to complete
-      await page.waitForLoadState('networkidle');
-
-      // The entity should move from pending to rejected tab
-    }
+    // Click confirm rejection in dialog
+    const confirmButton = page.getByRole('button', { name: /confirm rejection/i });
+    await confirmButton.click();
   });
 
   test('approved entities appear in approved tab', async ({ instancePage: page }) => {
@@ -309,11 +267,9 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click approved tab
     const approvedTab = page.getByRole('tab', { name: /approved/i });
     await approvedTab.click();
-    await page.waitForLoadState('networkidle');
 
-    // Should show either approved entities or empty state
-    const approvedContent = page.locator('[role="tabpanel"]').filter({ hasText: /approved/i });
-    await expect(approvedContent.or(page.getByText(/no approved entities|approved/i))).toBeVisible({ timeout: 5_000 });
+    const panel = page.getByRole('tabpanel');
+    await expect(panel).toBeVisible({ timeout: 5_000 });
   });
 
   test('rejected entities appear in rejected tab', async ({ instancePage: page }) => {
@@ -322,10 +278,8 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click rejected tab
     const rejectedTab = page.getByRole('tab', { name: /rejected/i });
     await rejectedTab.click();
-    await page.waitForLoadState('networkidle');
 
-    // Should show either rejected entities or empty state
-    const rejectedContent = page.locator('[role="tabpanel"]').filter({ hasText: /rejected/i });
-    await expect(rejectedContent.or(page.getByText(/no rejected entities|rejected/i))).toBeVisible({ timeout: 5_000 });
+    const panel = page.getByRole('tabpanel');
+    await expect(panel).toBeVisible({ timeout: 5_000 });
   });
 });

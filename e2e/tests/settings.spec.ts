@@ -74,15 +74,15 @@ test.describe('Settings page @proxy', () => {
     await page.goto(`${APP_URL}/settings`);
     const constraintsTab = page.getByRole('tab', { name: /constraints/i });
     await constraintsTab.click();
-    // Wait for content to load
-    await expect(page.getByRole('heading')).toBeVisible({ timeout: 10_000 });
+    await expect(constraintsTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tabpanel')).toBeVisible({ timeout: 10_000 });
   });
 
   test('Metadata Policies tab displays correctly', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/settings`);
     const policiesTab = page.getByRole('tab', { name: /metadata policies/i });
     await policiesTab.click();
-    // Wait for content to load
-    await expect(page.getByRole('heading')).toBeVisible({ timeout: 10_000 });
+    await expect(policiesTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tabpanel')).toBeVisible({ timeout: 10_000 });
   });
 });
