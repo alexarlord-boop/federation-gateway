@@ -15,9 +15,10 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
-import { useCreateSubordinate } from '@/hooks/useSubordinates';
+import { useCreateSubordinate, useDeleteSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
 import { gatewayFetch } from '@/lib/gateway-fetch';
+import { SubordinateMetadataService } from '@/client/services/SubordinateMetadataService';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
@@ -59,6 +60,7 @@ export default function EntityRegisterPage() {
   
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
+  const deleteSubordinate = useDeleteSubordinate();
 
   const KNOWN_REGISTRY_TYPES: EntityType[] = [
     'openid_provider', 'openid_relying_party', 'federation_entity',
@@ -114,8 +116,17 @@ export default function EntityRegisterPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    let createdId: number | string | null = null;
     try {
-        const metadata: any = {};
+        const newEntity = await createSubordinate.mutateAsync({
+             entity_id: formData.entityId,
+             registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
+             status: 'pending',
+             jwks: fetchedConfig?.jwks ?? undefined,
+        });
+        createdId = newEntity.id;
+
+        // Build and submit metadata per entity type. Roll back on failure.
         const contacts: Array<string | { name?: string; email?: string }> = [];
         if (formData.contactEmail) {
           contacts.push(
@@ -124,51 +135,63 @@ export default function EntityRegisterPage() {
               : formData.contactEmail
           );
         }
-        metadata.federation_entity = {
-          organization_name: formData.organizationName || formData.displayName,
-          homepage_uri: formData.entityId,
-          policy_uri: formData.policyUri || undefined,
-          contacts,
-          entity_role: isIntermediate ? 'intermediate' : 'leaf',
+
+        const metadataByType: Record<string, Record<string, unknown>> = {
+          federation_entity: {
+            ...(formData.organizationName && { organization_name: formData.organizationName }),
+            homepage_uri: formData.entityId,
+            ...(formData.policyUri && { policy_uri: formData.policyUri }),
+            ...(contacts.length > 0 && { contacts }),
+            entity_role: isIntermediate ? 'intermediate' : 'leaf',
+          },
         };
 
         if (!isIntermediate) {
           if (formData.entityTypes.includes('openid_provider')) {
-            metadata.openid_provider = {
+            metadataByType.openid_provider = {
               issuer: formData.entityId,
-              client_name: formData.displayName,
-              policy_uri: formData.policyUri || undefined,
-              contacts,
+              ...(formData.displayName && { client_name: formData.displayName }),
+              ...(formData.policyUri && { policy_uri: formData.policyUri }),
+              ...(contacts.length > 0 && { contacts }),
             };
           }
           if (formData.entityTypes.includes('openid_relying_party')) {
-            metadata.openid_relying_party = {
-              client_name: formData.displayName,
-              policy_uri: formData.policyUri || undefined,
-              contacts,
+            metadataByType.openid_relying_party = {
+              ...(formData.displayName && { client_name: formData.displayName }),
+              ...(formData.policyUri && { policy_uri: formData.policyUri }),
+              ...(contacts.length > 0 && { contacts }),
             };
           }
         }
 
-        await createSubordinate.mutateAsync({
-             entity_id: formData.entityId,
-               registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
-             status: 'pending', // Submitted for review
-             trust_anchor_id: formData.trustAnchorId,
-             metadata,
-             description: formData.displayName // Use description for display name mapping
-        } as any);
+        await Promise.all(
+          Object.entries(metadataByType).map(([entityType, claims]) =>
+            SubordinateMetadataService.changeSubordinateEntityTypedMetadata(
+              createdId as number,
+              entityType,
+              claims,
+            )
+          )
+        );
 
         toast({
           title: 'Registration Submitted',
-          description: 'Your entity registration has been successfully created.',
+          description: 'Entity registered and metadata saved successfully.',
         });
-        
         navigate(isIntermediate ? '/trust-anchors' : '/entities');
     } catch (e) {
+        // Roll back: delete the subordinate if it was created before the failure
+        if (createdId !== null) {
+          try {
+            await deleteSubordinate.mutateAsync(String(createdId));
+          } catch {
+            // Rollback failed — log but don't mask the original error
+            console.error('Rollback failed for subordinate', createdId);
+          }
+        }
         toast({
-          title: 'Error',
-          description: 'Failed to register entity.',
+          title: 'Registration Failed',
+          description: 'Could not complete registration. Please try again.',
           variant: 'destructive',
         });
     } finally {

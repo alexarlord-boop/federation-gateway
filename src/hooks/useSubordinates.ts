@@ -4,6 +4,8 @@ import { Subordinate } from '@/client/models/Subordinate';
 import { SubordinateDetails } from '@/client/models/SubordinateDetails';
 import { AddSubordinate } from '@/client/models/AddSubordinate';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
+import { OpenAPI } from '@/client';
+import { request as __request } from '@/client/core/request';
 
 export const useSubordinates = (entityType?: string, status?: string) => {
   const { activeTrustAnchor } = useTrustAnchor();
@@ -46,5 +48,36 @@ export const useDeleteSubordinate = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subordinates', instanceId] });
         }
+    });
+}
+
+/**
+ * Approve or reject a subordinate by sending a plain-text status value.
+ *
+ * The LightHouse API expects `text/plain` for the status endpoint, not JSON.
+ * The generated SubordinatesService wraps the value in a JSON object, which
+ * causes a 400. This hook calls __request directly with the correct mediaType.
+ */
+export const useChangeSubordinateStatus = () => {
+    const { activeTrustAnchor } = useTrustAnchor();
+    const instanceId = activeTrustAnchor?.id;
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, status }: { id: string; status: string }) =>
+            __request(OpenAPI, {
+                method: 'PUT',
+                url: '/api/v1/admin/subordinates/{subordinateID}/status',
+                path: { subordinateID: id },
+                body: status,
+                mediaType: 'text/plain',
+                errors: {
+                    400: `Invalid request parameters`,
+                    404: `The requested resource was not found`,
+                    500: `Internal server error`,
+                },
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['subordinates', instanceId] });
+        },
     });
 }

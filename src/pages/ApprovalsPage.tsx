@@ -14,27 +14,16 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSubordinates } from '@/hooks/useSubordinates';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SubordinatesService } from '@/client/services/SubordinatesService';
+import { useChangeSubordinateStatus } from '@/hooks/useSubordinates';
 
 export default function ApprovalsPage() {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // Fetch lists for each tab
+  const updateStatus = useChangeSubordinateStatus();
   const { data: pendingEntities, isLoading: isLoadingPending } = useSubordinates(undefined, 'pending');
   const { data: approvedEntities, isLoading: isLoadingApproved } = useSubordinates(undefined, 'active');
   const { data: rejectedEntities, isLoading: isLoadingRejected } = useSubordinates(undefined, 'rejected');
-
-  const updateStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string, status: string }) => 
-        SubordinatesService.changeSubordinateStatus(id, { status }),
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['subordinates'] });
-    }
-  });
 
   const handleAction = async () => {
     if (!selectedRequest || !actionType) return;
