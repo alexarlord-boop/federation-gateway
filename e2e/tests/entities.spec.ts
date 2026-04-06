@@ -232,6 +232,7 @@ test.describe.serial('Approvals page @proxy', () => {
     // Make sure we're on the pending tab
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
+    await expect(pendingTab).toHaveAttribute('aria-selected', 'true');
 
     // Locate the card for entity 1 by its display name
     const approveCard = page.locator('article, [data-testid], .card, li')
@@ -252,8 +253,12 @@ test.describe.serial('Approvals page @proxy', () => {
 
     // Dialog should dismiss on success
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
-    // Entity should leave the pending tab
-    await expect(page.getByText(new RegExp(createdDisplayName1!, 'i'))).not.toBeVisible({ timeout: 5_000 });
+    const pendingPanel1 = page.getByRole('tabpanel');
+    await expect(pendingPanel1).toBeVisible({ timeout: 5_000 });
+    // Entity should be removed from the pending list
+    await expect(
+      pendingPanel1.getByText(new RegExp(createdDisplayName1!, 'i'))
+    ).not.toBeAttached({ timeout: 10_000 });
   });
 
   test('can reject a pending entity from approvals page', async ({ instancePage: page }) => {
@@ -262,6 +267,7 @@ test.describe.serial('Approvals page @proxy', () => {
     // Make sure we're on the pending tab
     const pendingTab = page.getByRole('tab', { name: /pending/i });
     await pendingTab.click();
+    await expect(pendingTab).toHaveAttribute('aria-selected', 'true');
 
     // Locate the card for entity 2 by its display name
     const rejectCard = page.locator('article, [data-testid], .card, li')
@@ -281,7 +287,12 @@ test.describe.serial('Approvals page @proxy', () => {
     await confirmButton.click();
 
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(new RegExp(createdDisplayName2!, 'i'))).not.toBeVisible({ timeout: 5_000 });
+    const pendingPanel2 = page.getByRole('tabpanel');
+    await expect(pendingPanel2).toBeVisible({ timeout: 5_000 });
+    // Entity should be removed from the pending list
+    await expect(
+      pendingPanel2.getByText(new RegExp(createdDisplayName2!, 'i'))
+    ).not.toBeAttached({ timeout: 10_000 });
   });
 
   test('approved entities appear in approved tab', async ({ instancePage: page }) => {
