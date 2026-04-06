@@ -19,11 +19,11 @@ test.describe('Trust Anchors page @bff', () => {
   test('can open the config panel for the LightHouse TA', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     
-    // Find the LightHouse card (Card component renders as div with "card" class)
-    const card = page.locator('div[class*="card"]').filter({ hasText: 'LightHouse' }).first();
+    // Find the LightHouse card using more precise selectors (rounded-lg border are Card root classes)
+    const card = page.locator('div.rounded-lg.border').filter({ hasText: 'LightHouse' }).first();
     
-    // Click the dropdown menu button (MoreHorizontal icon button)
-    const dropdownButton = card.getByRole('button').first();
+    // Click the dropdown menu button using aria-label for accessibility
+    const dropdownButton = card.getByRole('button', { name: /trust anchor options/i });
     await dropdownButton.click();
     
     // Click "Configure" from the dropdown menu

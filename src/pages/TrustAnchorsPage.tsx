@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useGatewayTrustAnchorConfig } from '@/hooks/useGatewayTrustAnchors';
 import { useDebugContext } from '@/hooks/useDebugContext';
-import { useCreateSubordinate, useSubordinates } from '@/hooks/useSubordinates';
+import { useCreateSubordinate, useSubordinates, useChangeSubordinateStatus } from '@/hooks/useSubordinates';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -113,7 +113,7 @@ function TrustAnchorCard({
           {!isExternal && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Trust anchor options">
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -531,13 +531,7 @@ export default function TrustAnchorsPage() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const updateStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      SubordinatesService.changeSubordinateStatus(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subordinates'] });
-    },
-  });
+  const updateStatus = useChangeSubordinateStatus();
   const deleteSubordinate = useMutation({
     mutationFn: (id: string) => SubordinatesService.deleteSubordinate(id),
     onSuccess: () => {
@@ -660,7 +654,7 @@ export default function TrustAnchorsPage() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Subordinate trust anchor options">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -734,7 +728,7 @@ export default function TrustAnchorsPage() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Subordinate trust anchor options">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
