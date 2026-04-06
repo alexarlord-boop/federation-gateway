@@ -26,12 +26,8 @@ test.describe('Auth @bff', () => {
   });
 
   test('user can logout', async ({ authenticatedPage: page }) => {
-    // Logout button is an icon-only button in the sidebar's user section at the bottom
     await page.goto(`${APP_URL}/dashboard`);
-    // Target the button by its role and position within the user section footer
-    // It appears as the last button element in the sidebar user area
-    const logoutButton = page.locator('aside').locator('button').last();
-    await logoutButton.click();
+    await page.getByRole('button', { name: /log out/i }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 });

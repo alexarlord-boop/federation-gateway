@@ -315,6 +315,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
           </NavLink>
           <button
             onClick={logout}
+            aria-label="Log out"
             className="flex items-center justify-center px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-destructive/20 hover:text-destructive transition-colors"
           >
             <LogOut className="w-4 h-4" />
