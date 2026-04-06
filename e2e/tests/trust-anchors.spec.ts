@@ -19,11 +19,11 @@ test.describe('Trust Anchors page @bff', () => {
   test('can open the config panel for the LightHouse TA', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     
-    // Find the LightHouse card and click the dropdown menu button
-    const card = page.locator('article').filter({ hasText: 'LightHouse' }).first();
+    // Find the LightHouse card (Card component renders as div with "card" class)
+    const card = page.locator('div[class*="card"]').filter({ hasText: 'LightHouse' }).first();
     
-    // Click the MoreHorizontal dropdown button
-    const dropdownButton = card.locator('button[class*="ghost"][class*="icon"]').first();
+    // Click the dropdown menu button (MoreHorizontal icon button)
+    const dropdownButton = card.getByRole('button').first();
     await dropdownButton.click();
     
     // Click "Configure" from the dropdown menu
@@ -31,11 +31,11 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(configureItem).toBeVisible();
     await configureItem.click();
     
-    // Verify the config dialog opened with the Configure Trust Anchor title
+    // Verify the config dialog opened
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText(/configure trust anchor/i)).toBeVisible();
     
-    // Verify some config fields are visible (Admin API Base URL field)
+    // Verify config form is displayed with Admin API Base URL field
     await expect(page.getByLabel(/admin api base url/i)).toBeVisible();
   });
 });
