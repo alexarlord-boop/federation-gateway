@@ -249,6 +249,11 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click confirm approval in dialog
     const confirmButton = page.getByRole('button', { name: /confirm approval/i });
     await confirmButton.click();
+
+    // Dialog should dismiss on success
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
+    // Entity should leave the pending tab
+    await expect(page.getByText(new RegExp(createdDisplayName1!, 'i'))).not.toBeVisible({ timeout: 5_000 });
   });
 
   test('can reject a pending entity from approvals page', async ({ instancePage: page }) => {
@@ -274,6 +279,9 @@ test.describe.serial('Approvals page @proxy', () => {
     // Click confirm rejection in dialog
     const confirmButton = page.getByRole('button', { name: /confirm rejection/i });
     await confirmButton.click();
+
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(new RegExp(createdDisplayName2!, 'i'))).not.toBeVisible({ timeout: 5_000 });
   });
 
   test('approved entities appear in approved tab', async ({ instancePage: page }) => {
@@ -286,6 +294,7 @@ test.describe.serial('Approvals page @proxy', () => {
 
     const panel = page.getByRole('tabpanel');
     await expect(panel).toBeVisible({ timeout: 5_000 });
+    await expect(panel.getByText(new RegExp(createdDisplayName1!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
   test('rejected entities appear in rejected tab', async ({ instancePage: page }) => {
@@ -298,5 +307,6 @@ test.describe.serial('Approvals page @proxy', () => {
 
     const panel = page.getByRole('tabpanel');
     await expect(panel).toBeVisible({ timeout: 5_000 });
+    await expect(panel.getByText(new RegExp(createdDisplayName2!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 });
