@@ -25,6 +25,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { selectedBackend } = useBackend();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const backendScopeKey = selectedBackend.baseUrl || '__same_origin__';
@@ -122,6 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTokens();
     }
 
+    // Auth state is now known — unblock ProtectedRoute
+    setIsInitialized(true);
+
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
@@ -170,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isInitialized,
     login,
     logout,
     isLoading,

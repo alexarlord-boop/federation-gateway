@@ -13,7 +13,7 @@ test.describe('Trust Anchors page @bff', () => {
   test('shows the seeded LightHouse trust anchor card', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     // LightHouse should appear as a card title
-    await expect(page.getByText('LightHouse')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
   });
 
   test('can open the config panel for the LightHouse TA', async ({ authenticatedPage: page }) => {

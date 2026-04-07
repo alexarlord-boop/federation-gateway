@@ -25,7 +25,7 @@ test.describe('RBAC Management page @bff', () => {
     await expect(matrixTab).toBeVisible();
     await matrixTab.click();
     // Should show permission matrix table with "Feature" column
-    await expect(page.getByText(/feature/i)).toBeVisible();
+    await expect(page.getByText(/feature/i).first()).toBeVisible();
     // Should have table with roles as column headers
     await expect(page.locator('table')).toBeVisible();
   });
@@ -54,37 +54,37 @@ test.describe('RBAC Management page @bff', () => {
     await page.getByLabel(/description/i).fill('Can view logs and audit data');
     // Click Create button
     await page.getByRole('button', { name: /^create$/i }).click();
-    // Verify the new role appears in the list
-    await expect(page.getByText(new RegExp(roleId, 'i'))).toBeVisible({ timeout: 5000 });
+    // Verify the new role appears in the list by display name (card heading)
+    await expect(page.getByRole('heading', { name: new RegExp(roleName, 'i') })).toBeVisible({ timeout: 5000 });
   });
 
   test('can select a role and see its permissions', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/rbac`);
-    // Click on the first role card
-    const firstRoleCard = page.locator('div[class*="card"]').filter({ hasText: /admin|user/ }).first();
+    // Click on the first role card (role cards have cursor-pointer class)
+    const firstRoleCard = page.locator('div.cursor-pointer[class*="card"]').filter({ hasText: /admin|user/i }).first();
     await firstRoleCard.click();
     // Should show the permission assignment section below
     await expect(page.getByText(/permission assignment/i)).toBeVisible();
-    // Should show permission checkboxes
-    await expect(page.locator('[type="checkbox"]').first()).toBeVisible();
+    // Should show permission checkboxes (shadcn Checkbox renders as role="checkbox")
+    await expect(page.getByRole('checkbox').first()).toBeVisible();
   });
 
   test('can toggle permission on a role', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/rbac`);
-    // Select the first role
-    const firstRoleCard = page.locator('div[class*="card"]').filter({ hasText: /admin|user/ }).first();
+    // Select the first role (role cards have cursor-pointer class)
+    const firstRoleCard = page.locator('div.cursor-pointer[class*="card"]').filter({ hasText: /admin|user/i }).first();
     await firstRoleCard.click();
     // Wait for permission assignment section to appear
     await expect(page.getByText(/permission assignment/i)).toBeVisible();
-    // Find a permission checkbox (unchecked one) and click it
-    const uncheckedCheckbox = page.locator('[type="checkbox"]').first();
+    // Find a permission checkbox and click it (shadcn Checkbox renders as role="checkbox")
+    const uncheckedCheckbox = page.getByRole('checkbox').first();
     const isChecked = await uncheckedCheckbox.isChecked();
     // If checked, find an unchecked one
     let targetCheckbox = uncheckedCheckbox;
     if (isChecked) {
-      const allCheckboxes = await page.locator('[type="checkbox"]').count();
+      const allCheckboxes = await page.getByRole('checkbox').count();
       if (allCheckboxes > 1) {
-        targetCheckbox = page.locator('[type="checkbox"]').nth(1);
+        targetCheckbox = page.getByRole('checkbox').nth(1);
       }
     }
     // Click to toggle

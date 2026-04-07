@@ -187,7 +187,7 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="role">Legacy Role</Label>
                 <Select value={formRole} onValueChange={setFormRole}>
-                  <SelectTrigger>
+                  <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

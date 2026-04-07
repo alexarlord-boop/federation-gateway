@@ -60,16 +60,20 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { isAuthenticated, isAdmin } = useAuth();
-  
+  const { isAuthenticated, isAdmin, isInitialized } = useAuth();
+
+  if (!isInitialized) {
+    return null;
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-  
+
   if (adminOnly && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 

@@ -8,7 +8,7 @@ async function loginAsAdmin(page: Page) {
   await page.goto(`${APP_URL}/login`);
   await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
   await page.getByLabel(/password/i).fill(ADMIN_PASSWORD);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   // Wait until redirected away from /login
   await expect(page).not.toHaveURL(/\/login/);
 }

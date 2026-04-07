@@ -55,7 +55,7 @@ test.describe.serial('Users page @bff', () => {
       await page.goto(`${APP_URL}/login`);
       await page.getByLabel(/email/i).fill('admin@oidfed.org');
       await page.getByLabel(/password/i).fill('admin123');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
       await page.goto(`${APP_URL}/users`);
       const userRow = page.locator('tr').filter({ hasText: 'e2e-test@example.com' });
       if (await userRow.count() > 0) {
