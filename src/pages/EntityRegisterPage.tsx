@@ -164,15 +164,13 @@ export default function EntityRegisterPage() {
           }
         }
 
-        await Promise.all(
-          Object.entries(metadataByType).map(([entityType, claims]) =>
-            SubordinateMetadataService.changeSubordinateEntityTypedMetadata(
-              createdId as number,
-              entityType,
-              claims,
-            )
-          )
-        );
+        for (const [entityType, claims] of Object.entries(metadataByType)) {
+          await SubordinateMetadataService.changeSubordinateEntityTypedMetadata(
+            createdId as number,
+            entityType,
+            claims,
+          );
+        }
 
         toast({
           title: 'Registration Submitted',
@@ -244,7 +242,7 @@ export default function EntityRegisterPage() {
                 value={formData.trustAnchorId} 
                 onValueChange={(v) => setFormData({ ...formData, trustAnchorId: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger id="trustAnchor">
                   <SelectValue placeholder="Select a trust anchor" />
                 </SelectTrigger>
                 <SelectContent>

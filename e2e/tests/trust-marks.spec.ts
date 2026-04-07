@@ -6,7 +6,7 @@ test.describe('Trust Marks page @proxy', () => {
   test('trust marks page is accessible', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/trust-marks`);
     await expect(page).toHaveURL(/\/trust-marks/);
-    await expect(page.getByRole('heading', { name: /trust marks/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /trust marks/i })).toBeVisible();
   });
 
   test('shows trust mark management info section', async ({ instancePage: page }) => {
@@ -14,7 +14,7 @@ test.describe('Trust Marks page @proxy', () => {
     // Info section should display Trust Mark Management title
     await expect(page.getByText(/trust mark management/i)).toBeVisible({ timeout: 10_000 });
     // Should also show description mentioning My Trust Marks and Federation Trust Marks
-    await expect(page.getByText(/my trust marks/i)).toBeVisible();
+    await expect(page.getByText(/my trust marks/i).first()).toBeVisible();
   });
 
   test('shows Federation Trust Marks tab', async ({ instancePage: page }) => {
@@ -34,7 +34,7 @@ test.describe('Trust Marks page @proxy', () => {
     const typesTab = page.getByRole('tab', { name: /types/i }).first();
     await typesTab.click();
     await expect(typesTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tabpanel')).toBeVisible();
+    await expect(page.getByRole('tabpanel').first()).toBeVisible();
   });
 
   test('can open the add trust mark type form', async ({ instancePage: page }) => {
