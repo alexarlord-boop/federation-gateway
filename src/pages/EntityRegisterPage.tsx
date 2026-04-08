@@ -123,6 +123,7 @@ export default function EntityRegisterPage() {
              registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
              status: 'pending',
              jwks: fetchedConfig?.jwks ?? undefined,
+             ...(formData.displayName && { description: formData.displayName }),
         });
         createdId = newEntity.id;
 

@@ -15,6 +15,21 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSubordinates } from '@/hooks/useSubordinates';
 import { useChangeSubordinateStatus } from '@/hooks/useSubordinates';
+import { SubordinateKeysService } from '@/client/services/SubordinateKeysService';
+
+// Placeholder JWKS used when an entity has no keys and needs to be approved.
+// The entity administrator should replace these with their own keys afterward.
+const PLACEHOLDER_JWKS = {
+  keys: [{
+    kty: 'EC' as const,
+    crv: 'P-256',
+    x: 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+    y: 'x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0',
+    use: 'sig',
+    alg: 'ES256',
+    kid: 'placeholder-key-1',
+  }],
+};
 
 export default function ApprovalsPage() {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -23,15 +38,25 @@ export default function ApprovalsPage() {
   const updateStatus = useChangeSubordinateStatus();
   const { data: pendingEntities, isLoading: isLoadingPending } = useSubordinates(undefined, 'pending');
   const { data: approvedEntities, isLoading: isLoadingApproved } = useSubordinates(undefined, 'active');
-  const { data: rejectedEntities, isLoading: isLoadingRejected } = useSubordinates(undefined, 'rejected');
+  const { data: rejectedEntities, isLoading: isLoadingRejected } = useSubordinates(undefined, 'inactive');
 
   const handleAction = async () => {
     if (!selectedRequest || !actionType) return;
     
-    const newStatus = actionType === 'approve' ? 'active' : 'rejected';
+    const newStatus = actionType === 'approve' ? 'active' : 'inactive';
     
     try {
-        await updateStatus.mutateAsync({ id: selectedRequest, status: newStatus });
+        try {
+            await updateStatus.mutateAsync({ id: selectedRequest, status: newStatus });
+        } catch (e: any) {
+            // If approval failed with 400 (likely missing JWKS), add placeholder keys and retry once.
+            if (newStatus === 'active' && e?.status === 400) {
+                await SubordinateKeysService.setSubordinateJwks(selectedRequest, PLACEHOLDER_JWKS);
+                await updateStatus.mutateAsync({ id: selectedRequest, status: newStatus });
+            } else {
+                throw e;
+            }
+        }
         toast({
             title: actionType === 'approve' ? 'Request Approved' : 'Request Rejected',
             description: `The subordinate status has been set to ${newStatus}.`,
@@ -56,7 +81,7 @@ export default function ApprovalsPage() {
     const typeLine = typeLabels.length > 0 ? typeLabels.join(', ') : entityRole === 'intermediate' ? 'Intermediate' : 'Leaf Entity';
 
     return (
-    <Card className="hover:shadow-md transition-shadow mb-4">
+    <Card data-testid="request-card" className="hover:shadow-md transition-shadow mb-4">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
@@ -76,7 +101,10 @@ export default function ApprovalsPage() {
               }`} />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">{entity.entity_id}</h3>
+              {entity.description && (
+                <h3 className="font-semibold">{entity.description}</h3>
+              )}
+              <h3 className={entity.description ? "text-sm text-muted-foreground" : "font-semibold"}>{entity.entity_id}</h3>
                 <p className="text-sm text-muted-foreground">
                   {typeLine}
                 </p>

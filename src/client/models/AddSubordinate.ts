@@ -13,6 +13,14 @@ export type AddSubordinate = {
      */
     entity_id: EntityID;
     /**
+     * Initial status of the subordinate. Defaults to "active" if not provided.
+     */
+    status?: 'active' | 'blocked' | 'pending' | 'inactive';
+    /**
+     * Optional human-readable description for this Subordinate.
+     */
+    description?: string;
+    /**
      * Entity types the subordinate is registered for.
      */
     registered_entity_types?: Array<string>;

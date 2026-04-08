@@ -111,6 +111,12 @@ _HOP_BY_HOP = frozenset(
         # Strip the client's BFF Bearer JWT — LightHouse doesn't use it.
         # Upstream auth (Basic or Bearer api_key) is injected below.
         "authorization",
+        # Don't forward Accept-Encoding to upstream: httpx handles decoding
+        # but brotli support may not be available, so upstream responses
+        # compressed with brotli arrive as raw bytes while we strip the
+        # Content-Encoding header — causing the browser to receive binary data
+        # labeled as application/json.
+        "accept-encoding",
     }
 )
 
