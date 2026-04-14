@@ -2,6 +2,178 @@
 
 **Backend-Agnostic UI** for managing OpenID Federation entities, trust anchors, subordinates, and trust marks.
 
+---
+
+## Developer Quick Reference
+
+### Repository layout
+
+```
+federation-gateway/
+├── src/                          # React/TypeScript UI (Vite)
+│   ├── client/                   # Auto-generated OpenAPI client (do not edit)
+│   ├── components/               # Shared UI components (shadcn/ui)
+│   ├── hooks/                    # React Query data hooks (useEntities, useSubordinates, …)
+│   ├── pages/                    # Route-level page components
+│   └── contexts/                 # TrustAnchorContext, AuthContext, …
+├── backend/                      # Python FastAPI BFF (Backend-for-Frontend)
+│   └── app/
+│       ├── routers/
+│       │   ├── proxy.py          # ⚠ Transparent proxy to LightHouse Admin API
+│       │   ├── auth.py           # JWT login / refresh
+│       │   └── trust_anchors.py  # TA registry (persisted in backend.db)
+│       ├── db/seed.py            # First-run seed: admin user + ta-1 trust anchor
+│       └── main.py               # FastAPI app entry point
+├── e2e/                          # Playwright end-to-end tests
+│   ├── tests/
+│   │   ├── entities.spec.ts      # Entity registration + approvals workflow
+│   │   ├── settings.spec.ts      # Settings page tabs
+│   │   └── trust-marks.spec.ts   # Trust marks pages
+│   ├── fixtures/index.ts         # loginAsAdmin + instancePage fixtures
+│   └── playwright.config.ts      # Projects: bff-only (@bff), full-stack (@proxy)
+├── lighthouse/
+│   ├── config.yaml               # LightHouse node config (entity_id, storage, signing)
+│   └── data/                     # SQLite DB + generated signing keys (gitignored)
+├── Federation Admin OpenAPI.yaml # Canonical API contract (source of truth)
+├── docker-compose.yml            # Three services: lighthouse · backend · ui
+└── Dockerfile                    # UI: Bun build → nginx:alpine
+```
+
+### Services and ports
+
+| Service | Port | Notes |
+|---------|------|-------|
+| **UI** (nginx, SPA) | `8080` | Proxies `/api/*` → backend at `8765` |
+| **Backend** (FastAPI) | `8765` | BFF: auth + TA registry + proxy to LightHouse |
+| **LightHouse** | `8081` | `oidfed/lighthouse:0.20.0` — federation node |
+
+> **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
+
+### Default credentials (seeded on first run)
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@oidfed.org` | `admin123` |
+| User | `tech@example.org` | `user123` |
+
+---
+
+### Run the full stack
+
+```sh
+docker compose up --build
+```
+
+Opens at **http://localhost:8080**.
+
+### Rebuild a single service (after source changes)
+
+```sh
+# UI (React source or nginx config changed)
+docker compose build ui && docker compose up -d ui
+
+# Backend (Python source changed)
+docker compose build backend && docker compose up -d backend
+```
+
+> The UI image uses a multi-stage Bun build — there is no volume mount; source changes always require a rebuild.
+
+### Reset everything from scratch
+
+```sh
+# Stop containers, remove volumes (wipes LightHouse DB + all subordinates)
+docker compose down -v
+
+# Rebuild images and start fresh
+docker compose up --build
+```
+
+To keep LightHouse data but reset only the BFF database:
+
+```sh
+rm -f backend.db          # backend SQLite DB (re-seeded on next container start)
+docker compose up -d backend
+```
+
+---
+
+### Run tests
+
+Tests live in `e2e/`. Install dependencies once:
+
+```sh
+cd e2e && npm install
+cd e2e && npx playwright install chromium
+```
+
+#### Full-stack tests (`@proxy` — requires Docker stack running)
+
+```sh
+# Start the stack first
+docker compose up --build -d
+
+cd e2e
+npm run test:full                              # all 34 full-stack tests
+npm run test:full -- --grep "pending status"   # run a subset by name
+npm run test:full -- --reporter=line           # compact output
+```
+
+#### BFF-only tests (`@bff` — no Docker needed)
+
+```sh
+cd e2e
+npm run test:bff
+```
+
+#### Open Playwright UI / trace viewer
+
+```sh
+cd e2e
+npm run test:ui              # interactive test runner
+npx playwright show-report   # HTML report from last run
+```
+
+Test results and failure screenshots land in `e2e/test-results/`.
+
+---
+
+### Local UI development (without Docker)
+
+The UI can run against the Dockerised backend:
+
+```sh
+# Ensure backend + lighthouse are running
+docker compose up -d backend lighthouse
+
+# Install UI deps and start Vite dev server
+npm install
+npm run dev          # http://localhost:5173, proxies /api → localhost:8765
+```
+
+Hot-module reload works; changes are instant without rebuilding Docker images.
+
+### Local backend development (without Docker)
+
+```sh
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8765
+```
+
+The backend stores state in `backend.db` (SQLite, root of repo).
+
+---
+
+### Adding a second LightHouse instance
+
+1. Create `lighthouse2/config.yaml` (copy and adjust `lighthouse/config.yaml`).
+2. Uncomment the `lighthouse2` service block in `docker-compose.yml`.
+3. Uncomment the `ta-2` / `tenant-2` rows in `backend/app/db/seed.py`.
+4. Full reset: `docker compose down -v && docker compose up --build`.
+
+---
+
 ## Key Features
 
 - ✅ **Backend-Agnostic Design** - Works with any Admin API implementing the OpenAPI spec

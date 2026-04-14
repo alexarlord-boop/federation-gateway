@@ -22,3 +22,16 @@ api:
     users_enabled: false
     actor_source: "header"
     actor_header: "X-Gateway-User-Email"
+
+# Enable the core OIDFederation endpoints.
+# Without these, LightHouse cannot serve as a Trust Anchor or Intermediate Authority.
+# - fetch:   Subordinate Fetching Endpoint (required for TA/IA)
+# - list:    Subordinate Listing Endpoint  (required for TA/IA)
+# - resolve: Federation Resolve Endpoint   (enables trust chain resolution)
+endpoints:
+  fetch:
+    path: /fetch
+  list:
+    path: /list
+  resolve:
+    path: /resolve
