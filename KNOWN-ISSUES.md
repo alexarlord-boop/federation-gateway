@@ -22,9 +22,8 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
 - [x] ~~**Entity detail JWKS tab is read-only**~~  
   **Fixed:** `SubordinateJwksTab` component added with per-key delete buttons and Add JWK textarea, wiring `addJwk`/`deleteJwk` from `useSubordinateKeys`. (`src/pages/EntityDetailPage.tsx`)
 
-- [ ] **Entity detail Metadata tab is read-only**  
-  File: `src/pages/EntityDetailPage.tsx` line ~585  
-  The Metadata tab displays the raw entity JSON but offers no way to edit it. No "Edit JSON" button exists on this tab (unlike the Policies tab which does have editing).
+- [x] ~~**Entity detail Metadata tab is read-only**~~  
+  **Fixed:** `SubordinateMetadataTab` component with "Edit JSON" toggle, Textarea editor, JSON validation, and Save/Cancel via `updateMetadata` from `useEntityDetail`. (`src/pages/EntityDetailPage.tsx`)
 
 - [x] ~~**No UI to change status of `inactive` entities**~~  
   **Fixed:** status dropdown now shown for `active`, `blocked`, `inactive`, and `pending` entities with contextual options. (`src/pages/EntityDetailPage.tsx`)

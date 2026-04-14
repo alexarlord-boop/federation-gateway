@@ -31,15 +31,13 @@ test.describe('Entity Detail Page @proxy', () => {
     await expect(page.getByText(/entity information/i)).toBeVisible();
   });
 
-  test('metadata tab renders entity JSON (read-only — no edit button)', async ({ instancePage: page }) => {
+  test('metadata tab renders entity JSON with Edit JSON button', async ({ instancePage: page }) => {
     const href = await getFirstEntityHref(page);
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
     await page.getByRole('tab', { name: 'Metadata', exact: true }).click();
-    // Metadata tab shows read-only JSON — no edit button
     await expect(page.getByText(/metadata json/i)).toBeVisible({ timeout: 5_000 });
-    // GAP: metadata is read-only, there is no way to edit it from the entity detail UI
-    await expect(page.getByRole('button', { name: /edit/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /edit json/i })).toBeVisible({ timeout: 5_000 });
   });
 
   test('jwks tab shows published keys and exposes add/delete controls', async ({ instancePage: page }) => {

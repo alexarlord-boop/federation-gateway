@@ -426,12 +426,82 @@ function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: stri
   );
 }
 
+/* ─── Subordinate Metadata Tab ─── */
+function SubordinateMetadataTab({
+  metadata, canUpdate, onSave, isSaving,
+}: {
+  metadata: any;
+  canUpdate: boolean;
+  onSave: (val: any) => Promise<void>;
+  isSaving: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [parseError, setParseError] = useState('');
+
+  const startEdit = () => {
+    setDraft(JSON.stringify(metadata ?? {}, null, 2));
+    setParseError('');
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      const parsed = JSON.parse(draft);
+      setParseError('');
+      await onSave(parsed);
+      setEditing(false);
+    } catch (e: any) {
+      setParseError(e.message ?? 'Invalid JSON');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Metadata JSON</CardTitle>
+          <CardDescription>Raw metadata included in this entity's statement</CardDescription>
+        </div>
+        {canUpdate && !editing && (
+          <Button variant="outline" size="sm" onClick={startEdit}>
+            <FileText className="w-4 h-4 mr-2" /> Edit JSON
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="space-y-3">
+            <Textarea
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              className="font-mono text-xs min-h-[400px]"
+            />
+            {parseError && <p className="text-sm text-destructive">{parseError}</p>}
+            <div className="flex gap-2">
+              <Button size="sm" disabled={isSaving} onClick={handleSave}>
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+            </div>
+          </div>
+        ) : (
+          <ScrollArea className="h-[500px] w-full rounded-md border p-4">
+            <pre className="text-xs font-mono">{JSON.stringify(metadata, null, 2)}</pre>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function EntityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { entity, isLoading, error, updateStatus, deleteSubordinate } = useEntityDetail(id!);
+  const { entity, isLoading, error, updateStatus, updateMetadata, deleteSubordinate } = useEntityDetail(id!);
   const canUpdate = useOperationAllowed('subordinates', 'update');
   const canDelete = useOperationAllowed('subordinates', 'delete');
 
@@ -683,14 +753,19 @@ export default function EntityDetailPage() {
         </TabsContent>
         
         <TabsContent value="metadata">
-            <Card>
-                <CardHeader><CardTitle>Metadata JSON</CardTitle></CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[500px] w-full rounded-md border p-4">
-                        <pre className="text-xs font-mono">{JSON.stringify(entity.metadata, null, 2)}</pre>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+          <SubordinateMetadataTab
+            metadata={entity.metadata}
+            canUpdate={canUpdate}
+            onSave={async (val) => {
+              try {
+                await updateMetadata.mutateAsync(val);
+                toast({ title: 'Saved', description: 'Metadata updated' });
+              } catch {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to save metadata' });
+              }
+            }}
+            isSaving={updateMetadata.isPending}
+          />
         </TabsContent>
 
         <TabsContent value="jwks">
