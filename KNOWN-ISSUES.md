@@ -5,7 +5,11 @@ Tests are in `e2e/tests/entity-detail.spec.ts`, `settings-mutations.spec.ts`, `r
 
 ---
 
-## 🔴 Critical — Incorrect API values (will produce HTTP 400)
+## 🛠️ Fixable by us (UI / BFF code changes only)
+
+These are bugs or missing features in our own codebase — no LightHouse or OIDFed spec changes needed.
+
+### 🔴 Critical — Incorrect API values (will produce HTTP 400)
 
 - [ ] **`EntitiesPage` uses invalid status `'rejected'`**  
   File: `src/pages/EntitiesPage.tsx` line 37, 124, 197  
@@ -17,9 +21,7 @@ Tests are in `e2e/tests/entity-detail.spec.ts`, `settings-mutations.spec.ts`, `r
   The Lock/Unlock dropdown calls `handleStatusChange('locked')`. `'locked'` is not a valid LightHouse status. The API returns 400, the UI shows "Update Failed" toast.  
   Fix: map "Lock" → `'blocked'` (or `'inactive'`) and update the UI label accordingly.
 
----
-
-## 🟠 High — Missing functionality
+### 🟠 High — Missing UI for existing backend functionality
 
 - [ ] **Entity detail JWKS tab is read-only**  
   File: `src/pages/EntityDetailPage.tsx` line ~596  
@@ -29,21 +31,11 @@ Tests are in `e2e/tests/entity-detail.spec.ts`, `settings-mutations.spec.ts`, `r
   File: `src/pages/EntityDetailPage.tsx` line ~585  
   The Metadata tab displays the raw entity JSON but offers no way to edit it. No "Edit JSON" button exists on this tab (unlike the Policies tab which does have editing).
 
-- [ ] **Entity detail Policies tab broken for entities with no policies**  
-  File: `src/pages/EntityDetailPage.tsx` / `src/components/SubordinateMetadataPoliciesTab.tsx`  
-  When a subordinate has no metadata policies configured, the LightHouse API may return a 404/error instead of an empty object `{}`. This causes the component to enter a permanent error or loading state — the "Edit JSON" button never appears. Operators cannot add the first policy for an entity.
-
 - [ ] **No UI to change status of `inactive` entities**  
   File: `src/pages/EntityDetailPage.tsx` line 448  
   The Lock/Unlock button is only rendered for `active` or `locked` statuses. Entities with `inactive` (or `pending`) status have no status-change controls on the detail page. There is no way to reactivate an inactive entity from the UI.
 
-- [ ] **No "issue trust mark to entity" workflow**  
-  File: `src/pages/TrustMarksPage.tsx`  
-  Trust mark types can be created and deleted, but there is no UI to issue a trust mark to a specific entity. The only issuance path is through Issuance Specs, which requires a separate configuration step not surfaced in the entity detail flow.
-
----
-
-## 🟡 Medium — UX & accessibility issues
+### 🟡 Medium — UX & accessibility
 
 - [ ] **Delete button on entity detail has no accessible label**  
   File: `src/pages/EntityDetailPage.tsx` line 481  
@@ -60,11 +52,28 @@ Tests are in `e2e/tests/entity-detail.spec.ts`, `settings-mutations.spec.ts`, `r
 
 ---
 
-## 🔵 Low — Validation concerns
+## 🤝 Requires LightHouse / OIDFed team collaboration
 
-- [ ] **Authority hint validation may reject non-existent federation entity IDs**  
+These require either a LightHouse API change, OIDFed spec clarification, or cross-team design agreement before we can implement the UI.
+
+### 🟠 High — Backend behaviour blocks UI implementation
+
+- [ ] **Entity detail Policies tab broken for entities with no policies**  
+  File: `src/components/SubordinateMetadataPoliciesTab.tsx`  
+  When a subordinate has no metadata policies configured, the LightHouse API returns a 404/error instead of an empty object `{}`. This causes the UI to enter a permanent error state — the "Edit JSON" button never appears and operators cannot create the first policy for an entity.  
+  **Needs:** LightHouse to return `{}` (or `204`) for missing policies rather than an error response.
+
+- [ ] **No "issue trust mark to entity" workflow**  
+  File: `src/pages/TrustMarksPage.tsx`  
+  Trust mark types can be created and deleted, but there is no UI to issue a trust mark to a specific entity. The backend has an issuance API, but the design of the issuance flow (which entity, which trust mark type, what claims) needs alignment with the OIDFed trust mark issuance spec (§ 5.3).  
+  **Needs:** Agreement with LightHouse team on the issuance API contract and claim schema.
+
+### 🔵 Low — Validation / spec ambiguity
+
+- [ ] **Authority hint validation may silently reject valid-looking URLs**  
   File: `src/pages/SettingsPage.tsx` line 195 / LightHouse admin API  
-  The `addHint` API call sends `{ entity_id: <url> }`. If LightHouse validates that the URL belongs to a resolvable federation entity, hints with arbitrary URLs (e.g., test/staging values) are silently rejected with an error toast, giving users no guidance on what constitutes a valid authority hint.
+  The `addHint` API call sends `{ entity_id: <url> }`. It is unclear whether LightHouse validates the URL resolves to a real federation entity. If it does, test/staging hints fail silently with no actionable error message in the UI.  
+  **Needs:** LightHouse docs / team clarification on validation rules so we can surface the correct error message.
 
 ---
 
