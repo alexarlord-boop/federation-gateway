@@ -17,6 +17,8 @@ dist-ssr
 lighthouse/data/*.vlog
 lighthouse/data/*.mem
 lighthouse/data/*.sst
+lighthouse/data/keys/
+lighthouse/data/lighthouse.db
 backend.db
 
 # Editor directories and files
