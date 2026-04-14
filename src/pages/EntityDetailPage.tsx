@@ -197,6 +197,101 @@ function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string })
   );
 }
 
+/* ─── Subordinate JWKS Tab ─── */
+function SubordinateJwksTab({ subordinateId }: { subordinateId: string }) {
+  const { toast } = useToast();
+  const canUpdate = useOperationAllowed('subordinates', 'update');
+  const { jwks, isLoading, error, addJwk, deleteJwk } = useSubordinateKeys(subordinateId);
+  const [newJwk, setNewJwk] = useState('');
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (error) return <Card><CardContent className="py-8 text-center text-muted-foreground">Failed to load keys</CardContent></Card>;
+
+  const keys: any[] = (jwks as any)?.keys ?? [];
+
+  const handleAdd = async () => {
+    try {
+      const parsed = JSON.parse(newJwk.trim());
+      await addJwk.mutateAsync(parsed);
+      setNewJwk('');
+      toast({ title: 'Key added', description: 'JWK published to entity statement' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Invalid JWK JSON or API error' });
+    }
+  };
+
+  const handleDelete = async (kid: string) => {
+    try {
+      await deleteJwk.mutateAsync(kid);
+      toast({ title: 'Key removed', description: `kid: ${kid}` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove key' });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Existing keys */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Published Keys</CardTitle>
+          <CardDescription>Keys included in this entity's published entity statement</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {keys.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No keys published</p>
+          ) : (
+            <div className="space-y-2">
+              {keys.map((k, i) => (
+                <div key={k.kid ?? i} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm font-mono">
+                  <span className="truncate">
+                    <span className="text-muted-foreground mr-2">{k.kty}</span>
+                    {k.kid ?? '(no kid)'}
+                    {k.use && <span className="ml-2 text-xs text-muted-foreground">[{k.use}]</span>}
+                  </span>
+                  {canUpdate && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete key"
+                      disabled={deleteJwk.isPending}
+                      onClick={() => handleDelete(k.kid)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add key */}
+      {canUpdate && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Add Public Key</CardTitle>
+            <CardDescription>Paste a JWK JSON object to publish an additional key</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              placeholder={'{\n  "kty": "EC",\n  "crv": "P-256",\n  "kid": "my-key-1",\n  "x": "...",\n  "y": "..."\n}'}
+              value={newJwk}
+              onChange={e => setNewJwk(e.target.value)}
+              className="font-mono text-xs h-36"
+            />
+            <Button size="sm" disabled={!newJwk.trim() || addJwk.isPending} onClick={handleAdd}>
+              {addJwk.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Add Key
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 /* ─── Subordinate Metadata Policies Tab ─── */
 function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: string }) {
   const { toast } = useToast();
@@ -444,26 +539,31 @@ export default function EntityDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            {/* Only show operational toggle for approved entities when user can update */}
-            {canUpdate && (entity.status === 'active' || entity.status === 'locked') && (
+            {/* Show status toggle for active/blocked entities; allow reactivating inactive/pending */}
+            {canUpdate && (entity.status === 'active' || entity.status === 'blocked' || entity.status === 'inactive' || entity.status === 'pending') && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                     {entity.status === 'locked' ? 'Unlock' : 'Lock'}
+                     {entity.status === 'blocked' ? 'Unblock' : entity.status === 'active' ? 'Block' : 'Change Status'}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                    <DropdownMenuLabel>Operational Status</DropdownMenuLabel>
-                   <DropdownMenuItem 
-                     onClick={() => handleStatusChange(entity.status === 'locked' ? 'active' : 'locked')}
-                     disabled={entity.status !== 'active' && entity.status !== 'locked'}
-                   >
-                      {entity.status === 'locked' ? (
-                        <><CheckCircle2 className="w-4 h-4 mr-2 text-success" /> Unlock (Set Active)</>
-                      ) : (
-                        <><XCircle className="w-4 h-4 mr-2 text-warning" /> Lock (Suspend Operations)</>
-                      )}
-                   </DropdownMenuItem>
+                   {(entity.status === 'blocked' || entity.status === 'inactive' || entity.status === 'pending') && (
+                     <DropdownMenuItem onClick={() => handleStatusChange('active')}>
+                       <CheckCircle2 className="w-4 h-4 mr-2 text-success" /> Set Active
+                     </DropdownMenuItem>
+                   )}
+                   {entity.status === 'active' && (
+                     <DropdownMenuItem onClick={() => handleStatusChange('blocked')}>
+                       <XCircle className="w-4 h-4 mr-2 text-warning" /> Block (Suspend Operations)
+                     </DropdownMenuItem>
+                   )}
+                   {entity.status !== 'inactive' && (
+                     <DropdownMenuItem onClick={() => handleStatusChange('inactive')}>
+                       Set Inactive
+                     </DropdownMenuItem>
+                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -478,7 +578,7 @@ export default function EntityDetailPage() {
             {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon">
+                <Button variant="destructive" size="icon" aria-label="Delete entity">
                     <Trash2 className="w-4 h-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -594,14 +694,7 @@ export default function EntityDetailPage() {
         </TabsContent>
 
         <TabsContent value="jwks">
-             <Card>
-                <CardHeader><CardTitle>Public Keys (JWKS)</CardTitle></CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[500px] w-full rounded-md border p-4">
-                        <pre className="text-xs font-mono">{JSON.stringify(entity.jwks, null, 2)}</pre>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+          <SubordinateJwksTab subordinateId={id!} />
         </TabsContent>
 
         <TabsContent value="constraints">

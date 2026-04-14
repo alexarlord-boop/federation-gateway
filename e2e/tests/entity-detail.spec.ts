@@ -42,16 +42,14 @@ test.describe('Entity Detail Page @proxy', () => {
     await expect(page.getByRole('button', { name: /edit/i })).not.toBeVisible();
   });
 
-  test('jwks tab shows keys but has no add-key button', async ({ instancePage: page }) => {
+  test('jwks tab shows published keys and exposes add/delete controls', async ({ instancePage: page }) => {
     const href = await getFirstEntityHref(page);
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
     await page.getByRole('tab', { name: /jwks/i }).click();
-    await expect(page.getByText(/public keys/i)).toBeVisible({ timeout: 5_000 });
-    // GAP: useSubordinateKeys hook has addJwk/deleteJwk mutations,
-    // but the UI only shows a read-only <pre> — no way to add or delete keys
-    await expect(page.getByRole('button', { name: /add key/i })).not.toBeVisible();
-    await expect(page.getByRole('button', { name: /delete key/i })).not.toBeVisible();
+    await expect(page.getByText(/published keys/i)).toBeVisible({ timeout: 5_000 });
+    // Add Key button and textarea should be present for admins
+    await expect(page.getByRole('button', { name: /add key/i })).toBeVisible({ timeout: 5_000 });
   });
 
   test('constraints tab allows setting max path length', async ({ instancePage: page }) => {

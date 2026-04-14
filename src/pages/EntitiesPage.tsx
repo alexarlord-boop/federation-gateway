@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { 
   Building2, 
   Plus, 
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-type EntityStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'active' | 'inactive';
+type EntityStatus = 'draft' | 'pending' | 'approved' | 'active' | 'inactive';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 import { useEntities } from '@/hooks/useEntities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -44,8 +44,13 @@ import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Loader2 } from 'lucide-react';
 
 export default function EntitiesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<EntityStatus | 'all'>('all');
+  const statusParam = searchParams.get('status') as EntityStatus | 'all' | null;
+  const statusFilter: EntityStatus | 'all' = statusParam ?? 'all';
+  const setStatusFilter = (v: EntityStatus | 'all') => {
+    setSearchParams(v === 'all' ? {} : { status: v }, { replace: true });
+  };
   
   const { entities, isLoading } = useEntities();
   const { activeTrustAnchor } = useTrustAnchor();
@@ -121,7 +126,6 @@ export default function EntitiesPage() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
@@ -194,8 +198,8 @@ export default function EntitiesPage() {
                             <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
                               Set Active
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'rejected' })}>
-                              Set Rejected
+                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'inactive' })}>
+                              Set Inactive
                             </DropdownMenuItem>
                           </>
                         )}

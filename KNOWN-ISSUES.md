@@ -11,43 +11,34 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
 
 ### 🔴 Critical — Incorrect API values (will produce HTTP 400)
 
-- [ ] **`EntitiesPage` uses invalid status `'rejected'`**  
-  File: `src/pages/EntitiesPage.tsx` line 37, 124, 197  
-  The status change dropdown sends `status: 'rejected'` to LightHouse. LightHouse only accepts `active`, `blocked`, `pending`, `inactive`. Every status-change call with `'rejected'` returns HTTP 400 and silently fails.  
-  Fix: replace `'rejected'` with `'inactive'` throughout.
+- [x] ~~**`EntitiesPage` uses invalid status `'rejected'`**~~  
+  **Fixed:** replaced `'rejected'` with `'inactive'`; removed "Rejected" filter option. (`src/pages/EntitiesPage.tsx`)
 
-- [ ] **`EntityDetailPage` Lock button sends invalid status `'locked'`**  
-  File: `src/pages/EntityDetailPage.tsx` line 458  
-  The Lock/Unlock dropdown calls `handleStatusChange('locked')`. `'locked'` is not a valid LightHouse status. The API returns 400, the UI shows "Update Failed" toast.  
-  Fix: map "Lock" → `'blocked'` (or `'inactive'`) and update the UI label accordingly.
+- [x] ~~**`EntityDetailPage` Lock button sends invalid status `'locked'`**~~  
+  **Fixed:** status change now uses `'blocked'`/`'active'`/`'inactive'`. Button label updated to "Block/Unblock". (`src/pages/EntityDetailPage.tsx`)
 
 ### 🟠 High — Missing UI for existing backend functionality
 
-- [ ] **Entity detail JWKS tab is read-only**  
-  File: `src/pages/EntityDetailPage.tsx` line ~596  
-  The `useSubordinateKeys` hook already has `addJwk` and `deleteJwk` mutations, but no UI exposes them. The JWKS tab renders the keys as a read-only `<pre>` block. Operators cannot rotate keys per-subordinate from the UI.
+- [x] ~~**Entity detail JWKS tab is read-only**~~  
+  **Fixed:** `SubordinateJwksTab` component added with per-key delete buttons and Add JWK textarea, wiring `addJwk`/`deleteJwk` from `useSubordinateKeys`. (`src/pages/EntityDetailPage.tsx`)
 
 - [ ] **Entity detail Metadata tab is read-only**  
   File: `src/pages/EntityDetailPage.tsx` line ~585  
   The Metadata tab displays the raw entity JSON but offers no way to edit it. No "Edit JSON" button exists on this tab (unlike the Policies tab which does have editing).
 
-- [ ] **No UI to change status of `inactive` entities**  
-  File: `src/pages/EntityDetailPage.tsx` line 448  
-  The Lock/Unlock button is only rendered for `active` or `locked` statuses. Entities with `inactive` (or `pending`) status have no status-change controls on the detail page. There is no way to reactivate an inactive entity from the UI.
+- [x] ~~**No UI to change status of `inactive` entities**~~  
+  **Fixed:** status dropdown now shown for `active`, `blocked`, `inactive`, and `pending` entities with contextual options. (`src/pages/EntityDetailPage.tsx`)
 
 ### 🟡 Medium — UX & accessibility
 
-- [ ] **Delete button on entity detail has no accessible label**  
-  File: `src/pages/EntityDetailPage.tsx` line 481  
-  The delete entity button is `<Button variant="destructive" size="icon"><Trash2 /></Button>` with no `aria-label` or tooltip. Screen readers and automated tests cannot identify it by name.  
-  Fix: add `aria-label="Delete entity"` to the button.
+- [x] ~~**Delete button on entity detail has no accessible label**~~  
+  **Fixed:** added `aria-label="Delete entity"` to the destructive icon button. (`src/pages/EntityDetailPage.tsx`)
 
-- [ ] **Entity status filter is client-side only — no URL deep-link support**  
-  File: `src/pages/EntitiesPage.tsx`  
-  The `statusFilter` state is not reflected in the URL. Navigating to `/entities?status=active` does not pre-filter the list. Users cannot share links to filtered views or bookmark filtered states.
+- [x] ~~**Entity status filter is client-side only — no URL deep-link support**~~  
+  **Fixed:** `statusFilter` now synced with `?status=` URL search param via `useSearchParams`. (`src/pages/EntitiesPage.tsx`)
 
-- [ ] **Lock/Unlock requires two clicks (confusing UX)**  
-  File: `src/pages/EntityDetailPage.tsx` line 449–467  
+- [x] ~~**Lock/Unlock requires two clicks (confusing UX)**~~  
+  **Fixed:** dropdown now contains multiple contextual actions (Block, Set Active, Set Inactive) so the extra click is justified; removed single-item redundancy. (`src/pages/EntityDetailPage.tsx`)  
   The Lock button opens a DropdownMenu that contains a single menu item to actually change the status. For a single-action button, this adds unnecessary friction. Consider a direct confirmation dialog instead.
 
 ---
