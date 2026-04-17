@@ -20,7 +20,15 @@ export const useSubordinateMetadataPolicies = (subordinateId: string) => {
   // Full policies
   const query = useQuery({
     queryKey: ['subordinate-metadata-policies', instanceId, subordinateId],
-    queryFn: () => SubordinateMetadataPoliciesService.getSubordinateMetadataPolicies(idNum),
+    queryFn: async () => {
+      try {
+        return await SubordinateMetadataPoliciesService.getSubordinateMetadataPolicies(idNum);
+      } catch (err: any) {
+        // 404 = no policies configured yet; treat as empty rather than an error
+        if (err?.status === 404) return {};
+        throw err;
+      }
+    },
     enabled: !!subordinateId && !!instanceId,
   });
 

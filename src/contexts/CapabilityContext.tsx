@@ -93,9 +93,9 @@ export function CapabilityProvider({ children }: CapabilityProviderProps) {
     // On error React Query keeps data undefined; we supply fallback below
   });
 
-  // Use real data when available; null during load or on error (consumers
-  // already guard with `?? false`, so features are safely hidden on error).
-  const capabilities = manifest ?? null;
+  // Use real data when available; fall back to FALLBACK_MANIFEST on error
+  // so all features remain visible when LightHouse is temporarily unreachable.
+  const capabilities = manifest ?? (rawError ? FALLBACK_MANIFEST : null);
 
   const isFeatureEnabled = useCallback(
     (feature: string): boolean => {

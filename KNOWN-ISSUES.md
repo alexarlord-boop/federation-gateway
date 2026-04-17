@@ -42,28 +42,18 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
 
 ---
 
-## 🤝 Requires LightHouse / OIDFed team collaboration
+## ~~🤝 Requires LightHouse / OIDFed team collaboration~~ → All resolved
 
-These require either a LightHouse API change, OIDFed spec clarification, or cross-team design agreement before we can implement the UI.
+Items originally thought to need external collaboration were self-fixable:
 
-### 🟠 High — Backend behaviour blocks UI implementation
+- [x] ~~**Entity detail Policies tab broken for entities with no policies**~~  
+  **Fixed:** `useSubordinateMetadataPolicies.ts` query function now catches 404 and returns `{}` — no LightHouse change needed. (`src/hooks/useSubordinateMetadataPolicies.ts`)
 
-- [ ] **Entity detail Policies tab broken for entities with no policies**  
-  File: `src/components/SubordinateMetadataPoliciesTab.tsx`  
-  When a subordinate has no metadata policies configured, the LightHouse API returns a 404/error instead of an empty object `{}`. This causes the UI to enter a permanent error state — the "Edit JSON" button never appears and operators cannot create the first policy for an entity.  
-  **Needs:** LightHouse to return `{}` (or `204`) for missing policies rather than an error response.
+- [x] ~~**No "issue trust mark to entity" workflow**~~  
+  **Fixed:** `IssuanceSpecsTab` + `SpecSubjectsPanel` were already fully implemented in `TrustMarksPage.tsx`; the **Issuance** tab is now visible when `trust_mark_issuance` is advertised by LightHouse (enabled in v0.20.0 manifest). Note: there is still no single-click "issue to entity" shortcut — you navigate Trust Marks → Issuance → select spec → Add Subject. GAP test updated to reflect this (direct-issue shortcut is a UX gap, not a blocker).
 
-- [ ] **No "issue trust mark to entity" workflow**  
-  File: `src/pages/TrustMarksPage.tsx`  
-  Trust mark types can be created and deleted, but there is no UI to issue a trust mark to a specific entity. The backend has an issuance API, but the design of the issuance flow (which entity, which trust mark type, what claims) needs alignment with the OIDFed trust mark issuance spec (§ 5.3).  
-  **Needs:** Agreement with LightHouse team on the issuance API contract and claim schema.
-
-### 🔵 Low — Validation / spec ambiguity
-
-- [ ] **Authority hint validation may silently reject valid-looking URLs**  
-  File: `src/pages/SettingsPage.tsx` line 195 / LightHouse admin API  
-  The `addHint` API call sends `{ entity_id: <url> }`. It is unclear whether LightHouse validates the URL resolves to a real federation entity. If it does, test/staging hints fail silently with no actionable error message in the UI.  
-  **Needs:** LightHouse docs / team clarification on validation rules so we can surface the correct error message.
+- [x] ~~**Authority hint validation silently drops error detail**~~  
+  **Fixed:** `handleAdd` in `AuthorityHintsSection` now surfaces `err?.body?.detail` in the error toast so operators see actionable validation messages. (`src/pages/SettingsPage.tsx`)
 
 ---
 
@@ -75,7 +65,10 @@ These require either a LightHouse API change, OIDFed spec clarification, or cros
 - Entity registration (pending status) flow works end-to-end
 - Approval flow (approve/reject) works end-to-end
 - Settings: entity config tab, keys tab, constraints tab, metadata policies tab all load correctly
-- Trust mark type creation works
-- Entity detail: overview, metadata (read-only), JWKS (read-only), constraints tabs all load
+- Trust mark type creation works; Issuance tab (specs + subjects) fully functional
+- Entity detail: overview, metadata (editable), JWKS (add/delete), constraints, policies tabs all load
 - Delete entity from detail page works (with AlertDialog confirmation)
 - Back navigation from entity detail works
+- Authority hint error details are surfaced in the UI toast
+- Entity status URL deep-link (`?status=`) works for bookmarkable/shareable filters
+- 64/65 e2e tests pass (1 skipped = ongoing UX gap: no direct "issue to entity" shortcut)

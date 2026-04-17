@@ -195,8 +195,9 @@ function AuthorityHintsSection() {
       await addHint.mutateAsync({ entity_id: newHint });
       setNewHint('');
       toast({ title: 'Success', description: 'Authority hint added' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add hint' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to add hint';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
