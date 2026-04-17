@@ -59,15 +59,21 @@ test.describe.serial('Trust Marks management @proxy', () => {
     ).toBeVisible({ timeout: 5_000 });
   });
 
-  test('GAP: no UI to issue a trust mark to a specific entity', async ({ instancePage: page }) => {
-    test.fail(); // Expected failure — no direct "issue to entity" workflow currently exists
+  test('can issue a trust mark to an entity via dialog', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/trust-marks`);
     const issuanceTab = page.getByRole('tab', { name: /issuance/i });
-    await expect(issuanceTab).toBeVisible({ timeout: 2_000 });
+    await expect(issuanceTab).toBeVisible({ timeout: 5_000 });
     await issuanceTab.click();
-    await expect(
-      page.getByRole('button', { name: /issue to entity|add subject/i })
-    ).toBeVisible({ timeout: 3_000 });
+
+    // "Issue to Entity" button should be immediately visible
+    const issueBtn = page.getByRole('button', { name: /issue to entity/i });
+    await expect(issueBtn).toBeVisible({ timeout: 5_000 });
+    await issueBtn.click();
+
+    // Dialog opens with spec selector and entity ID input
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByLabel(/trust mark spec/i)).toBeVisible();
+    await expect(page.getByLabel(/entity id/i)).toBeVisible();
   });
 
   test('trust mark types list shows created type', async ({ instancePage: page }) => {

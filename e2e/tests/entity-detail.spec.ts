@@ -64,20 +64,14 @@ test.describe('Entity Detail Page @proxy', () => {
     await expect(page.getByText('Updated', { exact: true })).toBeVisible({ timeout: 5_000 });
   });
 
-  test('GAP: policies tab may not show Edit JSON for entity with no policies configured', async ({ instancePage: page }) => {
-    test.fail(); // Expected failure — bug exists: error state shown instead of Edit JSON
+  test('policies tab shows Edit JSON for entity with no policies configured', async ({ instancePage: page }) => {
     const href = await getFirstEntityHref(page);
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
     await page.getByRole('tab', { name: /policies/i }).click();
-    // Allow more time — the component may be stuck in loading state (spinner) when
-    // the API returns 404 for entities with no policies, instead of empty object.
-    // GAP: component never leaves loading state → Edit JSON button never appears.
+    // 404 is now handled: returns {} so the Edit JSON button should appear
     const editBtn = page.getByRole('button', { name: /edit json/i });
-    const errorText = page.getByText(/failed to load/i);
-    await expect(editBtn.or(errorText)).toBeVisible({ timeout: 10_000 });
-    // This assertion confirms the gap: Edit JSON must be available even with no policies
-    await expect(editBtn).toBeVisible({ timeout: 1_000 });
+    await expect(editBtn).toBeVisible({ timeout: 10_000 });
     await editBtn.click();
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible({ timeout: 3_000 });
   });

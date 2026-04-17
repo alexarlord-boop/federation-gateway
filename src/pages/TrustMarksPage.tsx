@@ -1,7 +1,8 @@
 import { useState, Fragment } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Award, Info, Loader2, Plus, Trash2, ChevronRight, Users, FileText,
-  Clock, ExternalLink, Pencil, Tag,
+  Clock, ExternalLink, Pencil, Tag, Send,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,10 @@ import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
+import { TrustMarkIssuanceService } from '@/client/services/TrustMarkIssuanceService';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import type { TrustMarkType } from '@/client/models/TrustMarkType';
 import type { TrustMarkSpec } from '@/client/models/TrustMarkSpec';
 // Trust mark feature components
@@ -180,6 +185,100 @@ function TrustMarkTypesTab() {
   );
 }
 
+// ── Issue to Entity Dialog ──────────────────────────────
+
+interface IssueToEntityDialogProps {
+  specs: TrustMarkSpec[];
+  onSuccess?: () => void;
+}
+
+function IssueToEntityDialog({ specs, onSuccess }: IssueToEntityDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [specId, setSpecId] = useState('');
+  const [entityId, setEntityId] = useState('');
+  const [isPending, setIsPending] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleIssue = async () => {
+    if (!specId || !entityId) return;
+    setIsPending(true);
+    try {
+      await TrustMarkIssuanceService.createTrustMarkSubject(Number(specId), { entity_id: entityId, status: 'active' });
+      queryClient.invalidateQueries({ queryKey: ['trust-mark-subjects'] });
+      toast({ title: 'Issued', description: `Trust mark issued to ${entityId}` });
+      setEntityId('');
+      setSpecId('');
+      setOpen(false);
+      onSuccess?.();
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.message ?? 'Failed to issue trust mark';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Send className="w-4 h-4 mr-2" />Issue to Entity
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Issue Trust Mark to Entity</DialogTitle>
+          <DialogDescription>
+            Select an issuance spec and enter the entity ID to grant it a trust mark.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="issue-spec">Trust Mark Spec <span className="text-destructive">*</span></Label>
+            {specs.length === 0 ? (
+              <Select disabled>
+                <SelectTrigger id="issue-spec">
+                  <SelectValue placeholder="No specs configured — add one first" />
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            ) : (
+              <Select value={specId} onValueChange={setSpecId}>
+                <SelectTrigger id="issue-spec">
+                  <SelectValue placeholder="Select a trust mark spec…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specs.map((s) => (
+                    <SelectItem key={s.id as number} value={String(s.id)}>
+                      {s.trust_mark_type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="issue-entity">Entity ID <span className="text-destructive">*</span></Label>
+            <Input
+              id="issue-entity"
+              placeholder="https://entity.example.org"
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleIssue} disabled={!specId || !entityId || isPending || specs.length === 0}>
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Issue'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Trust Mark Issuance Specs Tab ───────────────────────
 
 function IssuanceSpecsTab() {
@@ -238,25 +337,14 @@ function IssuanceSpecsTab() {
     }
   };
 
-  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>;
-
-  if (error) {
-    return (
-      <div className="text-center py-12 bg-muted/50 rounded-lg">
-        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Issuance Specs Unavailable</h3>
-        <p className="text-muted-foreground text-sm">This feature may not be supported by the connected instance.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {canCreate && <IssueToEntityDialog specs={specs ?? []} />}
         {canCreate && (
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-2" />Add Spec</Button>
+            <Button variant="outline"><Plus className="w-4 h-4 mr-2" />Add Spec</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -302,7 +390,19 @@ function IssuanceSpecsTab() {
         )}
       </div>
 
-      {specs.length === 0 ? (
+      {isLoading && (
+        <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
+      )}
+
+      {!isLoading && error && (
+        <div className="text-center py-12 bg-muted/50 rounded-lg">
+          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Issuance Specs Unavailable</h3>
+          <p className="text-muted-foreground text-sm">This feature may not be supported by the connected instance.</p>
+        </div>
+      )}
+
+      {!isLoading && !error && specs.length === 0 ? (
         <div className="text-center py-12 bg-muted/50 rounded-lg">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Issuance Specs</h3>
