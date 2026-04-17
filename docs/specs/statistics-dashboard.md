@@ -61,7 +61,7 @@ Or a top-level `/stats` page linked from the sidebar under *Federation*.
 - Line chart: requests per hour over the selected time range
 - Secondary line: error count
 - Uses a lightweight chart library already in the project (or `recharts` — check
-  `package.json` first)
+  `package.json` first or modern and nice-looking shadcn charts)
 
 **Top endpoints table**
 - Endpoint name | Request count | % of total
