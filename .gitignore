@@ -20,6 +20,7 @@ lighthouse/data/*.sst
 lighthouse/data/keys/
 lighthouse/data/lighthouse.db
 backend.db
+.worktrees/
 
 # Editor directories and files
 .vscode/*
