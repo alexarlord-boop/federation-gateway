@@ -148,7 +148,7 @@ Test runs register entities in LightHouse's database. To clear them without a fu
 ```sh
 docker compose stop lighthouse
 sqlite3 lighthouse/data/lighthouse.db \
-  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events;"
+  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events; DELETE FROM authority_hints WHERE entity_id LIKE '%ta-test-%';"
 docker compose start lighthouse
 ```
 
