@@ -135,6 +135,29 @@ npx playwright show-report   # HTML report from last run
 
 Test results and failure screenshots land in `e2e/test-results/`.
 
+#### Clean up after tests
+
+Playwright file artifacts (screenshots, traces, HTML report):
+
+```sh
+rm -rf e2e/test-results/ e2e/playwright-report/
+```
+
+Test runs register entities in LightHouse's database. To clear them without a full reset:
+
+```sh
+docker compose stop lighthouse
+sqlite3 lighthouse/data/lighthouse.db \
+  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events;"
+docker compose start lighthouse
+```
+
+This preserves LightHouse signing keys and config. The BFF registration records are stored in `backend/backend.db`; delete that file and restart the backend to re-seed it:
+
+```sh
+rm -f backend/backend.db && docker compose restart backend
+```
+
 ---
 
 ### Local UI development (without Docker)
