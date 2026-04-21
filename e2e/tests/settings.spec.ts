@@ -84,6 +84,27 @@ test.describe('Settings page @proxy', () => {
     await expect(page.getByRole('heading', { name: /max path length/i })).toBeVisible({ timeout: 10_000 });
   });
 
+  test('Constraints tab does not issue a failing general constraints request', async ({ instancePage: page }) => {
+    const failingResponses: Array<{ url: string; status: number }> = [];
+
+    page.on('response', response => {
+      if (
+        response.url().includes('/api/v1/proxy/ta-1/api/v1/admin/subordinates/constraints') &&
+        response.status() >= 400
+      ) {
+        failingResponses.push({ url: response.url(), status: response.status() });
+      }
+    });
+
+    await page.goto(`${APP_URL}/settings`);
+    const constraintsTab = page.getByRole('tab', { name: /constraints/i });
+    if (await constraintsTab.count() === 0) return; // feature not enabled
+    await constraintsTab.click();
+    await expect(page.getByRole('heading', { name: /max path length/i })).toBeVisible({ timeout: 10_000 });
+
+    expect(failingResponses).toEqual([]);
+  });
+
   test('Metadata Policies tab displays correctly', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/settings`);
     const policiesTab = page.getByRole('tab', { name: /metadata policies/i });

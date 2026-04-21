@@ -21,7 +21,15 @@ export const useGeneralConstraints = () => {
 
   const query = useQuery<Constraints>({
     queryKey: ['general-constraints', instanceId],
-    queryFn: () => GeneralConstraintsService.getGeneralConstraints(),
+    queryFn: async () => {
+      try {
+        return await GeneralConstraintsService.getGeneralConstraints();
+      } catch (err: any) {
+        // 404 means LightHouse has no general constraints configured yet.
+        if (err?.status === 404) return {};
+        throw err;
+      }
+    },
     enabled: !!instanceId,
   });
 
