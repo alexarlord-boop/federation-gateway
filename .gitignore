@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.superpowers/
 
 # LightHouse runtime data (DB files, keys, WAL logs) — never commit these
 # The .gitkeep and lighthouse.db are intentionally tracked
@@ -20,6 +21,8 @@ lighthouse/data/*.sst
 lighthouse/data/keys/
 lighthouse/data/lighthouse.db
 backend.db
+backend/.venv/
+backend/test_bff.db
 .worktrees/
 
 # Editor directories and files
