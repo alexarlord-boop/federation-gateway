@@ -6,7 +6,8 @@ def test_list_includes_lighthouse(client, admin_headers):
     ta = next((t for t in data if t["id"] == "ta-1"), None)
     assert ta is not None, "Seeded ta-1 not found"
     assert ta["name"] == "LightHouse"
-    assert ta["admin_api_base_url"] == "http://lighthouse:8080"
+    # HttpUrl normalizes URLs with trailing slash
+    assert ta["admin_api_base_url"] == "http://lighthouse:8080/"
     assert ta["status"] == "active"
 
 
@@ -65,4 +66,5 @@ def test_delete_nonexistent_returns_404(client, admin_headers):
 def test_get_config(client, admin_headers):
     resp = client.get("/api/v1/admin/trust-anchors/ta-1/config", headers=admin_headers)
     assert resp.status_code == 200
-    assert resp.json()["admin_api_base_url"] == "http://lighthouse:8080"
+    # HttpUrl normalizes URLs with trailing slash
+    assert resp.json()["admin_api_base_url"] == "http://lighthouse:8080/"

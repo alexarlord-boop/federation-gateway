@@ -20,6 +20,7 @@ class TrustAnchorResponse(BaseModel):
     status: str
     subordinate_count: int = 0
     admin_api_base_url: Optional[str] = None
+    deployment_managed: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

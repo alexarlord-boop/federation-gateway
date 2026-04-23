@@ -32,6 +32,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
                 status=a.status,
                 subordinate_count=0,
                 admin_api_base_url=cfg.get("admin_api_base_url"),
+                deployment_managed=True,
                 created_at=a.created_at.isoformat() if a.created_at else None,
                 updated_at=a.updated_at.isoformat() if a.updated_at else None,
             )

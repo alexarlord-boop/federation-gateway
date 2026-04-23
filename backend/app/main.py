@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
-from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, users
+from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, users, instances
 from app.routers import resolve, tenants, tech_contacts, registrations
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
+from pathlib import Path
+from app.config.deployment import load_deployment_config
 # Import models so SQLAlchemy creates their tables via create_all
 import app.models.tenant          # noqa: F401
 import app.models.tech_contact    # noqa: F401
@@ -40,8 +42,18 @@ def _run_schema_migrations() -> None:
 
 _run_schema_migrations()
 
-# Seed data
-seed_data()
+# Load deployment config
+CONFIG_PATH = Path("/config/gateway.yaml")
+if not CONFIG_PATH.exists():
+    # Fall back to local config for testing
+    CONFIG_PATH = Path(__file__).parent.parent / "config" / "gateway.yaml"
+
+deployment_config = None
+if CONFIG_PATH.exists():
+    deployment_config = load_deployment_config(CONFIG_PATH)
+
+# Seed data with deployment config
+seed_data(deployment_config)
 
 # Seed RBAC data from OpenAPI spec
 db = SessionLocal()
@@ -51,6 +63,12 @@ finally:
     db.close()
 
 app = FastAPI(title="OIDFed Auth Gateway", version="0.1.0")
+
+# Store deployment config in app state (empty config if file doesn't exist)
+if deployment_config is None:
+    from app.config.deployment import DeploymentConfig
+    deployment_config = DeploymentConfig()
+app.state.instance_registry = deployment_config
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +91,8 @@ app.include_router(tech_contacts.router)
 app.include_router(registrations.router)
 # Proxy — forwards /api/v1/proxy/{instance_id}/… to the upstream LightHouse Admin API.
 app.include_router(proxy.router)
+# Instance registry — lists deployment-managed instances
+app.include_router(instances.router)
 
 
 @app.get("/health")
