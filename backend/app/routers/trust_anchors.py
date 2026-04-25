@@ -22,6 +22,8 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
             except Exception:
                 cfg = {}
 
+        deployment_managed = (a.description or "").startswith("Deployment-managed instance")
+
         result.append(
             TrustAnchorResponse(
                 id=a.id,
@@ -32,7 +34,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
                 status=a.status,
                 subordinate_count=0,
                 admin_api_base_url=cfg.get("admin_api_base_url"),
-                deployment_managed=True,
+                deployment_managed=deployment_managed,
                 created_at=a.created_at.isoformat() if a.created_at else None,
                 updated_at=a.updated_at.isoformat() if a.updated_at else None,
             )
