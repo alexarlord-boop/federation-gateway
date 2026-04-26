@@ -187,7 +187,7 @@ async def proxy(
     instance = _resolve_instance(instance_id, request, db)
 
     # 2. Build upstream URL
-    upstream_url = f"{instance['base_url']}/{path}"
+    upstream_url = f"{instance['base_url']}/{path.lstrip('/')}"
 
     # Preserve query string
     if request.url.query:

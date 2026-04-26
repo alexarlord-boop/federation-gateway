@@ -34,6 +34,22 @@ def test_proxy_routes_to_correct_upstream(client, admin_headers):
     assert called_url == "http://lighthouse:8080/api/v1/admin/subordinates"
 
 
+def test_proxy_normalizes_leading_slash_in_path(client, admin_headers):
+    """Paths with leading slashes must be normalized to avoid double slashes."""
+    mc = _mock_client(_fake_response())
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        # FastAPI's path:path capture will include the leading slash
+        resp = client.get(
+            "/api/v1/proxy/ta-1//admin/subordinates",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 200
+    called_url = mc.request.call_args.kwargs["url"]
+    # Should NOT produce http://lighthouse:8080//admin/subordinates
+    assert called_url == "http://lighthouse:8080/admin/subordinates"
+    assert "//" not in called_url.replace("http://", "")
+
+
 def test_proxy_preserves_query_string(client, admin_headers):
     mc = _mock_client(_fake_response())
     with patch("app.routers.proxy._get_client", return_value=mc):
