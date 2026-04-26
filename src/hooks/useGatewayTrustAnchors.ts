@@ -22,6 +22,7 @@ export interface TrustAnchorDisplay {
   description?: string;
   subordinateCount?: number;
   adminApiBaseUrl?: string;
+  deploymentManaged?: boolean;
 }
 
 export interface TrustAnchorCreate {
@@ -65,6 +66,7 @@ function toDisplay(ta: any): TrustAnchorDisplay {
     description: ta.description,
     subordinateCount: ta.subordinate_count ?? ta.subordinateCount,
     adminApiBaseUrl: ta.admin_api_base_url ?? ta.adminApiBaseUrl,
+    deploymentManaged: ta.deployment_managed ?? ta.deploymentManaged ?? false,
   };
 }
 

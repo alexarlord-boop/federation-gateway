@@ -107,10 +107,15 @@ function TrustAnchorCard({
                     External
                   </span>
                 )}
+                {ta.deploymentManaged && (
+                  <span className="entity-badge bg-muted/50 text-muted-foreground border-muted">
+                    Deployment managed
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          {!isExternal && (
+          {!isExternal && (onConfigure || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Trust anchor options">
@@ -118,10 +123,12 @@ function TrustAnchorCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onConfigure?.(String(ta.id), ta.name || ta.entityId || ta.id)}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configure
-                </DropdownMenuItem>
+                {onConfigure && (
+                  <DropdownMenuItem onClick={() => onConfigure(String(ta.id), ta.name || ta.entityId || ta.id)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Configure
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Entity Config
@@ -616,8 +623,8 @@ export default function TrustAnchorsPage() {
                    ta={ta}
                    isLocal
                    isActive={isActive}
-                   onDelete={(id, label) => setDeleteTarget({ kind: 'ta', id, label })}
-                   onConfigure={(id, label) => setConfigTarget({ id, label })}
+                   onConfigure={ta.deploymentManaged ? undefined : (id, label) => setConfigTarget({ id, label })}
+                   onDelete={ta.deploymentManaged ? undefined : (id, label) => setDeleteTarget({ kind: 'ta', id, label })}
                  />
              );
           })}

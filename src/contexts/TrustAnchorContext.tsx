@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { TrustAnchorDisplay } from '@/hooks/useTrustAnchors';
 import { setActiveInstance, getActiveInstanceId } from '@/lib/api-config';
 
+const STORAGE_KEY = 'selected_instance_id';
+
 interface TrustAnchorContextType {
   activeTrustAnchor: TrustAnchorDisplay | null;
   setActiveTrustAnchor: (ta: TrustAnchorDisplay | null) => void;
@@ -17,22 +19,28 @@ export function TrustAnchorProvider({ children }: { children: ReactNode }) {
   const [trustAnchors, setTrustAnchors] = useState<TrustAnchorDisplay[]>([]);
   const [activeTrustAnchor, setActiveTrustAnchorState] = useState<TrustAnchorDisplay | null>(null);
 
+  // On mount, restore the selected instance from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    setActiveInstance(stored || null);
+  }, []);
+
   // When the active instance changes, update the module-level variable read
   // by the OpenAPI.BASE getter and invalidate the query cache so active
   // queries refetch from the new instance.
   const setActiveTrustAnchor = useCallback((ta: TrustAnchorDisplay | null) => {
-    const previousId = getActiveInstanceId();
     const nextId = ta?.id ?? null;
-
     setActiveTrustAnchorState(ta);
     setActiveInstance(nextId);
-
-    // On instance switch: cancel in-flight requests targeting the old
-    // instance and mark all queries stale so active ones refetch.
-    if (previousId !== nextId) {
-      queryClient.cancelQueries();
-      queryClient.invalidateQueries();
+    
+    if (nextId) {
+      localStorage.setItem(STORAGE_KEY, nextId);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
     }
+    
+    queryClient.cancelQueries();
+    queryClient.invalidateQueries();
   }, [queryClient]);
 
   // On unmount (user logs out → TrustAnchorProvider unmounts), reset to

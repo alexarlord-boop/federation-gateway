@@ -12,12 +12,12 @@ import { Button } from '@/components/ui/button';
 import { useBackend } from '@/contexts/BackendContext';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
-import { GATEWAY_BASE } from '@/lib/api-config';
+import { GATEWAY_BASE, getActiveInstanceId } from '@/lib/api-config';
 
 export function BackendSwitcher() {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
   const { trustAnchors } = useTrustAnchors();
-  const { setActiveTrustAnchor } = useTrustAnchor();
+  const { activeTrustAnchor, setActiveTrustAnchor } = useTrustAnchor();
 
   useEffect(() => {
     const discovered = trustAnchors
@@ -40,19 +40,18 @@ export function BackendSwitcher() {
   // Only real (TA-backed) backends are shown and selectable.
   const taBackends = backends.filter((b) => b.id.startsWith('ta:'));
 
-  // Sync the active backend → TrustAnchorContext so pages that gate on
-  // activeTrustAnchor (Settings, Trust Marks) know which instance is live.
-  // Also auto-select the first real TA when still on the placeholder default.
+  // Sync the active backend to TrustAnchorContext based on the stored instance ID.
+  // No auto-selection: if nothing matches, leave it null.
   useEffect(() => {
-    const matched = trustAnchors.find((ta) => `ta:${ta.id}` === selectedBackend.id);
-    if (!matched && taBackends.length > 0) {
-      // Switch to first real instance silently (no reload needed — context
-      // invalidation in TrustAnchorContext handles refetching).
-      setSelectedBackend(taBackends[0].id);
+    const matched = trustAnchors.find((ta) => ta.id === getActiveInstanceId());
+    if (matched) {
+      setActiveTrustAnchor(matched);
       return;
     }
-    setActiveTrustAnchor(matched ?? (trustAnchors.length > 0 ? trustAnchors[0] : null));
-  }, [selectedBackend.id, trustAnchors, taBackends, setActiveTrustAnchor, setSelectedBackend]);
+    setActiveTrustAnchor(null);
+  }, [trustAnchors, setActiveTrustAnchor]);
+
+  const selectedLabel = activeTrustAnchor?.name ?? 'Select instance';
 
   return (
     <div className="px-3 pb-2">
@@ -64,7 +63,7 @@ export function BackendSwitcher() {
                 <Server className="w-4 h-4 text-primary" />
               </div>
               <div className="flex flex-col items-start overflow-hidden">
-                <span className="text-sm font-medium truncate w-full text-left">{selectedBackend.name}</span>
+                <span className="text-sm font-medium truncate w-full text-left">{selectedLabel}</span>
                 <span className="text-xs select-sublabel truncate w-full text-left">Active Instance</span>
               </div>
             </div>
@@ -73,13 +72,19 @@ export function BackendSwitcher() {
         <DropdownMenuContent className="w-[15rem]" align="start">
           <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          {taBackends.length === 0 && (
+            <DropdownMenuItem disabled>
+              <span className="text-xs text-muted-foreground">No instances configured</span>
+            </DropdownMenuItem>
+          )}
           {taBackends.map((backend) => (
             <DropdownMenuItem
               key={backend.id}
               className="cursor-pointer"
               onClick={() => {
                 setSelectedBackend(backend.id);
-                window.location.reload();
+                const match = trustAnchors.find((ta) => `ta:${ta.id}` === backend.id) ?? null;
+                setActiveTrustAnchor(match);
               }}
             >
               <div className="flex flex-col">
@@ -91,11 +96,6 @@ export function BackendSwitcher() {
               )}
             </DropdownMenuItem>
           ))}
-          {taBackends.length === 0 && (
-            <DropdownMenuItem disabled>
-              <span className="text-xs text-muted-foreground">No instances configured</span>
-            </DropdownMenuItem>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

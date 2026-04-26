@@ -150,7 +150,7 @@ function NoInstanceCard() {
   return (
     <Card>
       <CardContent className="py-12 text-center text-muted-foreground">
-        Select a federation instance to manage this section
+        Choose a configured instance from the sidebar before editing instance-scoped settings.
       </CardContent>
     </Card>
   );
