@@ -13,12 +13,11 @@ async function loginAsAdmin(page: Page) {
   await expect(page).not.toHaveURL(/\/login/);
 }
 
-async function waitForInstanceSelected(page: Page) {
-  // BackendSwitcher auto-selects the first TA. The button text changes from
-  // the placeholder to the TA name "LightHouse" once trustAnchors load.
-  await expect(
-    page.locator('button').filter({ hasText: 'LightHouse' })
-  ).toBeVisible({ timeout: 10_000 });
+async function selectInstance(page: Page, name = 'LightHouse') {
+  await page.goto(`${APP_URL}/dashboard`);
+  await page.getByRole('button', { name: /select instance|lighthouse/i }).click();
+  await page.getByRole('menuitem', { name: new RegExp(name, 'i') }).click();
+  await expect(page.getByRole('button', { name: new RegExp(name, 'i') })).toBeVisible();
 }
 
 type AuthFixtures = {
@@ -32,11 +31,9 @@ export const test = base.extend<AuthFixtures>({
     await use(page);
   },
   instancePage: async ({ authenticatedPage: page }, use) => {
-    // Navigate to any authenticated page to trigger BackendSwitcher
-    await page.goto(`${APP_URL}/dashboard`);
-    await waitForInstanceSelected(page);
+    await selectInstance(page);
     await use(page);
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect };

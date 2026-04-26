@@ -43,11 +43,40 @@ federation-gateway/
 
 | Service | Port | Notes |
 |---------|------|-------|
-| **UI** (nginx, SPA) | `8080` | Proxies `/api/*` → backend at `8765` |
-| **Backend** (FastAPI) | `8765` | BFF: auth + TA registry + proxy to LightHouse |
-| **LightHouse** | `8081` | `oidfed/lighthouse:0.20.0` — federation node |
+| **UI** (nginx, SPA) | `8080` (configurable via `UI_PORT`) | Proxies `/api/*` → backend at `8765` |
+| **Backend** (FastAPI) | `8765` (configurable via `BACKEND_PORT`) | BFF: auth + deployment config + proxy to instances |
+| **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | `oidfed/lighthouse:0.20.0` — federation node |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
+> **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
+
+### Deployment configuration
+
+Federation instances are declared in `backend/config/gateway.yaml`:
+
+```yaml
+ui:
+  public_base_url: http://localhost:8080
+backend:
+  public_base_url: http://localhost:8765
+instances:
+  - id: ta-1
+    name: LightHouse
+    public_base_url: http://localhost:8081
+    admin_base_url: http://lighthouse:8080
+    public_port: 8081
+    admin_port: 8080
+    admin_auth:
+      type: basic
+      username_env: LIGHTHOUSE_ADMIN_USERNAME
+      password_env: LIGHTHOUSE_ADMIN_PASSWORD
+```
+
+**Key behaviors**:
+- The backend loads instance configuration from `GATEWAY_CONFIG_FILE` (defaults to `/config/gateway.yaml` in Docker).
+- Admin credentials are read from environment variables (`LIGHTHOUSE_ADMIN_USERNAME`, `LIGHTHOUSE_ADMIN_PASSWORD`).
+- The UI does **not** auto-select the first instance. Users must explicitly choose an instance from the dropdown.
+- Proxy requests to admin endpoints are authenticated server-side; the UI never sees admin credentials.
 
 ### Default credentials (seeded on first run)
 
@@ -65,6 +94,16 @@ docker compose up --build
 ```
 
 Opens at **http://localhost:8080**.
+
+**Environment variables** (optional):
+```sh
+UI_PORT=8080 \
+BACKEND_PORT=8765 \
+LIGHTHOUSE_PUBLIC_PORT=8081 \
+LIGHTHOUSE_ADMIN_USERNAME=gateway \
+LIGHTHOUSE_ADMIN_PASSWORD=gateway \
+docker compose up --build
+```
 
 ### Rebuild a single service (after source changes)
 
@@ -190,10 +229,28 @@ The backend stores state in `backend.db` (SQLite, root of repo).
 
 ### Adding a second LightHouse instance
 
-1. Create `lighthouse2/config.yaml` (copy and adjust `lighthouse/config.yaml`).
-2. Uncomment the `lighthouse2` service block in `docker-compose.yml`.
-3. Uncomment the `ta-2` / `tenant-2` rows in `backend/app/db/seed.py`.
-4. Full reset: `docker compose down -v && docker compose up --build`.
+The deployment configuration in `backend/config/gateway.yaml` supports multiple instances. To add a second instance:
+
+1. Create `lighthouse2/config.yaml` and `lighthouse2/data/` directory.
+2. Add a `lighthouse2` service to `docker-compose.yml` (see commented example).
+3. Add the instance to `backend/config/gateway.yaml`:
+   ```yaml
+   instances:
+     - id: ta-1
+       name: LightHouse
+       # ... existing config
+     - id: ta-2
+       name: LightHouse 2
+       public_base_url: http://localhost:8082
+       admin_base_url: http://lighthouse2:8080
+       public_port: 8082
+       admin_port: 8080
+       admin_auth:
+         type: basic
+         username_env: LIGHTHOUSE2_ADMIN_USERNAME
+         password_env: LIGHTHOUSE2_ADMIN_PASSWORD
+   ```
+4. Restart: `docker compose down -v && docker compose up --build`.
 
 ---
 
