@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubordinates } from '@/hooks/useSubordinates';
 import { useChangeSubordinateStatus } from '@/hooks/useSubordinates';
 import { SubordinateKeysService } from '@/client/services/SubordinateKeysService';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 // Placeholder JWKS used when an entity has no keys and needs to be approved.
 // The entity administrator should replace these with their own keys afterward.
@@ -32,6 +33,7 @@ const PLACEHOLDER_JWKS = {
 };
 
 export default function ApprovalsPage() {
+  const { activeTrustAnchor } = useTrustAnchor();
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const { toast } = useToast();
@@ -39,6 +41,16 @@ export default function ApprovalsPage() {
   const { data: pendingEntities, isLoading: isLoadingPending } = useSubordinates(undefined, 'pending');
   const { data: approvedEntities, isLoading: isLoadingApproved } = useSubordinates(undefined, 'active');
   const { data: rejectedEntities, isLoading: isLoadingRejected } = useSubordinates(undefined, 'inactive');
+
+  if (!activeTrustAnchor) {
+    return (
+      <div className="text-center py-12">
+        <ClipboardCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to manage approvals.</p>
+      </div>
+    );
+  }
 
   const handleAction = async () => {
     if (!selectedRequest || !actionType) return;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, ExternalLink, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ import { useCreateSubordinate, useDeleteSubordinate } from '@/hooks/useSubordina
 import { useToast } from '@/hooks/use-toast';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 import { SubordinateMetadataService } from '@/client/services/SubordinateMetadataService';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
@@ -29,6 +30,7 @@ const steps = [
 ];
 
 export default function EntityRegisterPage() {
+  const { activeTrustAnchor } = useTrustAnchor();
   const [searchParams] = useSearchParams();
   const isIntermediate = searchParams.get('type') === 'intermediate';
   const [currentStep, setCurrentStep] = useState(0);
@@ -48,6 +50,16 @@ export default function EntityRegisterPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  if (!activeTrustAnchor) {
+    return (
+      <div className="text-center py-12">
+        <Plus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to register entities.</p>
+      </div>
+    );
+  }
   
   useEffect(() => {
     if (isIntermediate) {

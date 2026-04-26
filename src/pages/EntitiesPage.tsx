@@ -52,8 +52,8 @@ export default function EntitiesPage() {
     setSearchParams(v === 'all' ? {} : { status: v }, { replace: true });
   };
   
-  const { entities, isLoading } = useEntities();
   const { activeTrustAnchor } = useTrustAnchor();
+  const { entities, isLoading } = useEntities();
   const instanceId = activeTrustAnchor?.id;
   const canCreate = useOperationAllowed('subordinates', 'create');
   const canUpdate = useOperationAllowed('subordinates', 'update');
@@ -65,6 +65,16 @@ export default function EntitiesPage() {
       queryClient.invalidateQueries({ queryKey: ['subordinates', instanceId] });
     },
   });
+
+  if (!activeTrustAnchor) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to view entities.</p>
+      </div>
+    );
+  }
 
   const filteredEntities = entities.filter(entity => {
     const matchesSearch = 

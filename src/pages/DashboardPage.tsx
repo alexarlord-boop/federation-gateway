@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
 import { useEntities } from '@/hooks/useEntities';
 import { BackendInfoPanel } from '@/components/BackendInfoPanel';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 function StatCard({ 
   title, 
@@ -46,8 +47,19 @@ function StatCard({
 
 export default function DashboardPage() {
   const { user, isAdmin } = useAuth();
+  const { activeTrustAnchor } = useTrustAnchor();
   const { entities, isLoading } = useEntities();
   
+  if (!activeTrustAnchor) {
+    return (
+      <div className="text-center py-12">
+        <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to view the dashboard.</p>
+      </div>
+    );
+  }
+
   const pendingApprovals = entities.filter(e => e.status === 'pending');
   
   // Calculate stats from real data

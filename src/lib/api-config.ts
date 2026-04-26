@@ -11,6 +11,16 @@
  *    The generated OpenAPI client reads `OpenAPI.BASE` at **request time**
  *    via a getter that resolves to the proxy URL for the currently active
  *    instance — no global singleton mutation required.
+ *
+ * ── No-Instance Behavior (Task 4: Explicit Selection) ──────────────────────
+ *
+ * When no instance is selected (_activeInstanceId is null), `OpenAPI.BASE`
+ * falls back to GATEWAY_BASE.  This supports gateway-scoped APIs (auth,
+ * trust-anchor CRUD, RBAC, capabilities) while preventing instance-scoped
+ * UI surfaces (Entities, Dashboard, Approvals, etc.) from issuing spurious
+ * requests without an active instance context.  Pages that require an instance
+ * guard with a no-instance fallback UI, ensuring users explicitly select a
+ * deployment before performing instance-scoped operations.
  */
 
 import { OpenAPI } from '@/client';
