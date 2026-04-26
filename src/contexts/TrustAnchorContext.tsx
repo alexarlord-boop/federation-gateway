@@ -29,6 +29,7 @@ export function TrustAnchorProvider({ children }: { children: ReactNode }) {
   // by the OpenAPI.BASE getter and invalidate the query cache so active
   // queries refetch from the new instance.
   const setActiveTrustAnchor = useCallback((ta: TrustAnchorDisplay | null) => {
+    const previousId = getActiveInstanceId();
     const nextId = ta?.id ?? null;
     setActiveTrustAnchorState(ta);
     setActiveInstance(nextId);
@@ -39,8 +40,11 @@ export function TrustAnchorProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(STORAGE_KEY);
     }
     
-    queryClient.cancelQueries();
-    queryClient.invalidateQueries();
+    // Only invalidate queries if the instance ID actually changed
+    if (previousId !== nextId) {
+      queryClient.cancelQueries();
+      queryClient.invalidateQueries();
+    }
   }, [queryClient]);
 
   // On unmount (user logs out → TrustAnchorProvider unmounts), reset to
