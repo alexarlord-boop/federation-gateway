@@ -81,7 +81,10 @@ def test_proxy_strips_client_bearer_jwt(client, admin_headers):
             headers=admin_headers,
         )
     fwd = mc.request.call_args.kwargs["headers"]
-    assert "authorization" not in {k.lower() for k in fwd}
+    # Client's Bearer JWT should be stripped
+    # (Basic auth from registry is injected separately)
+    auth_header = fwd.get("authorization", fwd.get("Authorization", ""))
+    assert not auth_header.startswith("Bearer ") or "eyJ" not in auth_header
 
 
 # ── Response tracing headers ───────────────────────────────────────────────
@@ -133,7 +136,7 @@ def test_proxy_timeout_returns_504(client, admin_headers):
 
 
 def test_proxy_instance_without_base_url_returns_422(client, admin_headers):
-    """TA with no admin_api_base_url → 422, not 500."""
+    """TA not in the deployment registry → 404, not 500."""
     ta = client.post(
         "/api/v1/admin/trust-anchors",
         json={
@@ -151,6 +154,31 @@ def test_proxy_instance_without_base_url_returns_422(client, admin_headers):
             f"/api/v1/proxy/{ta_id}/api/v1/admin/subordinates",
             headers=admin_headers,
         )
-        assert resp.status_code == 422
+        # Instance not in registry → 404
+        assert resp.status_code == 404
     finally:
         client.delete(f"/api/v1/admin/trust-anchors/{ta_id}", headers=admin_headers)
+
+
+# ── Deployment-managed instances ───────────────────────────────────────────
+
+def test_proxy_uses_registry_admin_endpoint(client, admin_headers):
+    """Proxy should use registry admin_base_url and inject basic auth."""
+    called = {}
+
+    async def capture_request(**kwargs):
+        called.update(kwargs)
+        return _fake_response()
+
+    mc = MagicMock()
+    mc.request = AsyncMock(side_effect=capture_request)
+
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.get(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            headers=admin_headers,
+        )
+
+    assert resp.status_code == 200
+    assert called["url"] == "http://lighthouse:8080/api/v1/admin/subordinates"
+    assert called["headers"].get("Authorization", "").startswith("Basic ")

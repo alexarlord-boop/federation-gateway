@@ -8,9 +8,9 @@ selected by `instance_id`.
 Flow:
   UI → POST /api/v1/proxy/{instance_id}/admin/subordinates
        ↓
-  Gateway looks up instance_id in the trust_anchors table,
-  reads admin_api_base_url from its config_json,
-  attaches RBAC / identity headers,
+  Gateway looks up instance_id in the deployment config registry,
+  reads admin_base_url and attaches basic auth from the registry,
+  injects RBAC / identity headers,
   forwards the request via httpx,
   and streams the response back.
 
@@ -18,6 +18,7 @@ This keeps the Admin API independent of our auth layer — it only
 receives pre-authenticated requests from the gateway.
 """
 
+import base64
 import json
 import logging
 from typing import Optional
@@ -51,48 +52,37 @@ def _get_client() -> httpx.AsyncClient:
     return _client
 
 
-def _resolve_instance(instance_id: str, db: Session) -> dict:
+def _resolve_instance(instance_id: str, request: Request, db: Session) -> dict:
     """
-    Look up an Admin API instance by its trust-anchor ID.
+    Look up an Admin API instance by its ID in the deployment registry.
 
-    Returns a dict with at least:
-      - base_url: str   (the admin API root, e.g. "https://admin.federation.example")
-      - api_key: str | None  (optional bearer token / API key for the upstream)
+    Returns a dict with:
+      - base_url: str   (the admin API root, e.g. "http://lighthouse:8080")
+      - basic_credentials: str | None  (base64-encoded "user:pass" for Basic auth)
       - name: str
     """
-    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == instance_id).first()
-    if not anchor:
+    registry = request.app.state.instance_registry
+    match = next((item for item in registry.instances if item.id == instance_id), None)
+    if match is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Instance '{instance_id}' not found in the registry",
         )
 
-    # Parse config_json for admin_api_base_url and optional api_key
-    cfg: dict = {}
-    if anchor.config_json:
-        try:
-            cfg = json.loads(anchor.config_json)
-        except (json.JSONDecodeError, TypeError):
-            pass
+    # Get name from DB if available, otherwise use registry name
+    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == instance_id).first()
+    name = anchor.name if anchor else match.name
 
-    base_url = cfg.get("admin_api_base_url")
-    if not base_url:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"Instance '{anchor.name}' ({instance_id}) does not have an "
-                "admin_api_base_url configured. Edit the trust-anchor config first."
-            ),
-        )
-
-    # Strip trailing slash for clean URL joining
-    base_url = base_url.rstrip("/")
+    # Build basic auth credentials if configured
+    basic_credentials = None
+    if match.admin_auth is not None:
+        raw = f"{match.admin_auth.username}:{match.admin_auth.password}".encode()
+        basic_credentials = base64.b64encode(raw).decode()
 
     return {
-        "base_url": base_url,
-        "api_key": cfg.get("api_key"),              # Optional Bearer token
-        "basic_credentials": cfg.get("basic_credentials"),  # Optional pre-encoded Basic creds
-        "name": anchor.name,
+        "base_url": str(match.admin_base_url).rstrip("/"),
+        "basic_credentials": basic_credentials,
+        "name": name,
     }
 
 
@@ -171,8 +161,6 @@ def _build_upstream_headers(
     # ---- Upstream auth ----
     if instance.get("basic_credentials"):
         headers["Authorization"] = f"Basic {instance['basic_credentials']}"
-    elif instance.get("api_key"):
-        headers["Authorization"] = f"Bearer {instance['api_key']}"
 
     return headers
 
@@ -196,7 +184,7 @@ async def proxy(
     user: User = Depends(get_current_user),
 ):
     # 1. Resolve instance
-    instance = _resolve_instance(instance_id, db)
+    instance = _resolve_instance(instance_id, request, db)
 
     # 2. Build upstream URL
     upstream_url = f"{instance['base_url']}/{path}"
