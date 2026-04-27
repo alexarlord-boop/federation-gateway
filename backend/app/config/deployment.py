@@ -18,6 +18,16 @@ class RawBasicAuthConfig(BaseModel):
     password_env: str
 
     def resolve(self) -> BasicAuthConfig:
+        missing = [
+            env_name
+            for env_name in (self.username_env, self.password_env)
+            if env_name not in os.environ
+        ]
+        if missing:
+            raise ValueError(
+                "missing required deployment config environment variable(s): "
+                + ", ".join(missing)
+            )
         return BasicAuthConfig(
             username=os.environ[self.username_env],
             password=os.environ[self.password_env],
@@ -45,6 +55,18 @@ class DeploymentConfig(BaseModel):
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate instance id in deployment config")
         return self
+
+
+def resolve_deployment_config_path() -> Path:
+    env_path = os.getenv("GATEWAY_CONFIG_FILE")
+    if env_path:
+        return Path(env_path)
+
+    docker_path = Path("/config/gateway.yaml")
+    if docker_path.exists():
+        return docker_path
+
+    return Path(__file__).parent.parent.parent / "config" / "gateway.yaml"
 
 
 def load_deployment_config(path: Path) -> DeploymentConfig:

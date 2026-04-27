@@ -5,8 +5,7 @@ from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, u
 from app.routers import resolve, tenants, tech_contacts, registrations
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
-from pathlib import Path
-from app.config.deployment import load_deployment_config
+from app.config.deployment import load_deployment_config, resolve_deployment_config_path
 # Import models so SQLAlchemy creates their tables via create_all
 import app.models.tenant          # noqa: F401
 import app.models.tech_contact    # noqa: F401
@@ -43,10 +42,7 @@ def _run_schema_migrations() -> None:
 _run_schema_migrations()
 
 # Load deployment config
-CONFIG_PATH = Path("/config/gateway.yaml")
-if not CONFIG_PATH.exists():
-    # Fall back to local config for testing
-    CONFIG_PATH = Path(__file__).parent.parent / "config" / "gateway.yaml"
+CONFIG_PATH = resolve_deployment_config_path()
 
 deployment_config = None
 if CONFIG_PATH.exists():

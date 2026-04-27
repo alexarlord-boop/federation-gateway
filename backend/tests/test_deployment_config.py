@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.config.deployment import load_deployment_config
+from app.config.deployment import RawBasicAuthConfig, load_deployment_config, resolve_deployment_config_path
 
 
 def test_load_deployment_config_reads_yaml_and_env_overrides(monkeypatch, tmp_path: Path):
@@ -54,3 +54,30 @@ instances:
         assert "duplicate instance id" in str(exc).lower()
     else:
         raise AssertionError("expected duplicate IDs to raise")
+
+
+def test_resolve_deployment_config_path_prefers_environment_override(monkeypatch, tmp_path: Path):
+    override = tmp_path / "custom-gateway.yaml"
+    override.write_text("instances: []")
+    monkeypatch.setenv("GATEWAY_CONFIG_FILE", str(override))
+
+    resolved = resolve_deployment_config_path()
+
+    assert resolved == override
+
+
+def test_raw_basic_auth_config_reports_missing_environment_variables(monkeypatch):
+    monkeypatch.delenv("LIGHTHOUSE_ADMIN_USERNAME", raising=False)
+    monkeypatch.delenv("LIGHTHOUSE_ADMIN_PASSWORD", raising=False)
+
+    auth = RawBasicAuthConfig(
+        username_env="LIGHTHOUSE_ADMIN_USERNAME",
+        password_env="LIGHTHOUSE_ADMIN_PASSWORD",
+    )
+
+    try:
+        auth.resolve()
+    except ValueError as exc:
+        assert "LIGHTHOUSE_ADMIN_USERNAME" in str(exc)
+    else:
+        raise AssertionError("expected missing env vars to raise a ValueError")

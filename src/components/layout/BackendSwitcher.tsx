@@ -12,16 +12,20 @@ import { Button } from '@/components/ui/button';
 import { useBackend } from '@/contexts/BackendContext';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
-import { GATEWAY_BASE, getActiveInstanceId } from '@/lib/api-config';
+import { GATEWAY_BASE } from '@/lib/api-config';
 
 export function BackendSwitcher() {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
   const { trustAnchors, isLoading } = useTrustAnchors();
-  const { activeTrustAnchor, setActiveTrustAnchor } = useTrustAnchor();
+  const { activeTrustAnchor, setActiveTrustAnchor, setTrustAnchors } = useTrustAnchor();
+
+  useEffect(() => {
+    setTrustAnchors(trustAnchors);
+  }, [setTrustAnchors, trustAnchors]);
 
   useEffect(() => {
     const discovered = trustAnchors
-      .filter((ta) => !!ta.adminApiBaseUrl)
+      .filter((ta) => ta.deploymentManaged && !!ta.adminApiBaseUrl)
       .map((ta) => ({
         id: `ta:${ta.id}`,
         name: ta.name,
@@ -39,27 +43,6 @@ export function BackendSwitcher() {
 
   // Only real (TA-backed) backends are shown and selectable.
   const taBackends = backends.filter((b) => b.id.startsWith('ta:'));
-
-  // Sync the active backend to TrustAnchorContext based on the stored instance ID.
-  // Wait for trust anchors to load, then restore the selection.
-  // CRITICAL: Do NOT clear activeTrustAnchor if trust anchors haven't loaded yet,
-  // even if isLoading=false (query might return empty initially).
-  useEffect(() => {
-    if (isLoading) return;
-
-    // If we have no anchors, we can't sync — wait for data
-    if (trustAnchors.length === 0) return;
-    
-    const storedId = getActiveInstanceId();
-    if (!storedId) {
-      setActiveTrustAnchor(null);
-      return;
-    }
-    
-    // Find and set the matching trust anchor, or clear if not found
-    const matched = trustAnchors.find((ta) => ta.id === storedId);
-    setActiveTrustAnchor(matched || null);
-  }, [trustAnchors, isLoading, setActiveTrustAnchor]);
 
   const selectedLabel = activeTrustAnchor?.name ?? 'Select instance';
 

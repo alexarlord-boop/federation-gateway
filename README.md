@@ -49,6 +49,7 @@ federation-gateway/
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
+> **Persistence**: `lighthouse/data/` is a bind-mounted runtime directory. The compose entrypoint ensures it is writable before LightHouse starts.
 
 ### Deployment configuration
 
@@ -105,6 +106,38 @@ LIGHTHOUSE_ADMIN_PASSWORD=gateway \
 docker compose up --build
 ```
 
+### Clean setup / live demo
+
+For a fresh demo with no stale LightHouse state:
+
+```sh
+docker compose down
+find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
+
+LIGHTHOUSE_ADMIN_USERNAME=gateway \
+LIGHTHOUSE_ADMIN_PASSWORD=gateway \
+docker compose up --build --force-recreate
+```
+
+Then open:
+
+- UI: `http://localhost:8080`
+- Backend health: `http://localhost:8765/health`
+- LightHouse public entity: `http://localhost:8081`
+
+Seeded admin login:
+
+- Email: `admin@oidfed.org`
+- Password: `admin123`
+
+Suggested live flow:
+
+1. Show `backend/config/gateway.yaml` and the configured ports / admin endpoint split.
+2. Log in and show that no instance is auto-selected.
+3. Select **LightHouse** from the instance switcher.
+4. Open **Settings** and navigate across tabs to show the selection persists.
+5. Mention that admin credentials stay server-side and requests go through the gateway proxy.
+
 ### Rebuild a single service (after source changes)
 
 ```sh
@@ -120,18 +153,20 @@ docker compose build backend && docker compose up -d backend
 ### Reset everything from scratch
 
 ```sh
-# Stop containers, remove volumes (wipes LightHouse DB + all subordinates)
-docker compose down -v
+# Stop containers
+docker compose down
 
-# Rebuild images and start fresh
-docker compose up --build
+# Remove bind-mounted LightHouse runtime state
+find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
+
+# Recreate containers from a clean state
+docker compose up --build --force-recreate
 ```
 
 To keep LightHouse data but reset only the BFF database:
 
 ```sh
-rm -f backend.db          # backend SQLite DB (re-seeded on next container start)
-docker compose up -d backend
+docker compose up -d --build --force-recreate backend
 ```
 
 ---
@@ -191,10 +226,10 @@ sqlite3 lighthouse/data/lighthouse.db \
 docker compose start lighthouse
 ```
 
-This preserves LightHouse signing keys and config. The BFF registration records are stored in `backend/backend.db`; delete that file and restart the backend to re-seed it:
+This preserves LightHouse signing keys and config. To re-seed only the BFF registration records, recreate the backend container:
 
 ```sh
-rm -f backend/backend.db && docker compose restart backend
+docker compose up -d --build --force-recreate backend
 ```
 
 ---
@@ -250,7 +285,7 @@ The deployment configuration in `backend/config/gateway.yaml` supports multiple 
          username_env: LIGHTHOUSE2_ADMIN_USERNAME
          password_env: LIGHTHOUSE2_ADMIN_PASSWORD
    ```
-4. Restart: `docker compose down -v && docker compose up --build`.
+4. Restart: `docker compose down && docker compose up --build --force-recreate`.
 
 ---
 

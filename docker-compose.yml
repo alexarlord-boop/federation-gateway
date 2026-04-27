@@ -23,6 +23,10 @@ services:
   lighthouse:
     image: oidfed/lighthouse:0.20.0
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /data/keys && chmod 0777 /data /data/keys && exec /entrypoint.sh
     ports:
       - "${LIGHTHOUSE_PUBLIC_PORT:-8081}:8080"
     volumes:

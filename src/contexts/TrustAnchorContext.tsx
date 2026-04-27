@@ -17,13 +17,37 @@ const TrustAnchorContext = createContext<TrustAnchorContextType | undefined>(und
 export function TrustAnchorProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [trustAnchors, setTrustAnchors] = useState<TrustAnchorDisplay[]>([]);
+  const [persistedInstanceId, setPersistedInstanceId] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
   const [activeTrustAnchor, setActiveTrustAnchorState] = useState<TrustAnchorDisplay | null>(null);
 
-  // On mount, restore the selected instance from localStorage
+  // Keep the generated client pointed at the restored instance (if any) so
+  // instance-scoped hooks resolve through the correct proxy after reloads.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    setActiveInstance(stored || null);
-  }, []);
+    setActiveInstance(persistedInstanceId);
+  }, [persistedInstanceId]);
+
+  // Rehydrate the active trust anchor whenever the persisted selection or the
+  // available trust-anchor registry changes.
+  useEffect(() => {
+    if (!persistedInstanceId) {
+      setActiveTrustAnchorState(null);
+      return;
+    }
+
+    if (trustAnchors.length === 0) {
+      return;
+    }
+
+    const matched = trustAnchors.find((ta) => ta.id === persistedInstanceId) ?? null;
+    if (!matched) {
+      setPersistedInstanceId(null);
+      localStorage.removeItem(STORAGE_KEY);
+      setActiveTrustAnchorState(null);
+      return;
+    }
+
+    setActiveTrustAnchorState(matched);
+  }, [persistedInstanceId, trustAnchors]);
 
   // When the active instance changes, update the module-level variable read
   // by the OpenAPI.BASE getter and invalidate the query cache so active
@@ -32,6 +56,7 @@ export function TrustAnchorProvider({ children }: { children: ReactNode }) {
     const previousId = getActiveInstanceId();
     const nextId = ta?.id ?? null;
     setActiveTrustAnchorState(ta);
+    setPersistedInstanceId(nextId);
     setActiveInstance(nextId);
     
     if (nextId) {

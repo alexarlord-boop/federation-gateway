@@ -14,7 +14,7 @@ dist-ssr
 .superpowers/
 
 # LightHouse runtime data (DB files, keys, WAL logs) — never commit these
-# The .gitkeep and lighthouse.db are intentionally tracked
+# The .gitkeep placeholder is intentionally tracked
 lighthouse/data/*.vlog
 lighthouse/data/*.mem
 lighthouse/data/*.sst
