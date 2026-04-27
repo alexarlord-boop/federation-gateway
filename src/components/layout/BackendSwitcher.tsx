@@ -16,7 +16,7 @@ import { GATEWAY_BASE, getActiveInstanceId } from '@/lib/api-config';
 
 export function BackendSwitcher() {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
-  const { trustAnchors } = useTrustAnchors();
+  const { trustAnchors, isLoading } = useTrustAnchors();
   const { activeTrustAnchor, setActiveTrustAnchor } = useTrustAnchor();
 
   useEffect(() => {
@@ -41,15 +41,25 @@ export function BackendSwitcher() {
   const taBackends = backends.filter((b) => b.id.startsWith('ta:'));
 
   // Sync the active backend to TrustAnchorContext based on the stored instance ID.
-  // No auto-selection: if nothing matches, leave it null.
+  // Wait for trust anchors to load, then restore the selection.
+  // CRITICAL: Do NOT clear activeTrustAnchor if trust anchors haven't loaded yet,
+  // even if isLoading=false (query might return empty initially).
   useEffect(() => {
-    const matched = trustAnchors.find((ta) => ta.id === getActiveInstanceId());
-    if (matched) {
-      setActiveTrustAnchor(matched);
+    if (isLoading) return;
+
+    // If we have no anchors, we can't sync — wait for data
+    if (trustAnchors.length === 0) return;
+    
+    const storedId = getActiveInstanceId();
+    if (!storedId) {
+      setActiveTrustAnchor(null);
       return;
     }
-    setActiveTrustAnchor(null);
-  }, [trustAnchors, setActiveTrustAnchor]);
+    
+    // Find and set the matching trust anchor, or clear if not found
+    const matched = trustAnchors.find((ta) => ta.id === storedId);
+    setActiveTrustAnchor(matched || null);
+  }, [trustAnchors, isLoading, setActiveTrustAnchor]);
 
   const selectedLabel = activeTrustAnchor?.name ?? 'Select instance';
 
