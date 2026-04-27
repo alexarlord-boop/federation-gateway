@@ -174,6 +174,19 @@ This design does not define:
 
 Those belong in separate specs so this deployment track can stay focused and implementable.
 
+## Future follow-on tracks
+
+After this deployment/configuration track lands, the remaining feedback should be handled as separate specs and implementation plans in this order:
+
+1. **UI terminology and navigation cleanup** — align labels such as TAs, IAs, authority hints, superior authorities, and subordinates with spec language and operator expectations.
+2. **Subordinates and entity-type modeling** — support richer subordinate typing, multi-type entities, and move intermediate handling into the subordinate flow.
+3. **Trust marks UX and semantics** — correct lifetime/expiry wording and align trust-mark descriptions with actual behavior.
+4. **Trust mark issuance and claims management** — support both trust-mark-level and subject-level additional claims, fix broken claim editing, and surface existing claim data.
+5. **Subject lifecycle/status management** — fix inactive/suspended status handling and make subject status transitions explicit.
+6. **General product cleanup and polish** — clean up remaining inconsistencies once the main flows above have stable designs.
+
+That sequencing keeps infrastructure and routing changes first, then terminology and data-model cleanup, and only after that the more detailed trust-mark and issuance UX work.
+
 ## Configuration format
 
 The recommended operator experience is a **configuration file with environment-variable overrides**. That keeps multi-instance definitions readable in one place while still fitting container and secret-management workflows. Regardless of how values arrive, the backend must normalize them into one in-memory instance registry so the system still has a single source of truth.
