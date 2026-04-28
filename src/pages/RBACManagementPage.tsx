@@ -40,12 +40,12 @@ interface FeatureUIMapping {
 
 const FEATURE_UI_MAP: Record<string, FeatureUIMapping> = {
   subordinates: {
-    description: 'Leaf-entity management: registration, approval, and detail views',
-    sidebar: ['Leaf Entities', 'All Entities', 'Register New', 'Approvals'],
+    description: 'Subordinate management: registration, approval, and detail views',
+    sidebar: ['Subordinates', 'All Subordinates', 'Register Subordinate', 'Register Intermediate', 'Approvals'],
     pages: ['/entities', '/entities/register', '/entities/:id', '/approvals'],
   },
   trust_anchors: {
-    description: 'Trust Anchor and Intermediate Authority management',
+    description: 'Trust anchor and authority-hint management',
     sidebar: ['TAs and IAs'],
     pages: ['/trust-anchors'],
   },

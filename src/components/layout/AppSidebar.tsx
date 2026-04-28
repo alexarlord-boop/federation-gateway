@@ -59,13 +59,14 @@ const sidebarSections: SidebarSection[] = [
         feature: 'trust_anchors',
       },
       { 
-        title: 'Leaf Entities', 
+        title: 'Subordinates', 
         href: '/entities', 
         icon: Leaf,
         feature: 'subordinates',
         children: [
-          { title: 'All Entities', href: '/entities', feature: 'subordinates', operation: 'list' },
-          { title: 'Register New', href: '/entities/register', feature: 'subordinates', operation: 'create' },
+          { title: 'All Subordinates', href: '/entities', feature: 'subordinates', operation: 'list' },
+          { title: 'Register Subordinate', href: '/entities/register', feature: 'subordinates', operation: 'create' },
+          { title: 'Register Intermediate', href: '/entities/register?type=intermediate', feature: 'subordinates', operation: 'create' },
         ]
       },
       { 
@@ -111,7 +112,12 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
   const { user, isAdmin, logout } = useAuth();
   const { isFeatureEnabled, hasOperation, capabilities } = useCapabilities();
   const location = useLocation();
-  const [openSections, setOpenSections] = useState<string[]>(['Leaf Entities']);
+  const [openSections, setOpenSections] = useState<string[]>(['Subordinates']);
+
+  const isCurrentNavTarget = (href: string) => {
+    const [pathname, search = ''] = href.split('?');
+    return location.pathname === pathname && location.search === (search ? `?${search}` : '');
+  };
 
   const toggleSection = (title: string) => {
     setOpenSections(prev => 
@@ -152,8 +158,8 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
     
     // For items with children, check if any child path matches
     const isActive = hasChildren
-      ? visibleChildren?.some(child => location.pathname === child.href) || location.pathname === item.href
-      : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+      ? visibleChildren?.some((child) => isCurrentNavTarget(child.href)) || isCurrentNavTarget(item.href)
+      : isCurrentNavTarget(item.href) || location.pathname.startsWith(item.href + '/');
 
     if (hasChildren && visibleChildren.length > 0) {
       return (
@@ -186,9 +192,9 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
                   key={child.href}
                   to={child.href}
                   end
-                  className={({ isActive }) => cn(
+                  className={() => cn(
                     "block px-3 py-2 rounded-lg text-sm transition-colors",
-                    isActive 
+                    isCurrentNavTarget(child.href)
                       ? "text-sidebar-primary font-medium" 
                       : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
                   )}
