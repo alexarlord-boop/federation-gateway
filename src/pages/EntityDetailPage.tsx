@@ -138,7 +138,7 @@ function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string })
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Naming Constraints</CardTitle>
-            <CardDescription>Permitted / excluded entity ID patterns</CardDescription>
+            <CardDescription>Permitted / excluded subordinate ID patterns</CardDescription>
           </CardHeader>
           <CardContent>
             {naming ? (
@@ -214,7 +214,7 @@ function SubordinateJwksTab({ subordinateId }: { subordinateId: string }) {
       const parsed = JSON.parse(newJwk.trim());
       await addJwk.mutateAsync(parsed);
       setNewJwk('');
-      toast({ title: 'Key added', description: 'JWK published to entity statement' });
+      toast({ title: 'Key added', description: 'JWK published to subordinate statement' });
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Invalid JWK JSON or API error' });
     }
@@ -235,7 +235,7 @@ function SubordinateJwksTab({ subordinateId }: { subordinateId: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Published Keys</CardTitle>
-          <CardDescription>Keys included in this entity's published entity statement</CardDescription>
+          <CardDescription>Keys included in this subordinate's published statement</CardDescription>
         </CardHeader>
         <CardContent>
           {keys.length === 0 ? (
@@ -461,7 +461,7 @@ function SubordinateMetadataTab({
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Metadata JSON</CardTitle>
-          <CardDescription>Raw metadata included in this entity's statement</CardDescription>
+          <CardDescription>Raw metadata included in this subordinate's statement</CardDescription>
         </div>
         {canUpdate && !editing && (
           <Button variant="outline" size="sm" onClick={startEdit}>
@@ -517,8 +517,8 @@ export default function EntityDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Building2 className="w-16 h-16 text-muted-foreground/30 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Entity Not Found</h2>
-        <p className="text-muted-foreground mb-4">The entity you're looking for doesn't exist.</p>
+        <h2 className="text-xl font-semibold mb-2">Subordinate Not Found</h2>
+        <p className="text-muted-foreground mb-4">The subordinate you're looking for doesn't exist.</p>
         <Button asChild>
           <Link to="/entities">Back to Subordinates</Link>
         </Button>
@@ -537,7 +537,7 @@ export default function EntityDetailPage() {
   const handleStatusChange = async (status: string) => {
       try {
         await updateStatus.mutateAsync(status);
-        toast({ title: "Status Updated", description: `Entity status set to ${status}` });
+        toast({ title: "Status Updated", description: `Subordinate status set to ${status}` });
       } catch (e) {
         toast({ variant: "destructive", title: "Update Failed", description: "Could not update status" });
       }
@@ -595,7 +595,7 @@ export default function EntityDetailPage() {
               <div className="flex items-center gap-2 text-muted-foreground">
                 <span className="text-sm font-mono">{entity.entity_id}</span>
                 <button 
-                  onClick={() => copyToClipboard(entity.entity_id, 'Entity ID')}
+                  onClick={() => copyToClipboard(entity.entity_id, 'Subordinate ID')}
                   className="p-1 hover:bg-muted rounded"
                 >
                   <Copy className="w-3 h-3" />
@@ -648,7 +648,7 @@ export default function EntityDetailPage() {
             {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon" aria-label="Delete entity">
+                <Button variant="destructive" size="icon" aria-label="Delete subordinate">
                     <Trash2 className="w-4 h-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -656,7 +656,7 @@ export default function EntityDetailPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the entity
+                    This action cannot be undone. This will permanently delete the subordinate
                     and remove its data from our servers.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -688,7 +688,7 @@ export default function EntityDetailPage() {
             {/* Main info */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Entity Information</CardTitle>
+                <CardTitle>Subordinate Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">

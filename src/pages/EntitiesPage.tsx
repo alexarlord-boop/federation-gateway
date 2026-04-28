@@ -120,7 +120,7 @@ export default function EntitiesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by entity ID, name, or organization..."
+            placeholder="Search by subordinate ID, name, or organization..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -146,7 +146,7 @@ export default function EntitiesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[300px]">Entity</TableHead>
+              <TableHead className="w-[300px]">Subordinate</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -158,7 +158,7 @@ export default function EntitiesPage() {
                 <TableCell colSpan={4} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Building2 className="w-10 h-10 mb-2 opacity-30" />
-                    <p>No entities found</p>
+                    <p>No subordinates found</p>
                     <p className="text-sm">Try adjusting your filters</p>
                   </div>
                 </TableCell>
@@ -215,7 +215,7 @@ export default function EntitiesPage() {
                         )}
                         <DropdownMenuItem>
                           <ExternalLink className="w-4 h-4 mr-2" />
-                          View Entity Config
+                          View Subordinate Config
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -229,7 +229,7 @@ export default function EntitiesPage() {
 
       {/* Pagination placeholder */}
       <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-        <p>Showing {filteredEntities.length} of {entities.length} entities</p>
+        <p>Showing {filteredEntities.length} of {entities.length} subordinates</p>
       </div>
     </div>
   );

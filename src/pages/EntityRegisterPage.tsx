@@ -23,7 +23,7 @@ import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
-  { id: 'entity', title: 'Entity ID', description: 'Enter the entity identifier' },
+  { id: 'entity', title: 'Subordinate ID', description: 'Enter the subordinate identifier' },
   { id: 'config', title: 'Configuration', description: 'Review fetched configuration' },
   { id: 'details', title: 'Additional Details', description: 'Add extra information' },
   { id: 'review', title: 'Review & Submit', description: 'Confirm registration' },
@@ -33,10 +33,10 @@ export default function EntityRegisterPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const [searchParams] = useSearchParams();
   const isIntermediate = searchParams.get('type') === 'intermediate';
-  const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
+  const pageTitle = isIntermediate ? 'Register Intermediate Subordinate' : 'Register Subordinate';
   const pageDescription = isIntermediate
-    ? 'Register an intermediate subordinate in the federation. The entity configuration will be fetched automatically from the entity well-known endpoint.'
-    : 'Register a new subordinate in the federation. The entity configuration will be fetched automatically from the entity well-known endpoint.';
+    ? 'Register an intermediate subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.'
+    : 'Register a new subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.';
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -92,7 +92,7 @@ export default function EntityRegisterPage() {
         softFail: [404, 422, 502, 503, 504],
       });
       if (result === null) {
-        const msg = 'Could not fetch entity configuration — enter details manually in the next step.';
+        const msg = 'Could not fetch subordinate configuration — enter details manually in the next step.';
         setFetchError(msg);
         setFetchedConfig({ iss: formData.entityId, metadata: null, _fetchFailed: true });
       } else {
@@ -120,7 +120,7 @@ export default function EntityRegisterPage() {
         }));
       }
     } catch {
-      const msg = 'Failed to reach the entity endpoint — enter details manually in the next step.';
+      const msg = 'Failed to reach the subordinate endpoint — enter details manually in the next step.';
       setFetchError(msg);
       setFetchedConfig({ iss: formData.entityId, metadata: null, _fetchFailed: true });
     } finally {
@@ -190,7 +190,7 @@ export default function EntityRegisterPage() {
 
         toast({
           title: 'Registration Submitted',
-          description: 'Entity registered and metadata saved successfully.',
+          description: 'Subordinate registered and metadata saved successfully.',
         });
         navigate(isIntermediate ? '/trust-anchors' : '/entities');
     } catch (e) {
@@ -234,7 +234,7 @@ export default function EntityRegisterPage() {
         return (
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="entityId">Entity ID (URL)</Label>
+              <Label htmlFor="entityId">Subordinate ID (URL)</Label>
               <Input
                 id="entityId"
                 type="url"
@@ -243,7 +243,7 @@ export default function EntityRegisterPage() {
                 onChange={(e) => setFormData({ ...formData, entityId: e.target.value })}
               />
               <p className="text-sm text-muted-foreground">
-                The entity's identifier URL. Configuration will be fetched from:
+                The subordinate's identifier URL. Configuration will be fetched from:
               </p>
               {formData.entityId && (
                 <code className="text-xs bg-muted px-2 py-1 rounded block mt-1 break-all">
@@ -278,13 +278,13 @@ export default function EntityRegisterPage() {
 
             {!isIntermediate && (
               <div className="space-y-2">
-                <Label htmlFor="entityType">Entity Type</Label>
+                <Label htmlFor="entityType">Subordinate Type</Label>
                 <Select
                   value={formData.entityTypes[0]}
                   onValueChange={(v) => setFormData({ ...formData, entityTypes: [v as EntityType] })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select entity type" />
+                    <SelectValue placeholder="Select subordinate type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="openid_provider">OpenID Provider (OP)</SelectItem>
@@ -306,7 +306,7 @@ export default function EntityRegisterPage() {
                 </>
               ) : (
                 <>
-                  Fetch Entity Configuration
+                  Fetch Subordinate Configuration
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
@@ -323,7 +323,7 @@ export default function EntityRegisterPage() {
                 <div>
                   <p className="font-medium text-warning">Configuration Not Available</p>
                   <p className="text-sm text-muted-foreground">
-                    {fetchError ?? 'Could not fetch entity configuration.'} Review and complete the fields in the next step.
+                    {fetchError ?? 'Could not fetch subordinate configuration.'} Review and complete the fields in the next step.
                   </p>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function EntityRegisterPage() {
                 <div>
                   <p className="font-medium text-success">Configuration Retrieved</p>
                   <p className="text-sm text-muted-foreground">
-                    Entity configuration was successfully fetched from the endpoint.
+                    Subordinate configuration was successfully fetched from the endpoint.
                   </p>
                 </div>
               </div>
@@ -341,13 +341,13 @@ export default function EntityRegisterPage() {
 
             <div className="space-y-4">
               <div>
-                <Label className="text-muted-foreground">Entity ID</Label>
+                <Label className="text-muted-foreground">Subordinate ID</Label>
                 <p className="font-mono text-sm mt-1">{fetchedConfig?.iss}</p>
               </div>
 
               {!isIntermediate && (
                 <div>
-                  <Label className="text-muted-foreground">Entity Type</Label>
+                  <Label className="text-muted-foreground">Subordinate Type</Label>
                   <div className="flex gap-2 mt-2">
                     {formData.entityTypes.map((type) => (
                       <span key={type} className="entity-badge bg-info/10 text-info border border-info/30">
@@ -387,9 +387,9 @@ export default function EntityRegisterPage() {
             <div className="p-4 bg-info/10 border border-info/30 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-info mt-0.5" />
               <div>
-                <p className="font-medium text-info">Enrich Entity Information</p>
+                <p className="font-medium text-info">Enrich Subordinate Information</p>
                 <p className="text-sm text-muted-foreground">
-                  Add additional details not present in the entity configuration.
+                  Add additional details not present in the subordinate configuration.
                 </p>
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function EntityRegisterPage() {
                 <Label htmlFor="displayName">Display Name *</Label>
                 <Input
                   id="displayName"
-                  placeholder="Friendly name for this entity"
+                  placeholder="Friendly name for this subordinate"
                   value={formData.displayName}
                   onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                 />
@@ -419,7 +419,7 @@ export default function EntityRegisterPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Brief description of this entity..."
+                placeholder="Brief description of this subordinate..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
@@ -469,7 +469,7 @@ export default function EntityRegisterPage() {
               <h3 className="font-medium mb-4">Registration Summary</h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Entity ID</dt>
+                  <dt className="text-muted-foreground">Subordinate ID</dt>
                   <dd className="font-mono">{formData.entityId}</dd>
                 </div>
                 <div className="flex justify-between">
@@ -490,7 +490,7 @@ export default function EntityRegisterPage() {
                 </div>
                 {!isIntermediate && (
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Entity Type</dt>
+                    <dt className="text-muted-foreground">Subordinate Type</dt>
                     <dd className="flex gap-1">
                       {formData.entityTypes.map(t => (
                         <span key={t} className="entity-badge bg-info/10 text-info">
@@ -506,8 +506,8 @@ export default function EntityRegisterPage() {
             <div className="flex items-start gap-2">
               <Checkbox id="confirm" />
               <Label htmlFor="confirm" className="text-sm font-normal">
-                I confirm that the information provided is accurate and I am authorized 
-                to register this entity on behalf of my organization.
+                I confirm that the information provided is accurate and I am authorized
+                to register this subordinate on behalf of my organization.
               </Label>
             </div>
           </div>
