@@ -116,6 +116,8 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
 
   const isCurrentNavTarget = (href: string) => {
     const [pathname, search = ''] = href.split('?');
+    // Keep pathname + query matching exact so /entities/register and /entities/register?type=intermediate
+    // can highlight different sidebar entries.
     return location.pathname === pathname && location.search === (search ? `?${search}` : '');
   };
 
