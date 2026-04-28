@@ -33,6 +33,10 @@ export default function EntityRegisterPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const [searchParams] = useSearchParams();
   const isIntermediate = searchParams.get('type') === 'intermediate';
+  const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
+  const pageDescription = isIntermediate
+    ? 'Register an intermediate subordinate in the federation. The entity configuration will be fetched automatically from the entity well-known endpoint.'
+    : 'Register a new subordinate in the federation. The entity configuration will be fetched automatically from the entity well-known endpoint.';
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,16 +54,9 @@ export default function EntityRegisterPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  if (!activeTrustAnchor) {
-    return (
-      <div className="text-center py-12">
-        <Plus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
-        <p className="text-muted-foreground">Choose a federation instance from the sidebar to register entities.</p>
-      </div>
-    );
-  }
+  const { trustAnchors } = useTrustAnchors();
+  const createSubordinate = useCreateSubordinate();
+  const deleteSubordinate = useDeleteSubordinate();
   
   useEffect(() => {
     if (isIntermediate) {
@@ -69,10 +66,16 @@ export default function EntityRegisterPage() {
       }));
     }
   }, [isIntermediate]);
-  
-  const { trustAnchors } = useTrustAnchors();
-  const createSubordinate = useCreateSubordinate();
-  const deleteSubordinate = useDeleteSubordinate();
+
+  if (!activeTrustAnchor) {
+    return (
+      <div className="text-center py-12">
+        <Plus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to register subordinates.</p>
+      </div>
+    );
+  }
 
   const KNOWN_REGISTRY_TYPES: EntityType[] = [
     'openid_provider', 'openid_relying_party', 'federation_entity',
@@ -522,16 +525,13 @@ export default function EntityRegisterPage() {
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
       >
         <ArrowLeft className="w-4 h-4 mr-1" />
-        Back to Entities
+        Back to Subordinates
       </Link>
 
       <Card>
         <CardHeader>
-          <CardTitle>Register New Entity</CardTitle>
-          <CardDescription>
-            Register a new entity in the federation. The entity configuration will be 
-            fetched automatically from the entity's well-known endpoint.
-          </CardDescription>
+          <CardTitle>{pageTitle}</CardTitle>
+          <CardDescription>{pageDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Progress steps */}

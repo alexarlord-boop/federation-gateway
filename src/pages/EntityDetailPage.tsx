@@ -520,7 +520,7 @@ export default function EntityDetailPage() {
         <h2 className="text-xl font-semibold mb-2">Entity Not Found</h2>
         <p className="text-muted-foreground mb-4">The entity you're looking for doesn't exist.</p>
         <Button asChild>
-          <Link to="/entities">Back to Entities</Link>
+          <Link to="/entities">Back to Subordinates</Link>
         </Button>
       </div>
     );
@@ -546,10 +546,10 @@ export default function EntityDetailPage() {
   const handleDelete = async () => {
     try {
         await deleteSubordinate.mutateAsync();
-        toast({ title: "Entity Deleted", description: "The entity has been removed." });
+        toast({ title: "Subordinate Deleted", description: "The subordinate has been removed." });
         navigate('/entities');
     } catch (e) {
-        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete entity" });
+        toast({ variant: "destructive", title: "Delete Failed", description: "Could not delete subordinate" });
     }
   };
 
@@ -577,7 +577,7 @@ export default function EntityDetailPage() {
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Entities
+          Back to Subordinates
         </Link>
         
         <div className="flex items-start justify-between">

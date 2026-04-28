@@ -71,7 +71,7 @@ export default function EntitiesPage() {
       <div className="text-center py-12">
         <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
-        <p className="text-muted-foreground">Choose a federation instance from the sidebar to view entities.</p>
+        <p className="text-muted-foreground">Choose a federation instance from the sidebar to view subordinates.</p>
       </div>
     );
   }
@@ -100,16 +100,16 @@ export default function EntitiesPage() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div className="page-header mb-0">
-          <h1 className="page-title">Leaf Entities</h1>
+          <h1 className="page-title">Subordinates</h1>
           <p className="page-description">
-            Manage registered RPs and OPs in the federation
+            Manage registered subordinates in the federation
           </p>
         </div>
         {canCreate && (
           <Button asChild>
             <Link to="/entities/register">
               <Plus className="w-4 h-4 mr-2" />
-              Register Entity
+              Register Subordinate
             </Link>
           </Button>
         )}

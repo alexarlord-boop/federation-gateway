@@ -3,24 +3,31 @@ import { test, expect } from '../fixtures/index';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:8080';
 
 test.describe('Entities page @proxy', () => {
-  test('entities list is visible with correct heading', async ({ instancePage: page }) => {
+  test('subordinates list is visible with correct heading', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
     await expect(page).toHaveURL(/\/entities$/);
-    await expect(page.getByRole('heading', { level: 1, name: /leaf entities/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /subordinates/i })).toBeVisible();
+    await expect(page.getByText(/manage registered subordinates in the federation/i)).toBeVisible();
   });
 
-  test('can navigate to register entity form', async ({ instancePage: page }) => {
+  test('can navigate to register subordinate form', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
-    const registerButton = page.getByRole('link', { name: /register entity/i });
+    const registerButton = page.locator('main').getByRole('link', { name: /register subordinate/i });
     await registerButton.click();
     await expect(page).toHaveURL(/\/entities\/register/);
-    await expect(page.getByRole('heading', { name: /register new entity/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /register subordinate/i })).toBeVisible();
+  });
+
+  test('intermediate registration uses subordinate wording', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/entities/register?type=intermediate`);
+    await expect(page.getByRole('heading', { name: /register intermediate/i })).toBeVisible();
+    await expect(page.getByText(/register an intermediate subordinate in the federation/i)).toBeVisible();
   });
 
   test('can register a new entity with pending status', async ({ instancePage: page }) => {
     // Navigate to register form
     await page.goto(`${APP_URL}/entities`);
-    await page.getByRole('link', { name: /register entity/i }).click();
+    await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
     // Step 1: Enter entity ID
@@ -137,7 +144,7 @@ test.describe.serial('Approvals page @proxy', () => {
   test('can register an entity with pending status for approval', async ({ instancePage: page }) => {
     // Register entity 1
     await page.goto(`${APP_URL}/entities`);
-    await page.getByRole('link', { name: /register entity/i }).click();
+    await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
     await page.getByLabel(/entity id/i).fill(testEntityId);
@@ -168,7 +175,7 @@ test.describe.serial('Approvals page @proxy', () => {
     createdDisplayName1 = displayName1;
 
     // Register entity 2
-    await page.getByRole('link', { name: /register entity/i }).click();
+    await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
     await page.getByLabel(/entity id/i).fill(testEntityId2);
