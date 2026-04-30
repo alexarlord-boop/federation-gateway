@@ -194,7 +194,7 @@ function AddAuthorityHintDialog() {
     }
     try {
       await addHint.mutateAsync({ entity_id: entityId, description });
-      toast({ title: 'Superior TA Added', description: 'Authority hint configured successfully.' });
+      toast({ title: 'Authority Hint Added', description: 'Authority hint configured successfully.' });
       setOpen(false);
       setEntityId('');
       setDescription('');
@@ -217,19 +217,19 @@ function AddAuthorityHintDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
-          Add Superior TA
+          Add Authority Hint
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Link Superior Trust Anchor</DialogTitle>
+          <DialogTitle>Link Authority Hint</DialogTitle>
           <DialogDescription>
-            Add an upstream federation via authority hint. This configures which superior TAs this instance trusts.
+            Add an upstream federation via an authority hint. This configures which upstream authorities this instance trusts.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="entity-id">Superior Entity ID</Label>
+            <Label htmlFor="entity-id">Authority Hint Entity ID</Label>
             <Input 
               id="entity-id"
               placeholder="https://edugain.org"
@@ -600,7 +600,7 @@ export default function TrustAnchorsPage() {
       <div className="page-header mb-8">
         <h1 className="page-title">TAs and IAs</h1>
         <p className="page-description">
-          Manage Trust Anchors and Intermediate Authorities
+          Manage Trust Anchors, Authority Hints, and Intermediate Authorities
         </p>
       </div>
 
@@ -631,12 +631,12 @@ export default function TrustAnchorsPage() {
         </div>
       </section>
 
-      {/* Level 2: Superior Level - Upstream */}
+      {/* Level 2: Authority Hints - Upstream */}
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <ArrowUpToLine className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">Superior Authorities</h2>
+            <h2 className="text-lg font-semibold">Authority Hints</h2>
             <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
           </div>
           <AddAuthorityHintDialog />
@@ -693,28 +693,27 @@ export default function TrustAnchorsPage() {
           <Card className="bg-muted/30">
             <CardContent className="py-8 text-center text-muted-foreground">
               <Globe className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No superior authorities configured</p>
-              <p className="text-sm">Add upstream TAs via "Add Superior TA" button</p>
+              <p>No authority hints configured</p>
+              <p className="text-sm">Add upstream authorities via the "Add Authority Hint" button.</p>
             </CardContent>
           </Card>
         )}
       </section>
 
-      {/* Level 3a: Subordinate TAs/Intermediates */}
+      {/* Level 3a: Registered intermediates */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <ArrowDownToLine className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">Subordinate TAs & Intermediates</h2>
-            <span className="text-sm text-muted-foreground">(Managed by Others - Registered Here)</span>
+            <h2 className="text-lg font-semibold">Registered Intermediates</h2>
+            <span className="text-sm text-muted-foreground">(Managed as subordinates)</span>
           </div>
-          <Button asChild>
-            <Link to="/entities/register?type=intermediate">
-              <Plus className="w-4 h-4 mr-2" />
-              Register Intermediate
-            </Link>
-          </Button>
         </div>
+        <Card className="bg-muted/30 mb-6">
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <p className="text-sm">Register new intermediates from the Subordinates navigation.</p>
+          </CardContent>
+        </Card>
         {intermediateTAs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {intermediateTAs.map((ta) => (
@@ -782,8 +781,7 @@ export default function TrustAnchorsPage() {
           <Card className="bg-muted/30">
             <CardContent className="py-8 text-center text-muted-foreground">
               <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No subordinate TAs or intermediates registered</p>
-              <p className="text-sm">Register intermediate authorities using the "Register Intermediate" button</p>
+              <p>No intermediates registered</p>
             </CardContent>
           </Card>
         )}

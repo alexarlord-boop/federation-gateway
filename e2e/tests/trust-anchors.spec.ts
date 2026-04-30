@@ -6,8 +6,17 @@ test.describe('Trust Anchors page @bff', () => {
   test('admin can navigate to /trust-anchors', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     await expect(page).toHaveURL(/\/trust-anchors/);
-    // The page heading is "TAs and IAs"
-    await expect(page.getByRole('heading', { level: 1, name: /TAs and IAs/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
+  });
+
+  test('authority hint dialog uses consistent wording', async ({ authenticatedPage: page }) => {
+    await page.goto(`${APP_URL}/trust-anchors`);
+    await page.getByRole('button', { name: /add authority hint/i }).click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText(/link authority hint/i)).toBeVisible();
+    await expect(page.getByLabel(/authority hint entity id/i)).toBeVisible();
+    await expect(page.getByText(/superior ta/i)).toHaveCount(0);
   });
 
   test('shows the seeded LightHouse trust anchor card', async ({ authenticatedPage: page }) => {
@@ -16,26 +25,12 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
   });
 
-  test('can open the config panel for the LightHouse TA', async ({ authenticatedPage: page }) => {
+  test('deployment-managed LightHouse trust anchor does not expose edit actions', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     
-    // Find the LightHouse card using more precise selectors (rounded-lg border are Card root classes)
     const card = page.locator('div.rounded-lg.border').filter({ hasText: 'LightHouse' }).first();
-    
-    // Click the dropdown menu button using aria-label for accessibility
-    const dropdownButton = card.getByRole('button', { name: /trust anchor options/i });
-    await dropdownButton.click();
-    
-    // Click "Configure" from the dropdown menu
-    const configureItem = page.getByRole('menuitem', { name: /configure/i });
-    await expect(configureItem).toBeVisible();
-    await configureItem.click();
-    
-    // Verify the config dialog opened
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByText(/configure trust anchor/i)).toBeVisible();
-    
-    // Verify config form is displayed with Admin API Base URL field
-    await expect(page.getByLabel(/admin api base url/i)).toBeVisible();
+
+    await expect(card.getByText(/deployment managed/i)).toBeVisible();
+    await expect(card.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
   });
 });
