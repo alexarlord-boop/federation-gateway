@@ -152,11 +152,11 @@ function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string })
         </Card>
       </div>
 
-      {/* Allowed Entity Types */}
+      {/* Allowed Subordinate Types */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Allowed Entity Types</CardTitle>
-          <CardDescription>Entity types this subordinate may register as</CardDescription>
+          <CardTitle className="text-base">Allowed Subordinate Types</CardTitle>
+          <CardDescription>Subordinate types this subordinate may register as</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {allowed.length > 0 ? (

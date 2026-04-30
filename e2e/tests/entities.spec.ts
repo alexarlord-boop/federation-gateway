@@ -24,23 +24,23 @@ test.describe('Entities page @proxy', () => {
     await expect(page.getByText(/register an intermediate subordinate in the federation/i)).toBeVisible();
   });
 
-  test('can register a new entity with pending status', async ({ instancePage: page }) => {
+  test('can register a new subordinate with pending status', async ({ instancePage: page }) => {
     // Navigate to register form
     await page.goto(`${APP_URL}/entities`);
     await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
-    // Step 1: Enter entity ID
-    const entityId = `https://e2e-test-entity-${Date.now()}.example.com`;
-    await page.getByLabel(/entity id/i).fill(entityId);
+    // Step 1: Enter subordinate ID
+    const subordinateId = `https://e2e-test-entity-${Date.now()}.example.com`;
+    await page.getByLabel(/subordinate id/i).fill(subordinateId);
 
     // Select the LightHouse trust anchor
     await page.getByLabel('Trust Anchor').click();
     await page.getByRole('option', { name: /lighthouse/i }).click();
 
     // Entity type defaults to openid_provider, so continue
-    // Click "Fetch Entity Configuration" button
-    const fetchButton = page.getByRole('button', { name: /fetch entity configuration/i });
+    // Click "Fetch Subordinate Configuration" button
+    const fetchButton = page.getByRole('button', { name: /fetch subordinate configuration/i });
     await fetchButton.click();
 
     // Wait for config review step (step 1) to render — fetch may succeed or fail
@@ -78,7 +78,7 @@ test.describe('Entities page @proxy', () => {
     await expect(page.getByText(new RegExp(displayName, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
-  test('can view entity detail by clicking on entity row', async ({ instancePage: page }) => {
+  test('can view subordinate detail by clicking on subordinate row', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
     
     // Wait for entities to load
@@ -98,7 +98,7 @@ test.describe('Entities page @proxy', () => {
     await expect(page).toHaveURL(/\/entities\//);
   });
 
-  test('can filter entities by status', async ({ instancePage: page }) => {
+  test('can filter subordinates by status', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
     
     // Open status filter dropdown
@@ -113,14 +113,14 @@ test.describe('Entities page @proxy', () => {
     await expect(page.locator('table')).toBeVisible();
   });
 
-  test('can search entities by ID', async ({ instancePage: page }) => {
+  test('can search subordinates by ID', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
     
     // Wait for table to load
     await expect(page.locator('table tbody')).toBeVisible({ timeout: 10_000 });
 
     // Fill search input
-    const searchInput = page.getByPlaceholder(/search by entity id/i);
+    const searchInput = page.getByPlaceholder(/search by subordinate id/i);
     await searchInput.fill('example');
 
     // Table should still be visible
@@ -129,8 +129,8 @@ test.describe('Entities page @proxy', () => {
 });
 
 test.describe.serial('Approvals page @proxy', () => {
-  const testEntityId = `https://approval-test-${Date.now()}.example.com`;
-  const testEntityId2 = `https://approval-test2-${Date.now()}.example.com`;
+  const testSubordinateId = `https://approval-test-${Date.now()}.example.com`;
+  const testSubordinateId2 = `https://approval-test2-${Date.now()}.example.com`;
   let createdDisplayName1: string | null = null;
   let createdDisplayName2: string | null = null;
 
@@ -141,18 +141,18 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(page.getByText(/review and manage entity registration requests/i)).toBeVisible();
   });
 
-  test('can register an entity with pending status for approval', async ({ instancePage: page }) => {
-    // Register entity 1
+  test('can register a subordinate with pending status for approval', async ({ instancePage: page }) => {
+    // Register subordinate 1
     await page.goto(`${APP_URL}/entities`);
     await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
-    await page.getByLabel(/entity id/i).fill(testEntityId);
+    await page.getByLabel(/subordinate id/i).fill(testSubordinateId);
 
     await page.getByLabel('Trust Anchor').click();
     await page.getByRole('option', { name: /lighthouse/i }).click();
 
-    await page.getByRole('button', { name: /fetch entity configuration/i }).click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
 
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
@@ -174,16 +174,16 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(page.getByText(new RegExp(displayName1, 'i'))).toBeVisible({ timeout: 10_000 });
     createdDisplayName1 = displayName1;
 
-    // Register entity 2
+    // Register subordinate 2
     await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     await expect(page).toHaveURL(/\/entities\/register/);
 
-    await page.getByLabel(/entity id/i).fill(testEntityId2);
+    await page.getByLabel(/subordinate id/i).fill(testSubordinateId2);
 
     await page.getByLabel('Trust Anchor').click();
     await page.getByRole('option', { name: /lighthouse/i }).click();
 
-    await page.getByRole('button', { name: /fetch entity configuration/i }).click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
 
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
@@ -206,7 +206,7 @@ test.describe.serial('Approvals page @proxy', () => {
     createdDisplayName2 = displayName2;
   });
 
-  test('pending entity appears in approvals page pending tab', async ({ instancePage: page }) => {
+  test('pending subordinate appears in approvals page pending tab', async ({ instancePage: page }) => {
     // Navigate to approvals page
     await page.goto(`${APP_URL}/approvals`);
     await expect(page).toHaveURL(/\/approvals/);
@@ -223,7 +223,7 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(page.getByText(new RegExp(createdDisplayName2!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
-  test('can approve a pending entity from approvals page', async ({ instancePage: page }) => {
+  test('can approve a pending subordinate from approvals page', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
     // Make sure we're on the pending tab
@@ -231,7 +231,7 @@ test.describe.serial('Approvals page @proxy', () => {
     await pendingTab.click();
     await expect(pendingTab).toHaveAttribute('aria-selected', 'true');
 
-    // Locate the card for entity 1 by its display name
+    // Locate the card for subordinate 1 by its display name
     const approveCard = page.locator('article, [data-testid], .card, li')
       .filter({ hasText: createdDisplayName1! })
       .filter({ has: page.getByRole('button', { name: /approve/i }) });
@@ -258,7 +258,7 @@ test.describe.serial('Approvals page @proxy', () => {
     ).not.toBeAttached({ timeout: 10_000 });
   });
 
-  test('can reject a pending entity from approvals page', async ({ instancePage: page }) => {
+  test('can reject a pending subordinate from approvals page', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
     // Make sure we're on the pending tab
@@ -266,7 +266,7 @@ test.describe.serial('Approvals page @proxy', () => {
     await pendingTab.click();
     await expect(pendingTab).toHaveAttribute('aria-selected', 'true');
 
-    // Locate the card for entity 2 by its display name
+    // Locate the card for subordinate 2 by its display name
     const rejectCard = page.locator('article, [data-testid], .card, li')
       .filter({ hasText: createdDisplayName2! })
       .filter({ has: page.getByRole('button', { name: /reject/i }) });
@@ -292,7 +292,7 @@ test.describe.serial('Approvals page @proxy', () => {
     ).not.toBeAttached({ timeout: 10_000 });
   });
 
-  test('approved entities appear in approved tab', async ({ instancePage: page }) => {
+  test('approved subordinates appear in approved tab', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
     // Click approved tab
@@ -305,7 +305,7 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(panel.getByText(new RegExp(createdDisplayName1!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
-  test('rejected entities appear in rejected tab', async ({ instancePage: page }) => {
+  test('rejected subordinates appear in rejected tab', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
     // Click rejected tab

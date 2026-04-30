@@ -33,7 +33,7 @@ export default function EntityRegisterPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const [searchParams] = useSearchParams();
   const isIntermediate = searchParams.get('type') === 'intermediate';
-  const pageTitle = isIntermediate ? 'Register Intermediate Subordinate' : 'Register Subordinate';
+  const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
   const pageDescription = isIntermediate
     ? 'Register an intermediate subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.'
     : 'Register a new subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.';
