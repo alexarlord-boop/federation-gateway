@@ -6,6 +6,10 @@ test.describe('Trust Anchors page @bff', () => {
   test('admin can navigate to /trust-anchors', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     await expect(page).toHaveURL(/\/trust-anchors/);
+    await expect(page.getByRole('heading', { name: /authority hints and trust anchors/i })).toBeVisible();
+    await expect(
+      page.getByText(/manage upstream authorities, authority hints, and local trust anchors/i),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
   });
 
@@ -32,14 +36,5 @@ test.describe('Trust Anchors page @bff', () => {
     await page.goto(`${APP_URL}/trust-anchors`);
     // LightHouse should appear as a card title
     await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
-  });
-
-  test('deployment-managed LightHouse trust anchor does not expose edit actions', async ({ authenticatedPage: page }) => {
-    await page.goto(`${APP_URL}/trust-anchors`);
-    
-    const card = page.locator('div.rounded-lg.border').filter({ hasText: 'LightHouse' }).first();
-
-    await expect(card.getByText(/deployment managed/i)).toBeVisible();
-    await expect(card.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
   });
 });

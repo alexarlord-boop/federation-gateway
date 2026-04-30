@@ -577,9 +577,9 @@ export default function TrustAnchorsPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header mb-8">
-        <h1 className="page-title">TAs and IAs</h1>
+        <h1 className="page-title">Authority Hints and Trust Anchors</h1>
         <p className="page-description">
-          Manage Trust Anchors, Authority Hints, and Intermediate Authorities
+          Manage upstream authorities, authority hints, and local trust anchors
         </p>
       </div>
 
@@ -631,7 +631,7 @@ export default function TrustAnchorsPage() {
                         <Shield className="w-6 h-6 text-muted-foreground" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{hint.description || 'External TA'}</CardTitle>
+                        <CardTitle className="text-lg">{hint.description || 'Upstream Authority'}</CardTitle>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="entity-badge border bg-info/10 text-info border-info/30">Federation</span>
                           <span className="entity-badge bg-muted/50 text-muted-foreground border-muted">External</span>
