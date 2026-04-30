@@ -17,13 +17,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -403,7 +396,6 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
   const [entityId, setEntityId] = useState('');
   const [description, setDescription] = useState('');
   const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
-  const [type, setType] = useState('federation');
   const { toast } = useToast();
 
   const handleAdd = async () => {
@@ -417,7 +409,7 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
         entity_id: entityId,
         description: description || undefined,
         admin_api_base_url: adminApiBaseUrl || undefined,
-        type,
+        type: 'federation',
         status: 'active',
       });
       toast({ title: 'TA Instance Added', description: 'Local trust anchor created successfully.' });
@@ -426,7 +418,6 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
       setEntityId('');
       setDescription('');
       setAdminApiBaseUrl('');
-      setType('federation');
     } catch (e) {
       toast({ variant: 'destructive', title: 'Failed', description: 'Could not add TA instance' });
     }
@@ -467,18 +458,6 @@ function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: Return
               onChange={(e) => setEntityId(e.target.value)}
               className="mt-1"
             />
-          </div>
-          <div>
-            <Label htmlFor="ta-type">Type</Label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="federation">Federation</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label htmlFor="ta-description">Description (Optional)</Label>

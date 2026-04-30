@@ -19,6 +19,15 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByText(/superior ta/i)).toHaveCount(0);
   });
 
+  test('add trust anchor dialog no longer exposes intermediate creation', async ({ authenticatedPage: page }) => {
+    await page.goto(`${APP_URL}/trust-anchors`);
+    await page.getByRole('button', { name: /add ta instance/i }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/intermediate/i)).toHaveCount(0);
+  });
+
   test('shows the seeded LightHouse trust anchor card', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     // LightHouse should appear as a card title
