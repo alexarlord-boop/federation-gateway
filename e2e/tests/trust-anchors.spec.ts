@@ -27,9 +27,14 @@ test.describe('Trust Anchors page @bff', () => {
   test('deployment-managed LightHouse card does not expose local configure actions', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
 
-    await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
-    await expect(page.getByText(/deployment managed/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
+    const lightHouseCard = page
+      .locator('div.rounded-lg.border.bg-card')
+      .filter({ has: page.getByRole('heading', { name: 'LightHouse' }) })
+      .first();
+
+    await expect(lightHouseCard).toBeVisible();
+    await expect(lightHouseCard.getByText(/deployment managed/i)).toBeVisible();
+    await expect(lightHouseCard.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
   });
 
   test('operator-created trust anchor still exposes configure flow', async ({ authenticatedPage: page }) => {
@@ -56,8 +61,13 @@ test.describe('Trust Anchors page @bff', () => {
 
     try {
       await page.goto(`${APP_URL}/trust-anchors`);
-      await expect(page.getByRole('heading', { name })).toBeVisible();
-      const optionsButton = page.getByRole('button', { name: /trust anchor options/i });
+      const createdCard = page
+        .locator('div.rounded-lg.border.bg-card')
+        .filter({ has: page.getByRole('heading', { name }) })
+        .first();
+
+      await expect(createdCard).toBeVisible();
+      const optionsButton = createdCard.getByRole('button', { name: /trust anchor options/i });
       await expect(optionsButton).toHaveCount(1);
       await optionsButton.click();
       await page.getByRole('menuitem', { name: /configure/i }).click();
@@ -68,9 +78,10 @@ test.describe('Trust Anchors page @bff', () => {
       await expect(dialog).toContainText(new RegExp(`editing ${name}`, 'i'));
       await expect(dialog.getByLabel(/admin api base url/i)).toBeVisible();
     } finally {
-      await page.request.delete(`${APP_URL}/api/v1/admin/trust-anchors/${createdAnchor.id}`, {
+      const cleanupResponse = await page.request.delete(`${APP_URL}/api/v1/admin/trust-anchors/${createdAnchor.id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      expect(cleanupResponse.ok()).toBeTruthy();
     }
   });
 
