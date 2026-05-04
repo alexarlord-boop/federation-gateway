@@ -688,11 +688,6 @@ export default function TrustAnchorsPage() {
             <span className="text-sm text-muted-foreground">(Managed as subordinates)</span>
           </div>
         </div>
-        <Card className="bg-muted/30 mb-6">
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <p className="text-sm">Register new intermediates from the Subordinates navigation.</p>
-          </CardContent>
-        </Card>
         {intermediateTAs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {intermediateTAs.map((ta) => (
@@ -757,12 +752,19 @@ export default function TrustAnchorsPage() {
             ))}
           </div>
         ) : (
-          <Card className="bg-muted/30">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>No intermediates registered</p>
-            </CardContent>
-          </Card>
+          <>
+            <Card className="bg-muted/30 mb-6">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <p className="text-sm">Register new intermediates from the Subordinates navigation.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/30">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p>No intermediates registered</p>
+              </CardContent>
+            </Card>
+          </>
         )}
       </section>
 

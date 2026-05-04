@@ -54,9 +54,17 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
   });
 
-  test('shows guidance to register intermediates from Subordinates', async ({ authenticatedPage: page }) => {
+  test('shows guidance to register intermediates in the empty state', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
 
-    await expect(page.getByText(/register new intermediates from the Subordinates navigation\./i)).toBeVisible();
+    const emptyState = page.getByText(/no intermediates registered/i);
+    const guidance = page.getByText(/register new intermediates from the Subordinates navigation\./i);
+
+    if (await emptyState.count()) {
+      await expect(emptyState).toBeVisible();
+      await expect(guidance).toBeVisible();
+    } else {
+      await expect(guidance).toHaveCount(0);
+    }
   });
 });
