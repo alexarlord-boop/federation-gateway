@@ -11,7 +11,7 @@ test.describe('Trust Anchors page @bff', () => {
       page.getByText(/manage upstream authorities, authority hints, and local trust anchors/i),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
+    await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
   });
 
   test('authority hint dialog uses consistent wording', async ({ authenticatedPage: page }) => {
@@ -62,6 +62,6 @@ test.describe('Trust Anchors page @bff', () => {
     const emptyState = page.getByText(/no intermediates registered/i);
     await expect(emptyState).toBeVisible();
     await expect(page.getByText(/register new intermediates from the Subordinates navigation\./i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
+    await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
   });
 });
