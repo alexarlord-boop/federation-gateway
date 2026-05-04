@@ -24,18 +24,54 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByText(/superior ta/i)).toHaveCount(0);
   });
 
-  test('opens the LightHouse trust anchor configure flow', async ({ authenticatedPage: page }) => {
+  test('deployment-managed LightHouse card does not expose local configure actions', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
 
     await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
-    await page.getByRole('button', { name: /trust anchor options/i }).first().click();
-    await page.getByRole('menuitem', { name: /configure/i }).click();
+    await expect(page.getByText(/deployment managed/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
+  });
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await expect(page.getByRole('heading', { name: /configure trust anchor/i })).toBeVisible();
-    await expect(dialog).toContainText(/editing lighthouse/i);
-    await expect(dialog.getByLabel(/admin api base url/i)).toBeVisible();
+  test('operator-created trust anchor still exposes configure flow', async ({ authenticatedPage: page }) => {
+    const token = await page.evaluate(() => {
+      const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
+      return tokenKey ? localStorage.getItem(tokenKey) : null;
+    });
+
+    const name = `E2E Local TA ${Date.now()}`;
+    const created = await page.request.post(`${APP_URL}/api/v1/admin/trust-anchors`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      data: {
+        name,
+        entity_id: `https://local-ta-${Date.now()}.example.org`,
+        description: 'E2E managed trust anchor',
+        type: 'federation',
+        status: 'active',
+        admin_api_base_url: 'https://local-ta.example.org/admin',
+      },
+    });
+
+    expect(created.ok()).toBeTruthy();
+    const createdAnchor = await created.json();
+
+    try {
+      await page.goto(`${APP_URL}/trust-anchors`);
+      await expect(page.getByRole('heading', { name })).toBeVisible();
+      const optionsButton = page.getByRole('button', { name: /trust anchor options/i });
+      await expect(optionsButton).toHaveCount(1);
+      await optionsButton.click();
+      await page.getByRole('menuitem', { name: /configure/i }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(page.getByRole('heading', { name: /configure trust anchor/i })).toBeVisible();
+      await expect(dialog).toContainText(new RegExp(`editing ${name}`, 'i'));
+      await expect(dialog.getByLabel(/admin api base url/i)).toBeVisible();
+    } finally {
+      await page.request.delete(`${APP_URL}/api/v1/admin/trust-anchors/${createdAnchor.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    }
   });
 
   test('add trust anchor dialog no longer exposes intermediate creation', async ({ authenticatedPage: page }) => {
