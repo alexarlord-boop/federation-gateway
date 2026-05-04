@@ -503,7 +503,7 @@ export default function TrustAnchorsPage() {
   const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor, deleteTrustAnchor } = useTrustAnchors();
   const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'intermediate');
 
-  // Superior TAs (via authority hints)
+  // Upstream TAs (via authority hints)
   const { hints: authorityHints, isLoading: isLoadingHints, deleteHint } = useAuthorityHints();
 
   // Subordinate TAs/IAs (federation_entity subordinates)
@@ -752,19 +752,13 @@ export default function TrustAnchorsPage() {
             ))}
           </div>
         ) : (
-          <>
-            <Card className="bg-muted/30 mb-6">
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <p className="text-sm">Register new intermediates from the Subordinates navigation.</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-muted/30">
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p>No intermediates registered</p>
-              </CardContent>
-            </Card>
-          </>
+          <Card className="bg-muted/30">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Server className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="font-medium">No intermediates registered</p>
+              <p className="text-sm">Register new intermediates from the Subordinates navigation.</p>
+            </CardContent>
+          </Card>
         )}
       </section>
 

@@ -11,6 +11,7 @@ test.describe('Trust Anchors page @bff', () => {
       page.getByText(/manage upstream authorities, authority hints, and local trust anchors/i),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
   });
 
   test('authority hint dialog uses consistent wording', async ({ authenticatedPage: page }) => {
@@ -34,6 +35,7 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(dialog).toBeVisible();
     await expect(page.getByRole('heading', { name: /configure trust anchor/i })).toBeVisible();
     await expect(dialog).toContainText(/editing lighthouse/i);
+    await expect(dialog.getByLabel(/admin api base url/i)).toBeVisible();
   });
 
   test('add trust anchor dialog no longer exposes intermediate creation', async ({ authenticatedPage: page }) => {
@@ -58,13 +60,8 @@ test.describe('Trust Anchors page @bff', () => {
     await page.goto(`${APP_URL}/trust-anchors`);
 
     const emptyState = page.getByText(/no intermediates registered/i);
-    const guidance = page.getByText(/register new intermediates from the Subordinates navigation\./i);
-
-    if (await emptyState.count()) {
-      await expect(emptyState).toBeVisible();
-      await expect(guidance).toBeVisible();
-    } else {
-      await expect(guidance).toHaveCount(0);
-    }
+    await expect(emptyState).toBeVisible();
+    await expect(page.getByText(/register new intermediates from the Subordinates navigation\./i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
   });
 });
