@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AdditionalClaims } from './AdditionalClaims';
+import type { TrustMarkSpecAdditionalClaims } from './TrustMarkSpecAdditionalClaims';
 /**
  * Data to create or update a TrustMarkSpec.
  */
@@ -30,6 +30,6 @@ export type AddTrustMarkSpec = {
     /**
      * Additional custom claims to include in the trust mark.
      */
-    additional_claims?: AdditionalClaims;
+    additional_claims?: TrustMarkSpecAdditionalClaims;
 };
 
