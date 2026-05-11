@@ -1,6 +1,15 @@
 import { cn } from '@/lib/utils';
 export type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
+export const ALL_ENTITY_TYPES: EntityType[] = [
+  'openid_provider',
+  'openid_relying_party',
+  'federation_entity',
+  'oauth_authorization_server',
+  'oauth_client',
+  'oauth_resource',
+];
+
 interface EntityTypeBadgeProps {
   type: EntityType;
   className?: string;
@@ -24,7 +33,7 @@ const typeConfig: Record<EntityType, { label: string; short: string; className: 
     className: 'bg-primary/10 text-primary border border-primary/30',
   },
   oauth_authorization_server: {
-    label: 'OAuth AS',
+    label: 'OAuth Authorization Server',
     short: 'AS',
     className: 'bg-warning/10 text-warning border border-warning/30',
   },
@@ -39,6 +48,11 @@ const typeConfig: Record<EntityType, { label: string; short: string; className: 
     className: 'bg-muted text-muted-foreground',
   },
 };
+
+/** Full display labels — single source of truth for all surfaces. */
+export const ENTITY_TYPE_LABELS: Record<EntityType, string> = Object.fromEntries(
+  ALL_ENTITY_TYPES.map((t) => [t, typeConfig[t].label]),
+) as Record<EntityType, string>;
 
 export function EntityTypeBadge({ type, className, showFederationEntity = false }: EntityTypeBadgeProps) {
   // Hide FE badges by default since every entity in the registry is a Federation Entity

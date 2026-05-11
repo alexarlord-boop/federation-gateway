@@ -14,14 +14,18 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EntityTypeMultiSelect, ENTITY_TYPE_LABELS } from '@/components/entities/EntityTypeMultiSelect';
+import { EntityTypeMultiSelect } from '@/components/entities/EntityTypeMultiSelect';
+import {
+  type EntityType,
+  ENTITY_TYPE_LABELS,
+  ALL_ENTITY_TYPES,
+} from '@/components/ui/entity-type-badge';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate, useDeleteSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 import { SubordinateMetadataService } from '@/client/services/SubordinateMetadataService';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
-type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
 const steps = [
   { id: 'entity', title: 'Subordinate ID', description: 'Enter the subordinate identifier' },
@@ -78,11 +82,6 @@ export default function EntityRegisterPage() {
     );
   }
 
-  const KNOWN_REGISTRY_TYPES: EntityType[] = [
-    'openid_provider', 'openid_relying_party', 'federation_entity',
-    'oauth_authorization_server', 'oauth_client', 'oauth_resource',
-  ];
-
   const handleFetchConfig = async () => {
     if (!formData.entityId) return;
     setIsLoading(true);
@@ -107,7 +106,7 @@ export default function EntityRegisterPage() {
             : typeof firstContact === 'object' && firstContact !== null
               ? (firstContact as any).email ?? ''
               : '';
-        const detectedTypes = KNOWN_REGISTRY_TYPES.filter(
+        const detectedTypes = ALL_ENTITY_TYPES.filter(
           (t) => t in (payload.metadata ?? {}),
         );
         setFetchedConfig(payload);
@@ -179,6 +178,11 @@ export default function EntityRegisterPage() {
               ...(contacts.length > 0 && { contacts }),
             };
           }
+          // oauth_authorization_server, oauth_client, and oauth_resource do not have
+          // a separate typed-metadata block here. Their registration is recorded via
+          // registered_entity_types; detailed per-type claims can be enriched later
+          // through the entity-detail metadata editor once the spec requirements for
+          // these roles are finalized.
         }
 
         for (const [entityType, claims] of Object.entries(metadataByType)) {
@@ -217,7 +221,7 @@ export default function EntityRegisterPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return formData.entityId && formData.trustAnchorId;
+        return !!(formData.entityId && formData.trustAnchorId && (isIntermediate || formData.entityTypes.length > 0));
       case 1:
         return fetchedConfig !== null;
       case 2:
@@ -289,7 +293,7 @@ export default function EntityRegisterPage() {
 
             <Button 
               onClick={handleFetchConfig} 
-              disabled={!formData.entityId || !formData.trustAnchorId || isLoading}
+              disabled={!formData.entityId || !formData.trustAnchorId || (!isIntermediate && formData.entityTypes.length === 0) || isLoading}
               className="w-full"
             >
               {isLoading ? (

@@ -164,9 +164,10 @@ test.describe('Entities page @proxy', () => {
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
 
-    // Review step (config): friendly labels should appear
-    await expect(page.getByText(/openid provider/i)).toBeVisible();
-    await expect(page.getByText(/oauth client/i)).toBeVisible();
+    // Review step (config): friendly labels should appear scoped to the Subordinate Type row
+    const configTypeRow = page.locator('text=Subordinate Type').locator('..');
+    await expect(configTypeRow.getByText(/openid provider/i)).toBeVisible();
+    await expect(configTypeRow.getByText(/oauth client/i)).toBeVisible();
 
     // Advance to Additional Details
     await page.getByRole('button', { name: 'Next' }).click();
@@ -179,8 +180,9 @@ test.describe('Entities page @proxy', () => {
     await expect(page.getByRole('heading', { name: /registration summary/i })).toBeVisible({ timeout: 5_000 });
 
     // Summary should show friendly labels, not raw type keys
-    await expect(page.getByText(/openid provider/i)).toBeVisible();
-    await expect(page.getByText(/oauth client/i)).toBeVisible();
+    const summarySection = page.locator('dl');
+    await expect(summarySection.getByText(/openid provider/i)).toBeVisible();
+    await expect(summarySection.getByText(/oauth client/i)).toBeVisible();
     // Should NOT show raw machine keys as labels
     await expect(page.getByText(/^OP$|^RP$/)).not.toBeVisible();
   });

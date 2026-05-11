@@ -1,31 +1,10 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-
-export type EntityType =
-  | 'openid_provider'
-  | 'openid_relying_party'
-  | 'federation_entity'
-  | 'oauth_authorization_server'
-  | 'oauth_client'
-  | 'oauth_resource';
-
-export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
-  openid_provider: 'OpenID Provider',
-  openid_relying_party: 'Relying Party',
-  federation_entity: 'Federation Entity',
-  oauth_authorization_server: 'OAuth Authorization Server',
-  oauth_client: 'OAuth Client',
-  oauth_resource: 'OAuth Resource',
-};
-
-const ALL_ENTITY_TYPES: EntityType[] = [
-  'openid_provider',
-  'openid_relying_party',
-  'federation_entity',
-  'oauth_authorization_server',
-  'oauth_client',
-  'oauth_resource',
-];
+import {
+  type EntityType,
+  ENTITY_TYPE_LABELS,
+  ALL_ENTITY_TYPES,
+} from '@/components/ui/entity-type-badge';
 
 interface EntityTypeMultiSelectProps {
   selected: EntityType[];
