@@ -94,4 +94,40 @@ test.describe.serial('Trust Marks management @proxy', () => {
     const deleteOrManageBtn = page.getByRole('button', { name: /delete|manage|view/i }).first();
     await expect(deleteOrManageBtn).toBeVisible({ timeout: 5_000 });
   });
+
+  test('add issuance spec dialog exposes additional_claims editor', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/trust-marks`);
+    const issuanceTab = page.getByRole('tab', { name: /issuance/i });
+    await expect(issuanceTab).toBeVisible({ timeout: 5_000 });
+    await issuanceTab.click();
+
+    const addSpecBtn = page.getByRole('button', { name: /add spec/i });
+    await expect(addSpecBtn).toBeVisible({ timeout: 5_000 });
+    await addSpecBtn.click();
+
+    // The add spec dialog should show an additional claims section
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText(/additional claims/i)).toBeVisible({ timeout: 3_000 });
+
+    // Should have inputs for claim name and value
+    await expect(page.getByLabel(/new claim name/i)).toBeVisible();
+    await expect(page.getByLabel(/new claim value/i)).toBeVisible();
+    await expect(page.getByLabel(/add claim/i)).toBeVisible();
+  });
+
+  test('edit issuance spec icon button has accessible label', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/trust-marks`);
+    const issuanceTab = page.getByRole('tab', { name: /issuance/i });
+    await expect(issuanceTab).toBeVisible({ timeout: 5_000 });
+    await issuanceTab.click();
+
+    // If any issuance specs exist, the edit button must have an accessible label
+    const editBtn = page.getByRole('button', { name: /edit issuance spec/i }).first();
+    if (await editBtn.isVisible({ timeout: 3_000 })) {
+      // Accessible label is present and the dialog opens with claims editor
+      await editBtn.click();
+      await expect(page.getByRole('dialog', { name: /edit issuance spec/i })).toBeVisible({ timeout: 3_000 });
+      await expect(page.getByText(/additional claims/i)).toBeVisible();
+    }
+  });
 });

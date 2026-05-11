@@ -40,6 +40,8 @@ import { SelfTrustMarksTab } from '@/components/trust-marks/SelfTrustMarksTab';
 import { TrustMarkTypeDetailSheet } from '@/components/trust-marks/TrustMarkTypeDetailSheet';
 import { OwnersTab } from '@/components/trust-marks/OwnersTab';
 import { IssuersTab } from '@/components/trust-marks/IssuersTab';
+import { AdditionalClaimsTableEditor } from '@/components/trust-marks/AdditionalClaimsTableEditor';
+import type { TrustMarkSpecAdditionalClaims } from '@/client/models/TrustMarkSpecAdditionalClaims';
 
 // ── Trust Mark Types Tab ────────────────────────────────
 
@@ -289,9 +291,11 @@ function IssuanceSpecsTab() {
   const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
+  const [createClaims, setCreateClaims] = useState<TrustMarkSpecAdditionalClaims>({});
   const [expandedSpec, setExpandedSpec] = useState<number | null>(null);
   const [editSpec, setEditSpec] = useState<TrustMarkSpec | null>(null);
   const [editForm, setEditForm] = useState({ description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
+  const [editClaims, setEditClaims] = useState<TrustMarkSpecAdditionalClaims>({});
 
   const handleCreate = async () => {
     if (!createForm.trust_mark_type) return;
@@ -302,9 +306,11 @@ function IssuanceSpecsTab() {
       if (createForm.ref) payload.ref = createForm.ref;
       if (createForm.logo_uri) payload.logo_uri = createForm.logo_uri;
       if (createForm.delegation_jwt) payload.delegation_jwt = createForm.delegation_jwt;
+      if (Object.keys(createClaims).length > 0) payload.additional_claims = createClaims;
       await create.mutateAsync(payload as any);
       toast({ title: 'Created', description: 'Issuance spec added' });
       setCreateForm({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
+      setCreateClaims({});
       setIsCreateOpen(false);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to create issuance spec' });
@@ -329,6 +335,7 @@ function IssuanceSpecsTab() {
       if (editForm.ref !== '') data.ref = editForm.ref;
       if (editForm.logo_uri !== '') data.logo_uri = editForm.logo_uri;
       if (editForm.delegation_jwt !== '') data.delegation_jwt = editForm.delegation_jwt;
+      data.additional_claims = Object.keys(editClaims).length > 0 ? editClaims : null;
       await patch.mutateAsync({ id: editSpec.id as number, data });
       toast({ title: 'Updated', description: 'Issuance spec updated' });
       setEditSpec(null);
@@ -377,6 +384,10 @@ function IssuanceSpecsTab() {
               <div className="space-y-2">
                 <Label htmlFor="spec-delegation">Delegation JWT <span className="text-muted-foreground text-xs">(optional)</span></Label>
                 <Textarea id="spec-delegation" placeholder="eyJ..." className="font-mono text-xs" rows={2} value={createForm.delegation_jwt} onChange={(e) => setCreateForm((f) => ({ ...f, delegation_jwt: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Additional Claims <span className="text-muted-foreground text-xs">(optional shared claims for all issued marks)</span></Label>
+                <AdditionalClaimsTableEditor claims={createClaims} onChange={setCreateClaims} />
               </div>
             </div>
             <DialogFooter>
@@ -434,7 +445,17 @@ function IssuanceSpecsTab() {
                       </a>
                     )}
                     {canUpdate && (
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditForm({ description: spec.description ?? '', lifetime: spec.lifetime?.toString() ?? '', ref: spec.ref ?? '', logo_uri: spec.logo_uri ?? '', delegation_jwt: spec.delegation_jwt ?? '' }); setEditSpec(spec); }}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit issuance spec"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditForm({ description: spec.description ?? '', lifetime: spec.lifetime?.toString() ?? '', ref: spec.ref ?? '', logo_uri: spec.logo_uri ?? '', delegation_jwt: spec.delegation_jwt ?? '' });
+                          setEditClaims((spec.additional_claims as TrustMarkSpecAdditionalClaims) ?? {});
+                          setEditSpec(spec);
+                        }}
+                      >
                         <Pencil className="w-4 h-4" />
                       </Button>
                     )}
@@ -495,6 +516,10 @@ function IssuanceSpecsTab() {
             <div className="space-y-2">
               <Label htmlFor="edit-delegation">Delegation JWT</Label>
               <Textarea id="edit-delegation" placeholder="eyJ..." className="font-mono text-xs" rows={3} value={editForm.delegation_jwt} onChange={(e) => setEditForm((f) => ({ ...f, delegation_jwt: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Additional Claims <span className="text-muted-foreground text-xs">(shared claims for all issued marks)</span></Label>
+              <AdditionalClaimsTableEditor claims={editClaims} onChange={setEditClaims} />
             </div>
           </div>
           <DialogFooter>
