@@ -3,6 +3,10 @@
  *
  * Wraps TrustMarkIssuanceService for managing additional claims
  * attached to individual trust mark subjects.
+ *
+ * Falls back to the last successfully fetched data while still
+ * surfacing query errors so callers can show error indicators
+ * without losing the previously displayed claim list.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TrustMarkIssuanceService } from '@/client/services/TrustMarkIssuanceService';
@@ -25,6 +29,8 @@ export const useTrustMarkSubjectClaims = (specId: number, subjectId: number) => 
     queryFn: () =>
       TrustMarkIssuanceService.getTrustMarkSubjectAdditionalClaims(specId, subjectId),
     enabled: !!instanceId && !!specId && !!subjectId,
+    // Keep the last successful data visible while a background re-fetch fails.
+    placeholderData: (previousData) => previousData,
   });
 
   const updateAll = useMutation({

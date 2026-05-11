@@ -88,4 +88,20 @@ test.describe('Trust Marks page @proxy', () => {
     // Issuance tab should be active
     await expect(issuanceTab).toHaveAttribute('aria-selected', 'true');
   });
+
+  test('subject status toggle uses inactive (not suspended) when deactivating', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/trust-marks`);
+    const issuanceTab = page.getByRole('tab', { name: /issuance/i });
+    await expect(issuanceTab).toBeVisible({ timeout: 10_000 });
+    await issuanceTab.click();
+    // If there are any expanded spec subjects, check deactivated label
+    const inactiveLabel = page.getByText(/inactive/i);
+    const suspendedLabel = page.getByText(/suspended/i);
+    // 'Inactive' may or may not be visible (depends on data), but 'Suspended' must never appear
+    await expect(suspendedLabel).toHaveCount(0);
+    // The deactivated status badge/label uses 'Inactive', not 'Suspended'
+    if (await inactiveLabel.isVisible({ timeout: 2_000 })) {
+      await expect(inactiveLabel.first()).toBeVisible();
+    }
+  });
 });

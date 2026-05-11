@@ -688,10 +688,10 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
                             <Switch
                               checked={sub.status === 'active'}
                               onCheckedChange={(checked) =>
-                                changeStatus.mutate({ subjectId: subId, status: checked ? 'active' : 'suspended' })
+                                changeStatus.mutate({ subjectId: subId, status: checked ? 'active' : 'inactive' })
                               }
                             />
-                            <span className="text-xs text-muted-foreground">{sub.status === 'active' ? 'Active' : 'Suspended'}</span>
+                            <span className="text-xs text-muted-foreground">{sub.status === 'active' ? 'Active' : 'Inactive'}</span>
                           </div>
                         )}
                         {canDelete && (

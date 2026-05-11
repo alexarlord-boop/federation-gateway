@@ -103,17 +103,17 @@ function RefreshFields({
           <div className="space-y-1.5">
             <Label className="text-xs">Min Lifetime (s)</Label>
             <Input type="number" className="h-8 text-xs" placeholder="e.g. 3600" value={minLifetime} onChange={e => onChange({ minLifetime: e.target.value })} />
-            <p className="text-[10px] text-muted-foreground">Trigger refresh when this many seconds remain.</p>
+            <p className="text-[10px] text-muted-foreground">Refresh when fewer than this many seconds remain (minimum lifetime threshold).</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Grace Period (s)</Label>
             <Input type="number" className="h-8 text-xs" placeholder="e.g. 86400" value={graceP} onChange={e => onChange({ graceP: e.target.value })} />
-            <p className="text-[10px] text-muted-foreground">Retry for this long after expiry.</p>
+            <p className="text-[10px] text-muted-foreground">Continue accepting a refresh for this long after the token expires (asynchronous grace window).</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Rate Limit (s)</Label>
             <Input type="number" className="h-8 text-xs" placeholder="e.g. 300" value={rateLimit} onChange={e => onChange({ rateLimit: e.target.value })} />
-            <p className="text-[10px] text-muted-foreground">Min seconds between attempts.</p>
+            <p className="text-[10px] text-muted-foreground">Minimum seconds between refresh attempts (rate limiting).</p>
           </div>
         </div>
       )}
@@ -425,7 +425,7 @@ export function SelfTrustMarksTab() {
                 <TableHead>Trust Mark Type</TableHead>
                 <TableHead>Issuer</TableHead>
                 <TableHead>Validity</TableHead>
-                <TableHead>Expiry</TableHead>
+                <TableHead>Timing</TableHead>
                 <TableHead className="w-[130px]" />
               </TableRow>
             </TableHeader>
