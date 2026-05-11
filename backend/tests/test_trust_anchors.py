@@ -1,3 +1,33 @@
+def test_subordinate_count_reflects_tenant_registrations(client, admin_headers):
+    """ta-1 subordinate_count must increase by 1 after adding a registration for tenant-1."""
+    # Baseline count before adding a registration
+    before = client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()
+    ta_before = next((t for t in before if t["id"] == "ta-1"), None)
+    assert ta_before is not None, "Seeded ta-1 not found"
+    count_before = ta_before["subordinate_count"]
+
+    # Create one registration for tenant-1
+    reg_resp = client.post(
+        "/api/v1/registrations",
+        json={
+            "tenant_id": "tenant-1",
+            "entity_id": "http://sub-count-test.example.org",
+            "registered_entity_types": ["openid_provider"],
+            "display_name": "Sub Entity Count Test",
+        },
+        headers=admin_headers,
+    )
+    assert reg_resp.status_code == 201, reg_resp.text
+
+    # ta-1 must now report one more subordinate
+    after = client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()
+    ta_after = next((t for t in after if t["id"] == "ta-1"), None)
+    assert ta_after is not None, "Seeded ta-1 not found"
+    assert ta_after["subordinate_count"] == count_before + 1, (
+        f"Expected subordinate_count={count_before + 1}, got {ta_after['subordinate_count']}"
+    )
+
+
 def test_list_includes_lighthouse(client, admin_headers):
     resp = client.get("/api/v1/admin/trust-anchors", headers=admin_headers)
     assert resp.status_code == 200

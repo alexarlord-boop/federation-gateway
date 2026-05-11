@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import uuid
 import json
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
+from app.models.tenant import Tenant
+from app.models.entity_registration import EntityRegistration
 from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse, TrustAnchorConfig
 from app.auth.dependencies import require_permission
 
@@ -13,6 +16,19 @@ router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
 @router.get("", response_model=list[TrustAnchorResponse])
 def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permission("trust_anchors", "list"))):
     anchors = db.query(TrustAnchor).all()
+
+    # Build a map: tenant.entity_id -> non-rejected registration count
+    counts_by_entity_id: dict[str, int] = {}
+    rows = (
+        db.query(Tenant.entity_id, func.count(EntityRegistration.id))
+        .join(EntityRegistration, EntityRegistration.tenant_id == Tenant.id)
+        .filter(EntityRegistration.status != "rejected")
+        .group_by(Tenant.entity_id)
+        .all()
+    )
+    for entity_id, count in rows:
+        counts_by_entity_id[entity_id] = count
+
     result = []
     for a in anchors:
         cfg = {}
@@ -32,7 +48,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
                 description=a.description,
                 type=a.type,
                 status=a.status,
-                subordinate_count=0,
+                subordinate_count=counts_by_entity_id.get(a.entity_id, 0),
                 admin_api_base_url=cfg.get("admin_api_base_url"),
                 deployment_managed=deployment_managed,
                 created_at=a.created_at.isoformat() if a.created_at else None,
