@@ -36,7 +36,7 @@ def test_subordinate_count_reflects_tenant_registrations(client, admin_headers):
             json={"status": "rejected", "notes": "cleanup"},
             headers=admin_headers,
         )
-        assert cleanup_resp.status_code in (200, 409), (
+        assert cleanup_resp.status_code == 200, (
             f"Cleanup review failed with status {cleanup_resp.status_code}: {cleanup_resp.text}"
         )
 

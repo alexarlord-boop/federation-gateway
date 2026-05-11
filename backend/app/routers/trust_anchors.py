@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -13,16 +15,23 @@ from app.auth.dependencies import require_permission
 router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
 
 
-def _build_subordinate_counts(db: Session) -> dict[str, int]:
-    """Return a map of tenant entity_id -> non-rejected registration count."""
-    rows = (
+def _build_subordinate_counts(
+    db: Session, entity_ids: set[str] | None = None
+) -> dict[str, int]:
+    """Return a map of tenant entity_id -> non-rejected registration count.
+
+    If *entity_ids* is given, only those entity_ids are included in the result,
+    allowing callers to issue a targeted single-row query instead of a full scan.
+    """
+    q = (
         db.query(Tenant.entity_id, func.count(EntityRegistration.id))
         .join(EntityRegistration, EntityRegistration.tenant_id == Tenant.id)
         .filter(EntityRegistration.status != "rejected")
         .group_by(Tenant.entity_id)
-        .all()
     )
-    return {entity_id: count for entity_id, count in rows}
+    if entity_ids is not None:
+        q = q.filter(Tenant.entity_id.in_(entity_ids))
+    return {entity_id: count for entity_id, count in q.all()}
 
 
 @router.get("", response_model=list[TrustAnchorResponse])
@@ -80,14 +89,9 @@ def create_trust_anchor(
     db.commit()
     db.refresh(anchor)
 
-    # Targeted count for this anchor only — avoids scanning all tenants.
-    subordinate_count = (
-        db.query(func.count(EntityRegistration.id))
-        .join(Tenant, EntityRegistration.tenant_id == Tenant.id)
-        .filter(Tenant.entity_id == anchor.entity_id)
-        .filter(EntityRegistration.status != "rejected")
-        .scalar()
-    ) or 0
+    # Targeted count for this anchor only (entity_id may already have matching tenants).
+    counts = _build_subordinate_counts(db, entity_ids={anchor.entity_id})
+    subordinate_count = counts.get(anchor.entity_id, 0)
 
     return TrustAnchorResponse(
         id=anchor.id,
