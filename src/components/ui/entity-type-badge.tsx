@@ -1,14 +1,17 @@
 import { cn } from '@/lib/utils';
 export type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 
-export const ALL_ENTITY_TYPES: EntityType[] = [
-  'openid_provider',
-  'openid_relying_party',
-  'federation_entity',
-  'oauth_authorization_server',
-  'oauth_client',
-  'oauth_resource',
-];
+// Compile-time guard: this assignment fails if ALL_ENTITY_TYPES omits any EntityType member.
+const _exhaustiveCheck: Record<EntityType, true> = {
+  openid_provider: true,
+  openid_relying_party: true,
+  federation_entity: true,
+  oauth_authorization_server: true,
+  oauth_client: true,
+  oauth_resource: true,
+};
+
+export const ALL_ENTITY_TYPES: EntityType[] = Object.keys(_exhaustiveCheck) as EntityType[];
 
 interface EntityTypeBadgeProps {
   type: EntityType;

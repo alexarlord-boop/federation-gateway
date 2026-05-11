@@ -481,7 +481,7 @@ export default function EntityRegisterPage() {
                     <dt className="text-muted-foreground">Subordinate Type</dt>
                     <dd className="flex flex-wrap gap-1 justify-end">
                       {formData.entityTypes.map(t => (
-                        <span key={t} className="entity-badge bg-info/10 text-info">
+                        <span key={t} className="entity-badge bg-info/10 text-info border border-info/30">
                           {ENTITY_TYPE_LABELS[t]}
                         </span>
                       ))}
