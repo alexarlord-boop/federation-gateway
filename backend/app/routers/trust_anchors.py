@@ -80,7 +80,14 @@ def create_trust_anchor(
     db.commit()
     db.refresh(anchor)
 
-    subordinate_count = _build_subordinate_counts(db).get(anchor.entity_id, 0)
+    # Targeted count for this anchor only — avoids scanning all tenants.
+    subordinate_count = (
+        db.query(func.count(EntityRegistration.id))
+        .join(Tenant, EntityRegistration.tenant_id == Tenant.id)
+        .filter(Tenant.entity_id == anchor.entity_id)
+        .filter(EntityRegistration.status != "rejected")
+        .scalar()
+    ) or 0
 
     return TrustAnchorResponse(
         id=anchor.id,

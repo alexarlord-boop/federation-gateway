@@ -8,13 +8,17 @@ class TrustAnchor(Base):
 
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    # entity_id is treated as unique: the subordinate-count logic keys on it.
-    # New databases get the constraint via create_all; existing deployments should
-    # ensure no duplicate entity_id rows are present.
+    # unique=True is enforced automatically only on fresh databases created via
+    # create_all. Existing deployments upgraded in-place do NOT gain this DB-level
+    # constraint without an explicit ALTER TABLE / migration step.
     entity_id = Column(String, nullable=False, unique=True)
     description = Column(String, nullable=True)
     type = Column(String, nullable=False)
     status = Column(String, nullable=False)
+    # DEPRECATED: this column is no longer written or read for business logic;
+    # subordinate counts are derived live from EntityRegistration joins.
+    # Remove via a dedicated migration once all existing deployments are confirmed
+    # to no longer reference this column directly.
     subordinate_count = Column(Integer, default=0)
     config_json = Column(Text, nullable=True)
     jwks = Column(Text, nullable=True)
