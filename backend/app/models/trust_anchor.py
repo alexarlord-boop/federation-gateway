@@ -8,7 +8,10 @@ class TrustAnchor(Base):
 
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    entity_id = Column(String, nullable=False)
+    # entity_id is treated as unique: the subordinate-count logic keys on it.
+    # New databases get the constraint via create_all; existing deployments should
+    # ensure no duplicate entity_id rows are present.
+    entity_id = Column(String, nullable=False, unique=True)
     description = Column(String, nullable=True)
     type = Column(String, nullable=False)
     status = Column(String, nullable=False)

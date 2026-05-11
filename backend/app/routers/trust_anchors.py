@@ -13,12 +13,8 @@ from app.auth.dependencies import require_permission
 router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
 
 
-@router.get("", response_model=list[TrustAnchorResponse])
-def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permission("trust_anchors", "list"))):
-    anchors = db.query(TrustAnchor).all()
-
-    # Build a map: tenant.entity_id -> non-rejected registration count
-    counts_by_entity_id: dict[str, int] = {}
+def _build_subordinate_counts(db: Session) -> dict[str, int]:
+    """Return a map of tenant entity_id -> non-rejected registration count."""
     rows = (
         db.query(Tenant.entity_id, func.count(EntityRegistration.id))
         .join(EntityRegistration, EntityRegistration.tenant_id == Tenant.id)
@@ -26,8 +22,13 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
         .group_by(Tenant.entity_id)
         .all()
     )
-    for entity_id, count in rows:
-        counts_by_entity_id[entity_id] = count
+    return {entity_id: count for entity_id, count in rows}
+
+
+@router.get("", response_model=list[TrustAnchorResponse])
+def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permission("trust_anchors", "list"))):
+    anchors = db.query(TrustAnchor).all()
+    counts_by_entity_id = _build_subordinate_counts(db)
 
     result = []
     for a in anchors:
@@ -79,14 +80,7 @@ def create_trust_anchor(
     db.commit()
     db.refresh(anchor)
 
-    subordinate_count = (
-        db.query(func.count(EntityRegistration.id))
-        .join(Tenant, EntityRegistration.tenant_id == Tenant.id)
-        .filter(Tenant.entity_id == anchor.entity_id)
-        .filter(EntityRegistration.status != "rejected")
-        .scalar()
-        or 0
-    )
+    subordinate_count = _build_subordinate_counts(db).get(anchor.entity_id, 0)
 
     return TrustAnchorResponse(
         id=anchor.id,
