@@ -63,8 +63,9 @@ function TrustMarkTypesTab() {
       setNewType('');
       setNewDesc('');
       setIsCreateOpen(false);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create trust mark type' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to create trust mark type';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -72,8 +73,9 @@ function TrustMarkTypesTab() {
     try {
       await remove.mutateAsync(id);
       toast({ title: 'Deleted' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete trust mark type' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to delete trust mark type';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -312,8 +314,9 @@ function IssuanceSpecsTab() {
       setCreateForm({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
       setCreateClaims({});
       setIsCreateOpen(false);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create issuance spec' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to create issuance spec';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -321,8 +324,9 @@ function IssuanceSpecsTab() {
     try {
       await remove.mutateAsync(id);
       toast({ title: 'Deleted', description: 'Issuance spec removed' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete issuance spec' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to delete issuance spec';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -339,8 +343,9 @@ function IssuanceSpecsTab() {
       await patch.mutateAsync({ id: editSpec.id as number, data });
       toast({ title: 'Updated', description: 'Issuance spec updated' });
       setEditSpec(null);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update issuance spec' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to update issuance spec';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -553,8 +558,9 @@ function SubjectClaimsPanel({ specId, subjectId }: { specId: number; subjectId: 
       await updateAll.mutateAsync(next);
       toast({ title: 'Claim added' });
       setNewClaim(''); setNewValue(''); setNewCrit(false);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add claim' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to add claim';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -562,8 +568,9 @@ function SubjectClaimsPanel({ specId, subjectId }: { specId: number; subjectId: 
     try {
       await remove.mutateAsync(id);
       toast({ title: 'Claim deleted' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete claim' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to delete claim';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -639,8 +646,9 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
       await create.mutateAsync({ entity_id: newEntityId, status: 'active' });
       toast({ title: 'Added', description: 'Subject added to issuance spec' });
       setNewEntityId('');
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add subject' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to add subject';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
