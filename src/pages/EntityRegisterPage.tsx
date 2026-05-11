@@ -14,6 +14,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EntityTypeMultiSelect, ENTITY_TYPE_LABELS } from '@/components/entities/EntityTypeMultiSelect';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useCreateSubordinate, useDeleteSubordinate } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
@@ -278,19 +279,11 @@ export default function EntityRegisterPage() {
 
             {!isIntermediate && (
               <div className="space-y-2">
-                <Label htmlFor="entityType">Subordinate Type</Label>
-                <Select
-                  value={formData.entityTypes[0]}
-                  onValueChange={(v) => setFormData({ ...formData, entityTypes: [v as EntityType] })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subordinate type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openid_provider">OpenID Provider (OP)</SelectItem>
-                    <SelectItem value="openid_relying_party">Relying Party (RP)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Subordinate Type</Label>
+                <EntityTypeMultiSelect
+                  selected={formData.entityTypes}
+                  onChange={(types) => setFormData({ ...formData, entityTypes: types })}
+                />
               </div>
             )}
 
@@ -348,10 +341,10 @@ export default function EntityRegisterPage() {
               {!isIntermediate && (
                 <div>
                   <Label className="text-muted-foreground">Subordinate Type</Label>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {formData.entityTypes.map((type) => (
                       <span key={type} className="entity-badge bg-info/10 text-info border border-info/30">
-                        {type === 'openid_provider' ? 'OpenID Provider (OP)' : 'Relying Party (RP)'}
+                        {ENTITY_TYPE_LABELS[type]}
                       </span>
                     ))}
                   </div>
@@ -491,10 +484,10 @@ export default function EntityRegisterPage() {
                 {!isIntermediate && (
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Subordinate Type</dt>
-                    <dd className="flex gap-1">
+                    <dd className="flex flex-wrap gap-1 justify-end">
                       {formData.entityTypes.map(t => (
                         <span key={t} className="entity-badge bg-info/10 text-info">
-                          {t === 'openid_provider' ? 'OP' : 'RP'}
+                          {ENTITY_TYPE_LABELS[t]}
                         </span>
                       ))}
                     </dd>

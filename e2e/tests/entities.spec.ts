@@ -126,6 +126,64 @@ test.describe('Entities page @proxy', () => {
     // Table should still be visible
     await expect(page.locator('table')).toBeVisible();
   });
+
+  test('register page shows expanded entity-type multi-select for non-intermediate flow', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/entities/register`);
+
+    // All 6 entity types should be shown as checkboxes
+    await expect(page.getByLabel(/openid provider/i)).toBeVisible();
+    await expect(page.getByLabel(/relying party/i)).toBeVisible();
+    await expect(page.getByLabel(/federation entity/i)).toBeVisible();
+    await expect(page.getByLabel(/oauth authorization server/i)).toBeVisible();
+    await expect(page.getByLabel(/oauth client/i)).toBeVisible();
+    await expect(page.getByLabel(/oauth resource/i)).toBeVisible();
+
+    // Multiple types can be selected simultaneously
+    await page.getByLabel(/openid provider/i).check();
+    await page.getByLabel(/oauth client/i).check();
+    await expect(page.getByLabel(/openid provider/i)).toBeChecked();
+    await expect(page.getByLabel(/oauth client/i)).toBeChecked();
+  });
+
+  test('registration review shows friendly entity-type labels', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/entities/register`);
+
+    // Fill in required fields on step 0
+    const subordinateId = `https://e2e-type-label-test-${Date.now()}.example.com`;
+    await page.getByLabel(/subordinate id/i).fill(subordinateId);
+    await page.getByLabel('Trust Anchor').click();
+    await page.getByRole('option', { name: /lighthouse/i }).click();
+
+    // Select oauth_client in addition to openid_provider
+    await page.getByLabel(/openid provider/i).check();
+    await page.getByLabel(/oauth client/i).check();
+
+    // Fetch config (will likely fail for fake URL, that's fine)
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
+    await expect(
+      page.getByText(/configuration not available|configuration retrieved/i)
+    ).toBeVisible({ timeout: 15_000 });
+
+    // Review step (config): friendly labels should appear
+    await expect(page.getByText(/openid provider/i)).toBeVisible();
+    await expect(page.getByText(/oauth client/i)).toBeVisible();
+
+    // Advance to Additional Details
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByLabel(/display name/i)).toBeVisible({ timeout: 5_000 });
+    await page.getByLabel(/display name/i).fill('Type Label Test Entity');
+    await page.getByLabel(/technical contact email/i).fill('test@example.com');
+
+    // Advance to Review & Submit
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByRole('heading', { name: /registration summary/i })).toBeVisible({ timeout: 5_000 });
+
+    // Summary should show friendly labels, not raw type keys
+    await expect(page.getByText(/openid provider/i)).toBeVisible();
+    await expect(page.getByText(/oauth client/i)).toBeVisible();
+    // Should NOT show raw machine keys as labels
+    await expect(page.getByText(/^OP$|^RP$/)).not.toBeVisible();
+  });
 });
 
 test.describe.serial('Approvals page @proxy', () => {
