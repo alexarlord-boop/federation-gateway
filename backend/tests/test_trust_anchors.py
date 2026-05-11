@@ -31,10 +31,13 @@ def test_subordinate_count_reflects_tenant_registrations(client, admin_headers):
     finally:
         # Reject the registration so it is excluded from future count queries,
         # keeping subsequent tests hermetic.
-        client.post(
+        cleanup_resp = client.post(
             f"/api/v1/registrations/{reg_id}/review",
             json={"status": "rejected", "notes": "cleanup"},
             headers=admin_headers,
+        )
+        assert cleanup_resp.status_code in (200, 409), (
+            f"Cleanup review failed with status {cleanup_resp.status_code}: {cleanup_resp.text}"
         )
 
 
@@ -70,6 +73,7 @@ def test_create_and_delete_round_trip(client, admin_headers):
     assert create_resp.status_code == 201
     ta_id = create_resp.json()["id"]
     assert create_resp.json()["admin_api_base_url"] == "http://temp-lh:8080"
+    assert create_resp.json()["subordinate_count"] == 0
 
     # Appears in list
     ids = [t["id"] for t in client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()]

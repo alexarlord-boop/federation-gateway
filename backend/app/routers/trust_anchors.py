@@ -72,7 +72,7 @@ def create_trust_anchor(
         description=payload.description,
         type=payload.type,
         status=payload.status,
-        subordinate_count=0,
+        subordinate_count=0,  # stored for schema-compat only; responses derive the live count below
         config_json=json.dumps({"admin_api_base_url": payload.admin_api_base_url}) if payload.admin_api_base_url else None,
     )
     db.add(anchor)
