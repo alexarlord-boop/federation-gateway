@@ -206,8 +206,9 @@ export function SelfTrustMarksTab() {
       toast({ title: 'Trust mark added' });
       resetAddForm();
       setIsAddOpen(false);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to add trust mark' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to add trust mark';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -237,8 +238,9 @@ export function SelfTrustMarksTab() {
       await patch.mutateAsync({ id: editingTm.id as number, data: data as any });
       toast({ title: 'Trust mark updated' });
       setEditingTm(null);
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update trust mark' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to update trust mark';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
@@ -246,8 +248,9 @@ export function SelfTrustMarksTab() {
     try {
       await remove.mutateAsync(id);
       toast({ title: 'Trust mark removed' });
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove trust mark' });
+    } catch (err: any) {
+      const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to remove trust mark';
+      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
     }
   };
 
