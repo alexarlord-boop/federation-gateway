@@ -164,8 +164,8 @@ test.describe('Entities page @proxy', () => {
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
 
-    // Review step (config): friendly labels should appear scoped to the Subordinate Type row
-    const configTypeRow = page.locator('text=Subordinate Type').locator('..');
+    // Review step (config): friendly labels should appear scoped to the Subordinate Type container
+    const configTypeRow = page.locator('[data-testid="entity-type-display"]');
     await expect(configTypeRow.getByText(/openid provider/i)).toBeVisible();
     await expect(configTypeRow.getByText(/oauth client/i)).toBeVisible();
 

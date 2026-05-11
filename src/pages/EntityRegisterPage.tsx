@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, ExternalLink, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ export default function EntityRegisterPage() {
     contactEmail: '',
     contactName: '',
     policyUri: '',
-    entityTypes: ['openid_provider'] as EntityType[],
+    entityTypes: (isIntermediate ? ['federation_entity'] : ['openid_provider']) as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -62,15 +62,6 @@ export default function EntityRegisterPage() {
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
   const deleteSubordinate = useDeleteSubordinate();
-  
-  useEffect(() => {
-    if (isIntermediate) {
-      setFormData(prev => ({
-        ...prev,
-        entityTypes: ['federation_entity']
-      }));
-    }
-  }, [isIntermediate]);
 
   if (!activeTrustAnchor) {
     return (
@@ -343,7 +334,7 @@ export default function EntityRegisterPage() {
               </div>
 
               {!isIntermediate && (
-                <div>
+                <div data-testid="entity-type-display">
                   <Label className="text-muted-foreground">Subordinate Type</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {formData.entityTypes.map((type) => (
