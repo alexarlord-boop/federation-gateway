@@ -78,6 +78,16 @@ def create_trust_anchor(
     db.add(anchor)
     db.commit()
     db.refresh(anchor)
+
+    subordinate_count = (
+        db.query(func.count(EntityRegistration.id))
+        .join(Tenant, EntityRegistration.tenant_id == Tenant.id)
+        .filter(Tenant.entity_id == anchor.entity_id)
+        .filter(EntityRegistration.status != "rejected")
+        .scalar()
+        or 0
+    )
+
     return TrustAnchorResponse(
         id=anchor.id,
         name=anchor.name,
@@ -85,7 +95,7 @@ def create_trust_anchor(
         description=anchor.description,
         type=anchor.type,
         status=anchor.status,
-        subordinate_count=anchor.subordinate_count,
+        subordinate_count=subordinate_count,
         admin_api_base_url=payload.admin_api_base_url,
         created_at=anchor.created_at.isoformat() if anchor.created_at else None,
         updated_at=anchor.updated_at.isoformat() if anchor.updated_at else None,

@@ -18,14 +18,24 @@ def test_subordinate_count_reflects_tenant_registrations(client, admin_headers):
         headers=admin_headers,
     )
     assert reg_resp.status_code == 201, reg_resp.text
+    reg_id = reg_resp.json()["id"]
 
-    # ta-1 must now report one more subordinate
-    after = client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()
-    ta_after = next((t for t in after if t["id"] == "ta-1"), None)
-    assert ta_after is not None, "Seeded ta-1 not found"
-    assert ta_after["subordinate_count"] == count_before + 1, (
-        f"Expected subordinate_count={count_before + 1}, got {ta_after['subordinate_count']}"
-    )
+    try:
+        # ta-1 must now report one more subordinate
+        after = client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()
+        ta_after = next((t for t in after if t["id"] == "ta-1"), None)
+        assert ta_after is not None, "Seeded ta-1 not found"
+        assert ta_after["subordinate_count"] == count_before + 1, (
+            f"Expected subordinate_count={count_before + 1}, got {ta_after['subordinate_count']}"
+        )
+    finally:
+        # Reject the registration so it is excluded from future count queries,
+        # keeping subsequent tests hermetic.
+        client.post(
+            f"/api/v1/registrations/{reg_id}/review",
+            json={"status": "rejected", "notes": "cleanup"},
+            headers=admin_headers,
+        )
 
 
 def test_list_includes_lighthouse(client, admin_headers):

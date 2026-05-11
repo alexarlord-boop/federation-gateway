@@ -8,6 +8,8 @@ We use a fresh in-memory SQLite DB per test session.
 import os
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_bff.db"
+os.environ.setdefault("LIGHTHOUSE_ADMIN_USERNAME", "test-admin")
+os.environ.setdefault("LIGHTHOUSE_ADMIN_PASSWORD", "test-password")
 
 import pytest
 from fastapi.testclient import TestClient
