@@ -45,7 +45,7 @@ federation-gateway/
 |---------|------|-------|
 | **UI** (nginx, SPA) | `8080` (configurable via `UI_PORT`) | Proxies `/api/*` → backend at `8765` |
 | **Backend** (FastAPI) | `8765` (configurable via `BACKEND_PORT`) | BFF: auth + deployment config + proxy to instances |
-| **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | `oidfed/lighthouse:0.20.0` — federation node |
+| **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | `oidfed/lighthouse@sha256:e7fe82e7d347a6f279b81639d0444c60fa47f01aca82b27590541dfa9edec6be` — federation node (digest-pinned for trust-mark spec PATCH support) |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.

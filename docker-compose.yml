@@ -21,7 +21,7 @@ services:
     depends_on:
       - backend
   lighthouse:
-    image: oidfed/lighthouse:0.20.0
+    image: oidfed/lighthouse@sha256:e7fe82e7d347a6f279b81639d0444c60fa47f01aca82b27590541dfa9edec6be
     restart: unless-stopped
     entrypoint:
       - /bin/sh
