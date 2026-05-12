@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Link } from 'react-router-dom';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useDebugContext } from '@/hooks/useDebugContext';
