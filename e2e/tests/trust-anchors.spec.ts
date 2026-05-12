@@ -8,7 +8,7 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page).toHaveURL(/\/trust-anchors/);
     await expect(page.getByRole('heading', { name: /authority hints and trust anchors/i })).toBeVisible();
     await expect(
-      page.getByText(/manage upstream authorities, authority hints, and local trust anchors/i),
+      page.getByText(/review deployment-managed instances, authority hints, and registered intermediates/i),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
     await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
@@ -37,64 +37,23 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(lightHouseCard.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
   });
 
-  test('operator-created trust anchor still exposes configure flow', async ({ authenticatedPage: page }) => {
-    const token = await page.evaluate(() => {
-      const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
-      return tokenKey ? localStorage.getItem(tokenKey) : null;
-    });
-
-    const name = `E2E Local TA ${Date.now()}`;
-    const created = await page.request.post(`${APP_URL}/api/v1/admin/trust-anchors`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      data: {
-        name,
-        entity_id: `https://local-ta-${Date.now()}.example.org`,
-        description: 'E2E managed trust anchor',
-        type: 'federation',
-        status: 'active',
-        admin_api_base_url: 'https://local-ta.example.org/admin',
-      },
-    });
-
-    expect(created.ok()).toBeTruthy();
-    const createdAnchor = await created.json();
-
-    try {
-      await page.goto(`${APP_URL}/trust-anchors`);
-      const createdCard = page
-        .locator('div.rounded-lg.border.bg-card')
-        .filter({ has: page.getByRole('heading', { name }) })
-        .first();
-
-      await expect(createdCard).toBeVisible();
-      const optionsButton = createdCard.getByRole('button', { name: /trust anchor options/i });
-      await expect(optionsButton).toHaveCount(1);
-      await optionsButton.click();
-      await page.getByRole('menuitem', { name: /configure/i }).click();
-
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-      await expect(page.getByRole('heading', { name: /configure trust anchor/i })).toBeVisible();
-      await expect(dialog).toContainText(new RegExp(`editing ${name}`, 'i'));
-      await expect(dialog.getByLabel(/admin api base url/i)).toBeVisible();
-    } finally {
-      const cleanupResponse = await page.request.delete(`${APP_URL}/api/v1/admin/trust-anchors/${createdAnchor.id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      expect(cleanupResponse.ok()).toBeTruthy();
-    }
+  test('My Instances does not expose Add TA instance', async ({ authenticatedPage: page }) => {
+    await page.goto(`${APP_URL}/trust-anchors`);
+    await expect(page.getByRole('button', { name: /add ta instance/i })).toHaveCount(0);
   });
 
-  test('add trust anchor dialog no longer exposes intermediate creation', async ({ authenticatedPage: page }) => {
+  test('deployment-managed LightHouse card is read-only', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
-    await page.getByRole('button', { name: /add ta instance/i }).click();
 
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('heading', { name: /create local trust anchor/i })).toBeVisible();
-    await expect(dialog.getByText(/register a new local trust anchor instance managed by this operator\./i)).toBeVisible();
-    await expect(dialog.getByRole('button', { name: /^create$/i })).toBeVisible();
-    await expect(dialog.getByText(/intermediate/i)).toHaveCount(0);
+    const lightHouseCard = page
+      .locator('div.rounded-lg.border.bg-card')
+      .filter({ has: page.getByRole('heading', { name: 'LightHouse' }) })
+      .first();
+
+    await expect(lightHouseCard).toBeVisible();
+    await expect(lightHouseCard.getByText(/deployment managed/i)).toBeVisible();
+    await expect(lightHouseCard.getByRole('button', { name: /trust anchor options/i })).toHaveCount(0);
+    await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
   });
 
   test('shows the seeded LightHouse trust anchor card', async ({ authenticatedPage: page }) => {

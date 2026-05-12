@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Shield, Plus, ExternalLink, Settings, MoreHorizontal, ArrowUpToLine, Server, Globe, ArrowDownToLine, Loader2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, Plus, ExternalLink, MoreHorizontal, ArrowUpToLine, Server, Globe, ArrowDownToLine, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,16 +31,14 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
-import { useGatewayTrustAnchorConfig } from '@/hooks/useGatewayTrustAnchors';
 import { useDebugContext } from '@/hooks/useDebugContext';
-import { useCreateSubordinate, useSubordinates, useChangeSubordinateStatus } from '@/hooks/useSubordinates';
+import { useSubordinates, useChangeSubordinateStatus } from '@/hooks/useSubordinates';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SubordinatesService } from '@/client/services/SubordinatesService';
 import { useBackend } from '@/contexts/BackendContext';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
 const typeLabels: Record<string, { label: string; className: string }> = {
@@ -54,18 +52,12 @@ function TrustAnchorCard({
   ta, 
   isLocal = false, 
   isExternal = false,
-  isSubordinate = false,
   isActive = false,
-  onDelete,
-  onConfigure,
 }: { 
   ta: any; 
   isLocal?: boolean;
   isExternal?: boolean;
-  isSubordinate?: boolean;
   isActive?: boolean;
-  onDelete?: (id: string, label: string) => void;
-  onConfigure?: (id: string, label: string) => void;
 }) {
   const typeConfig = typeLabels[ta.type];
 
@@ -108,7 +100,7 @@ function TrustAnchorCard({
               </div>
             </div>
           </div>
-          {!isExternal && (onConfigure || onDelete) && (
+          {!isExternal && !ta.deploymentManaged && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Trust anchor options">
@@ -116,25 +108,10 @@ function TrustAnchorCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {onConfigure && (
-                  <DropdownMenuItem onClick={() => onConfigure(String(ta.id), ta.name || ta.entityId || ta.id)}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configure
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Entity Config
                 </DropdownMenuItem>
-                {isLocal && onDelete && (
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => onDelete(String(ta.id), ta.name || ta.entityId || ta.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -251,259 +228,18 @@ function AddAuthorityHintDialog() {
   );
 }
 
-function ConfigureTrustAnchorDialog({
-  target,
-  onClose,
-  onSaved,
-}: {
-  target: { id: string; label: string } | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const { selectedBackend } = useBackend();
-  const { config, updateConfig } = useGatewayTrustAnchorConfig(
-    target?.id ?? null,
-    selectedBackend.baseUrl,
-  );
-  const [organizationName, setOrganizationName] = useState('');
-  const [homepageUri, setHomepageUri] = useState('');
-  const [contacts, setContacts] = useState('');
-  const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
-  const [jwksText, setJwksText] = useState('');
-  const [loaded, setLoaded] = useState(false);
-  const { toast } = useToast();
-
-  // Auto-populate form fields whenever the dialog opens with a new target or
-  // when the config finishes loading.  The `loaded` flag prevents overwriting
-  // in-progress edits while the query is refetching.
-  useEffect(() => {
-    if (config && target && !loaded) {
-      setOrganizationName(config.organization_name || '');
-      setHomepageUri(config.homepage_uri || '');
-      setContacts((config.contacts || []).join(', '));
-      setAdminApiBaseUrl(config.admin_api_base_url || '');
-      setJwksText(config.jwks ? JSON.stringify(config.jwks, null, 2) : '');
-      setLoaded(true);
-    }
-    if (!target && loaded) {
-      setLoaded(false);
-    }
-  }, [config, target, loaded]);
-
-  const handleSave = async () => {
-    if (!target) return;
-    let jwks: any = undefined;
-    if (jwksText.trim()) {
-      try {
-        jwks = JSON.parse(jwksText);
-      } catch (e) {
-        toast({ variant: 'destructive', title: 'Invalid JWKS', description: 'JWKS must be valid JSON.' });
-        return;
-      }
-    }
-
-    try {
-      await updateConfig.mutateAsync({
-        organization_name: organizationName || undefined,
-        homepage_uri: homepageUri || undefined,
-        contacts: contacts
-          ? contacts.split(',').map((c: string) => c.trim()).filter(Boolean)
-          : [],
-        admin_api_base_url: adminApiBaseUrl || undefined,
-        jwks,
-      });
-      toast({ title: 'Saved', description: 'TA configuration updated.' });
-      onSaved();
-    } catch {
-      toast({ variant: 'destructive', title: 'Failed', description: 'Could not save configuration.' });
-    }
-  };
-
-  return (
-    <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Configure Trust Anchor</DialogTitle>
-          <DialogDescription>
-            {target ? `Editing ${target.label}` : 'Edit configuration'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="ta-org">Organization Name</Label>
-            <Input
-              id="ta-org"
-              placeholder="Example NREN"
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-homepage">Homepage URI</Label>
-            <Input
-              id="ta-homepage"
-              placeholder="https://federation.example.org"
-              value={homepageUri}
-              onChange={(e) => setHomepageUri(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-contacts">Contacts (comma-separated)</Label>
-            <Input
-              id="ta-contacts"
-              placeholder="ops@example.org, security@example.org"
-              value={contacts}
-              onChange={(e) => setContacts(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-admin-api">Admin API Base URL</Label>
-            <Input
-              id="ta-admin-api"
-              placeholder="https://ta-a-admin.example.org"
-              value={adminApiBaseUrl}
-              onChange={(e) => setAdminApiBaseUrl(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-jwks">JWKS (JSON)</Label>
-            <Textarea
-              id="ta-jwks"
-              placeholder='{"keys": []}'
-              value={jwksText}
-              onChange={(e) => setJwksText(e.target.value)}
-              className="mt-1 font-mono text-xs"
-              rows={6}
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddTrustAnchorDialog({ createTrustAnchor }: { createTrustAnchor: ReturnType<typeof useTrustAnchors>['createTrustAnchor'] }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [entityId, setEntityId] = useState('');
-  const [description, setDescription] = useState('');
-  const [adminApiBaseUrl, setAdminApiBaseUrl] = useState('');
-  const { toast } = useToast();
-
-  const handleAdd = async () => {
-    if (!name || !entityId) {
-      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Name and Entity ID are required' });
-      return;
-    }
-    try {
-      await createTrustAnchor.mutateAsync({
-        name,
-        entity_id: entityId,
-        description: description || undefined,
-        admin_api_base_url: adminApiBaseUrl || undefined,
-        type: 'federation',
-        status: 'active',
-      });
-      toast({ title: 'TA Instance Added', description: 'Local trust anchor created successfully.' });
-      setOpen(false);
-      setName('');
-      setEntityId('');
-      setDescription('');
-      setAdminApiBaseUrl('');
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Failed', description: 'Could not add TA instance' });
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Add TA Instance
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create Local Trust Anchor</DialogTitle>
-          <DialogDescription>
-            Register a new local trust anchor instance managed by this operator.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="ta-name">Name</Label>
-            <Input
-              id="ta-name"
-              placeholder="Local Federation"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-entity-id">Entity ID</Label>
-            <Input
-              id="ta-entity-id"
-              placeholder="https://ta.local.org"
-              value={entityId}
-              onChange={(e) => setEntityId(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-description">Description (Optional)</Label>
-            <Input
-              id="ta-description"
-              placeholder="Primary federation instance"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ta-admin-api-add">Admin API Base URL (Optional)</Label>
-            <Input
-              id="ta-admin-api-add"
-              placeholder="https://ta-a-admin.example.org"
-              value={adminApiBaseUrl}
-              onChange={(e) => setAdminApiBaseUrl(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd}>Create</Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function TrustAnchorsPage() {
   const { selectedBackend } = useBackend();
-  const [configTarget, setConfigTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<
-    | { kind: 'ta' | 'subordinate' | 'hint'; id: string; label: string }
+    | { kind: 'hint' | 'subordinate'; id: string; label: string }
     | null
   >(null);
-  // Sync the context state with the debug API
+
   const { context: currentCtxData } = useDebugContext(selectedBackend.id, selectedBackend.baseUrl);
 
-  // My-level TAs (static config from mock data)
-  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, createTrustAnchor, deleteTrustAnchor } = useTrustAnchors();
+  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs } = useTrustAnchors();
   const localTAs = allAnchors.filter(ta => ta.type === 'federation' || ta.type === 'intermediate');
 
-  // Upstream TAs (via authority hints)
   const { hints: authorityHints, isLoading: isLoadingHints, deleteHint } = useAuthorityHints();
 
   // Subordinate TAs/IAs (federation_entity subordinates)
@@ -534,15 +270,6 @@ export default function TrustAnchorsPage() {
     }
   };
 
-  const handleDeleteTrustAnchor = async (id: string) => {
-    try {
-      await deleteTrustAnchor.mutateAsync(id);
-      toast({ title: 'Deleted', description: 'Trust anchor removed.' });
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete trust anchor.' });
-    }
-  };
-
   const handleDeleteSubordinate = async (id: string) => {
     try {
       await deleteSubordinate.mutateAsync(id);
@@ -554,9 +281,7 @@ export default function TrustAnchorsPage() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    if (deleteTarget.kind === 'ta') {
-      await handleDeleteTrustAnchor(deleteTarget.id);
-    } else if (deleteTarget.kind === 'hint') {
+    if (deleteTarget.kind === 'hint') {
       await handleDeleteHint(deleteTarget.id);
     } else {
       await handleDeleteSubordinate(deleteTarget.id);
@@ -579,7 +304,7 @@ export default function TrustAnchorsPage() {
       <div className="page-header mb-8">
         <h1 className="page-title">Authority Hints and Trust Anchors</h1>
         <p className="page-description">
-          Manage upstream authorities, authority hints, and local trust anchors
+          Review deployment-managed instances, authority hints, and registered intermediates.
         </p>
       </div>
 
@@ -589,9 +314,8 @@ export default function TrustAnchorsPage() {
           <div className="flex items-center gap-2">
             <Server className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">My Instances</h2>
-            <span className="text-sm text-muted-foreground">(Configuration - Federation Operator Level)</span>
+            <span className="text-sm text-muted-foreground">(Deployment-managed configuration)</span>
           </div>
-          <AddTrustAnchorDialog createTrustAnchor={createTrustAnchor} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {
@@ -602,8 +326,6 @@ export default function TrustAnchorsPage() {
                    ta={ta}
                    isLocal
                    isActive={isActive}
-                   onConfigure={ta.deploymentManaged ? undefined : (id, label) => setConfigTarget({ id, label })}
-                   onDelete={ta.deploymentManaged ? undefined : (id, label) => setDeleteTarget({ kind: 'ta', id, label })}
                  />
              );
           })}
@@ -783,12 +505,6 @@ export default function TrustAnchorsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <ConfigureTrustAnchorDialog
-        target={configTarget}
-        onClose={() => setConfigTarget(null)}
-        onSaved={() => setConfigTarget(null)}
-      />
     </div>
   );
 }
