@@ -118,6 +118,16 @@ test.describe('Trust Anchors page @bff', () => {
       return tokenKey ? localStorage.getItem(tokenKey) : null;
     });
 
+    // Capture baseline count before the test registration so the assertion is
+    // relative (+1) rather than tied to a literal value that breaks on repeated runs.
+    await page.goto(`${APP_URL}/trust-anchors`);
+    const lightHouseCard = page.locator('div.rounded-lg.border.bg-card').filter({
+      has: page.getByRole('heading', { name: 'LightHouse' }),
+    }).first();
+    await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
+    const beforeText = await lightHouseCard.locator('p.text-2xl').textContent();
+    const countBefore = parseInt(beforeText?.trim() ?? '0', 10);
+
     const regResp = await page.request.post(`${APP_URL}/api/v1/registrations`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       data: {
@@ -129,13 +139,19 @@ test.describe('Trust Anchors page @bff', () => {
     });
 
     expect(regResp.ok()).toBeTruthy();
+    const registration = await regResp.json();
 
-    await page.goto(`${APP_URL}/trust-anchors`);
-    const lightHouseCard = page.locator('div.rounded-lg.border.bg-card').filter({
-      has: page.getByRole('heading', { name: 'LightHouse' }),
-    }).first();
-
-    await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
-    await expect(lightHouseCard.getByText(/\b1\b/)).toBeVisible();
+    try {
+      await page.goto(`${APP_URL}/trust-anchors`);
+      await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
+      await expect(lightHouseCard.locator('p.text-2xl')).toHaveText(String(countBefore + 1));
+    } finally {
+      // Reject the created registration to prevent pending entries accumulating
+      // across repeated runs against the same stack.
+      await page.request.post(`${APP_URL}/api/v1/registrations/${registration.id}/review`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        data: { status: 'rejected', notes: 'e2e cleanup' },
+      });
+    }
   });
 });

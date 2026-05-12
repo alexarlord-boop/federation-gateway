@@ -23,6 +23,10 @@ def _build_subordinate_counts(
     If *entity_ids* is given, only those entity_ids are included in the result,
     allowing callers to issue a targeted single-row query instead of a full scan.
     """
+    # Invariant: the keyed lookup `counts.get(anchor.entity_id)` is only
+    # meaningful because TrustAnchor.entity_id == Tenant.entity_id for every
+    # anchor that owns subordinates.  If those values diverge the count will
+    # silently return 0 for that anchor.
     q = (
         db.query(Tenant.entity_id, func.count(EntityRegistration.id))
         .join(EntityRegistration, EntityRegistration.tenant_id == Tenant.id)
