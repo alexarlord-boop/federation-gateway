@@ -111,4 +111,31 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByText(/register new intermediates from the Subordinates navigation\./i)).toBeVisible();
     await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
   });
+
+  test('My Instances shows the updated subordinate count after a registration', async ({ authenticatedPage: page }) => {
+    const token = await page.evaluate(() => {
+      const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
+      return tokenKey ? localStorage.getItem(tokenKey) : null;
+    });
+
+    const regResp = await page.request.post(`${APP_URL}/api/v1/registrations`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      data: {
+        tenant_id: 'tenant-1',
+        entity_id: `https://count-e2e-${Date.now()}.example.org`,
+        registered_entity_types: ['openid_relying_party'],
+        display_name: 'Count E2E Entity',
+      },
+    });
+
+    expect(regResp.ok()).toBeTruthy();
+
+    await page.goto(`${APP_URL}/trust-anchors`);
+    const lightHouseCard = page.locator('div.rounded-lg.border.bg-card').filter({
+      has: page.getByRole('heading', { name: 'LightHouse' }),
+    }).first();
+
+    await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
+    await expect(lightHouseCard.getByText(/\b1\b/)).toBeVisible();
+  });
 });
