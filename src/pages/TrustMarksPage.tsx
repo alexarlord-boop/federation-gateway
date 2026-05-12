@@ -299,6 +299,11 @@ function IssuanceSpecsTab() {
   const [editForm, setEditForm] = useState({ description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
   const [editClaims, setEditClaims] = useState<TrustMarkSpecAdditionalClaims>({});
 
+  const resetCreateDialog = () => {
+    setCreateForm({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
+    setCreateClaims({});
+  };
+
   const handleCreate = async () => {
     if (!createForm.trust_mark_type) return;
     try {
@@ -311,8 +316,7 @@ function IssuanceSpecsTab() {
       if (Object.keys(createClaims).length > 0) payload.additional_claims = createClaims;
       await create.mutateAsync(payload as any);
       toast({ title: 'Created', description: 'Issuance spec added' });
-      setCreateForm({ trust_mark_type: '', description: '', lifetime: '', ref: '', logo_uri: '', delegation_jwt: '' });
-      setCreateClaims({});
+      resetCreateDialog();
       setIsCreateOpen(false);
     } catch (err: any) {
       const detail = err?.body?.detail ?? err?.body?.message ?? err?.message ?? 'Failed to create issuance spec';
@@ -354,7 +358,13 @@ function IssuanceSpecsTab() {
       <div className="flex justify-end gap-2">
         {canCreate && <IssueToEntityDialog specs={specs ?? []} />}
         {canCreate && (
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog
+          open={isCreateOpen}
+          onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) resetCreateDialog();
+          }}
+        >
           <DialogTrigger asChild>
             <Button variant="outline"><Plus className="w-4 h-4 mr-2" />Add Spec</Button>
           </DialogTrigger>
@@ -396,7 +406,15 @@ function IssuanceSpecsTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  resetCreateDialog();
+                  setIsCreateOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
               <Button onClick={handleCreate} disabled={!createForm.trust_mark_type || create.isPending}>
                 {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
               </Button>

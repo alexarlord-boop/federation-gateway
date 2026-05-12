@@ -115,6 +115,34 @@ test.describe.serial('Trust Marks management @proxy', () => {
     await expect(page.getByLabel(/add claim/i)).toBeVisible();
   });
 
+  test('add issuance spec dialog clears shared claims after cancel', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/trust-marks`);
+    const issuanceTab = page.getByRole('tab', { name: /issuance/i });
+    await expect(issuanceTab).toBeVisible({ timeout: 5_000 });
+    await issuanceTab.click();
+
+    const addSpecBtn = page.getByRole('button', { name: /add spec/i });
+    await expect(addSpecBtn).toBeVisible({ timeout: 5_000 });
+    await addSpecBtn.click();
+
+    const dialog = page.getByRole('dialog', { name: /add issuance spec/i });
+    await expect(dialog).toBeVisible({ timeout: 3_000 });
+    await dialog.getByLabel(/new claim name/i).fill('org_name');
+    await dialog.getByLabel(/new claim value/i).fill('"Plan Org"');
+    await dialog.getByLabel(/add claim/i).click();
+    await expect(dialog.getByText('org_name')).toBeVisible();
+
+    await dialog.getByRole('button', { name: /cancel/i }).click();
+    await expect(dialog).not.toBeVisible();
+
+    await addSpecBtn.click();
+    const reopenedDialog = page.getByRole('dialog', { name: /add issuance spec/i });
+    await expect(reopenedDialog).toBeVisible({ timeout: 3_000 });
+    await expect(reopenedDialog.getByText('org_name')).not.toBeVisible();
+    await expect(reopenedDialog.getByLabel(/new claim name/i)).toHaveValue('');
+    await expect(reopenedDialog.getByLabel(/new claim value/i)).toHaveValue('');
+  });
+
   test('edit issuance spec icon button has accessible label', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/trust-marks`);
     const issuanceTab = page.getByRole('tab', { name: /issuance/i });
