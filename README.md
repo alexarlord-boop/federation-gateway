@@ -21,8 +21,8 @@ federation-gateway/
 │       ├── routers/
 │       │   ├── proxy.py          # ⚠ Transparent proxy to LightHouse Admin API
 │       │   ├── auth.py           # JWT login / refresh
-│       │   └── trust_anchors.py  # TA registry (persisted in backend.db)
-│       ├── db/seed.py            # First-run seed: admin user + ta-1 trust anchor
+│       │   └── trust_anchors.py  # Deployment-managed trust-anchor list (read-only; config-backed)
+│       ├── db/seed.py            # First-run seed: admin user
 │       └── main.py               # FastAPI app entry point
 ├── e2e/                          # Playwright end-to-end tests
 │   ├── tests/
@@ -289,6 +289,20 @@ The deployment configuration in `backend/config/gateway.yaml` supports multiple 
 
 ---
 
+### Trust Anchors page model
+
+The **Trust Anchors** page presents a read-only view of the deployment topology — there is no runtime trust-anchor creation or deletion through the UI.
+
+| Section | Behaviour |
+|---------|-----------|
+| **My Instances** | Shows instances mirrored from `backend/config/gateway.yaml`. Read-only; no Add/Edit/Delete actions. |
+| **Authority Hints** | Fully managed in the UI (add / remove). |
+| **Registered Intermediates** | Managed through the Subordinates flow; no direct creation from this page. |
+
+`docker-compose.yml` defines runtime service topology (ports, networks). It does **not** create product-visible instances — those are declared exclusively in `backend/config/gateway.yaml`.
+
+---
+
 ## Key Features
 
 - ✅ **Backend-Agnostic Design** - Works with any Admin API implementing the OpenAPI spec
@@ -484,7 +498,7 @@ VITE_API_BASE_URL=https://api.example.org npm run build
 
 **Features**:
 - Subordinate management (CRUD)
-- Trust anchor management
+- Deployment-managed trust anchor instances (read-only)
 - JWT authentication
 - Capability discovery
 
