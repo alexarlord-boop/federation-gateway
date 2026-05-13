@@ -105,4 +105,35 @@ test.describe('Trust Marks UI correctness @proxy', () => {
     await expect(page.getByLabel(/new claim name/i)).toBeVisible();
     await expect(page.getByLabel(/new claim value/i)).toBeVisible();
   });
+
+  test('issuance subjects show description inline when available', async ({ instancePage: page }) => {
+    const trustMarkType = `https://tm-desc-${Date.now()}.example.org`;
+
+    await page.goto(`${APP_URL}/trust-marks`);
+    await page.getByRole('tab', { name: /issuance/i }).click();
+
+    await page.getByRole('button', { name: /add spec/i }).click();
+    await page.getByLabel(/trust mark type/i).fill(trustMarkType);
+    await page.getByRole('button', { name: /^create$/i }).click();
+
+    await page.route('**/api/v1/admin/trust-marks/issuance-spec/*/subjects*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 999,
+            entity_id: 'https://subject.example.org',
+            status: 'active',
+            description: 'Demo subject description',
+          },
+        ]),
+      });
+    });
+
+    await page.getByRole('heading', { name: trustMarkType }).click();
+
+    await expect(page.getByText('https://subject.example.org')).toBeVisible();
+    await expect(page.getByText('Demo subject description')).toBeVisible();
+  });
 });

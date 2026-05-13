@@ -695,7 +695,14 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
               return (
                 <Fragment key={subId}>
                   <TableRow>
-                    <TableCell className="font-mono text-xs break-all">{sub.entity_id}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="font-mono text-xs break-all">{sub.entity_id}</p>
+                        {sub.description && (
+                          <p className="text-xs text-muted-foreground">{sub.description}</p>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
                     <TableCell>
                       <Button
