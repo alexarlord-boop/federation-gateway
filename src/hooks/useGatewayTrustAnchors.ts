@@ -1,12 +1,14 @@
 /**
- * Hook: gateway trust-anchor CRUD.
+ * Hook: gateway trust-anchor listing.
  *
  * Trust anchors are a **gateway-only** concept (not part of the Admin API
  * OpenAPI spec), so we call `GATEWAY_BASE/api/v1/admin/trust-anchors`
  * directly via `gatewayFetch`.
+ *
+ * Trust anchors are deployment-managed; this hook is read-only.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 
 // ---------------------------------------------------------------------------
@@ -25,23 +27,6 @@ export interface TrustAnchorDisplay {
   deploymentManaged?: boolean;
 }
 
-export interface TrustAnchorCreate {
-  name: string;
-  entity_id: string;
-  description?: string;
-  type: string;
-  status?: string;
-  admin_api_base_url?: string;
-}
-
-export interface TrustAnchorConfig {
-  organization_name?: string;
-  homepage_uri?: string;
-  contacts?: string[];
-  admin_api_base_url?: string;
-  jwks?: unknown;
-}
-
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
@@ -49,7 +34,6 @@ export interface TrustAnchorConfig {
 export const trustAnchorKeys = {
   all: ['gateway', 'trust-anchors'] as const,
   list: () => [...trustAnchorKeys.all, 'list'] as const,
-  config: (id: string) => [...trustAnchorKeys.all, 'config', id] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -71,13 +55,11 @@ function toDisplay(ta: any): TrustAnchorDisplay {
 }
 
 // ---------------------------------------------------------------------------
-// Hooks
+// Hook
 // ---------------------------------------------------------------------------
 
-/** List all trust anchors registered in the gateway. */
+/** List all trust anchors registered in the gateway (read-only). */
 export function useGatewayTrustAnchors() {
-  const queryClient = useQueryClient();
-
   const query = useQuery({
     queryKey: trustAnchorKeys.list(),
     queryFn: async () => {
@@ -89,74 +71,9 @@ export function useGatewayTrustAnchors() {
     },
   });
 
-  const createTrustAnchor = useMutation({
-    mutationFn: (payload: TrustAnchorCreate) =>
-      gatewayFetch({
-        path: '/api/v1/admin/trust-anchors',
-        method: 'POST',
-        body: payload,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: trustAnchorKeys.all });
-    },
-  });
-
-  const deleteTrustAnchor = useMutation({
-    mutationFn: (id: string) =>
-      gatewayFetch({
-        path: `/api/v1/admin/trust-anchors/${id}`,
-        method: 'DELETE',
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: trustAnchorKeys.all });
-    },
-  });
-
   return {
     trustAnchors: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error,
-    createTrustAnchor,
-    deleteTrustAnchor,
-  };
-}
-
-/** Read / write per-TA configuration (org name, contacts, JWKS …). */
-export function useGatewayTrustAnchorConfig(
-  id: string | null,
-  /** The base URL of the backend that owns this TA (may differ from GATEWAY_BASE). */
-  backendBaseUrl?: string,
-) {
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
-    queryKey: trustAnchorKeys.config(id ?? ''),
-    enabled: !!id,
-    queryFn: () =>
-      gatewayFetch<TrustAnchorConfig>({
-        path: `/api/v1/admin/trust-anchors/${id}/config`,
-        baseUrl: backendBaseUrl,
-      }),
-  });
-
-  const updateConfig = useMutation({
-    mutationFn: (payload: TrustAnchorConfig) =>
-      gatewayFetch({
-        path: `/api/v1/admin/trust-anchors/${id}/config`,
-        method: 'PUT',
-        body: payload,
-        baseUrl: backendBaseUrl,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: trustAnchorKeys.config(id ?? '') });
-      queryClient.invalidateQueries({ queryKey: trustAnchorKeys.list() });
-    },
-  });
-
-  return {
-    config: query.data ?? null,
-    isLoading: query.isLoading,
-    error: query.error,
-    updateConfig,
   };
 }

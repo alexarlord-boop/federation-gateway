@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-import uuid
 import json
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
 from app.models.tenant import Tenant
 from app.models.entity_registration import EntityRegistration
-from app.schemas.trust_anchor import TrustAnchorCreate, TrustAnchorResponse, TrustAnchorConfig
+from app.schemas.trust_anchor import TrustAnchorResponse
 from app.auth.dependencies import require_permission
 
 router = APIRouter(prefix="/api/v1/admin/trust-anchors", tags=["trust-anchors"])
@@ -71,113 +70,3 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
         )
 
     return result
-
-
-@router.post("", response_model=TrustAnchorResponse, status_code=201)
-def create_trust_anchor(
-    payload: TrustAnchorCreate,
-    db: Session = Depends(get_db),
-    user=Depends(require_permission("trust_anchors", "create")),
-):
-    anchor = TrustAnchor(
-        id=f"ta-{uuid.uuid4().hex[:6]}",
-        name=payload.name,
-        entity_id=payload.entity_id,
-        description=payload.description,
-        type=payload.type,
-        status=payload.status,
-        subordinate_count=0,  # stored for schema-compat only; responses derive the live count below
-        config_json=json.dumps({"admin_api_base_url": payload.admin_api_base_url}) if payload.admin_api_base_url else None,
-    )
-    db.add(anchor)
-    db.commit()
-    db.refresh(anchor)
-
-    # Targeted count for this anchor only (entity_id may already have matching tenants).
-    counts = _build_subordinate_counts(db, entity_ids={anchor.entity_id})
-    subordinate_count = counts.get(anchor.entity_id, 0)
-
-    return TrustAnchorResponse(
-        id=anchor.id,
-        name=anchor.name,
-        entity_id=anchor.entity_id,
-        description=anchor.description,
-        type=anchor.type,
-        status=anchor.status,
-        subordinate_count=subordinate_count,
-        admin_api_base_url=payload.admin_api_base_url,
-        created_at=anchor.created_at.isoformat() if anchor.created_at else None,
-        updated_at=anchor.updated_at.isoformat() if anchor.updated_at else None,
-    )
-
-
-@router.delete("/{ta_id}", status_code=204)
-def delete_trust_anchor(
-    ta_id: str,
-    db: Session = Depends(get_db),
-    user=Depends(require_permission("trust_anchors", "delete")),
-):
-    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
-    if not anchor:
-        raise HTTPException(status_code=404, detail="Not found")
-    db.delete(anchor)
-    db.commit()
-    return None
-
-
-@router.get("/{ta_id}/config", response_model=TrustAnchorConfig)
-def get_trust_anchor_config(
-    ta_id: str,
-    db: Session = Depends(get_db),
-    user=Depends(require_permission("trust_anchors", "read")),
-):
-    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
-    if not anchor:
-        raise HTTPException(status_code=404, detail="Not found")
-    config = TrustAnchorConfig()
-    if anchor.config_json:
-        try:
-            cfg = json.loads(anchor.config_json)
-            config.organization_name = cfg.get("organization_name")
-            config.homepage_uri = cfg.get("homepage_uri")
-            config.contacts = cfg.get("contacts")
-            config.admin_api_base_url = cfg.get("admin_api_base_url")
-        except Exception as e:
-            import sys
-            print(f"DEBUG config_json parse error: {e}", file=sys.stderr)
-    if anchor.jwks:
-        try:
-            config.jwks = json.loads(anchor.jwks)
-        except Exception:
-            pass
-    return config
-
-
-@router.put("/{ta_id}/config", response_model=TrustAnchorConfig)
-def update_trust_anchor_config(
-    ta_id: str,
-    payload: TrustAnchorConfig,
-    db: Session = Depends(get_db),
-    user=Depends(require_permission("trust_anchors", "update")),
-):
-    anchor = db.query(TrustAnchor).filter(TrustAnchor.id == ta_id).first()
-    if not anchor:
-        raise HTTPException(status_code=404, detail="Not found")
-
-    prev_cfg = {}
-    if anchor.config_json:
-        try:
-            prev_cfg = json.loads(anchor.config_json)
-        except Exception:
-            prev_cfg = {}
-
-    anchor.config_json = json.dumps({
-        "organization_name": payload.organization_name,
-        "homepage_uri": payload.homepage_uri,
-        "contacts": payload.contacts or [],
-        "admin_api_base_url": payload.admin_api_base_url if payload.admin_api_base_url is not None else prev_cfg.get("admin_api_base_url"),
-    })
-    if payload.jwks is not None:
-        anchor.jwks = json.dumps(payload.jwks)
-    db.commit()
-    return payload

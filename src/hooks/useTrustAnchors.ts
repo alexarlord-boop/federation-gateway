@@ -8,5 +8,4 @@
 export {
   useGatewayTrustAnchors as useTrustAnchors,
   type TrustAnchorDisplay,
-  type TrustAnchorCreate,
 } from '@/hooks/useGatewayTrustAnchors';
