@@ -99,21 +99,7 @@ function TrustAnchorCard({
               </div>
             </div>
           </div>
-          {!isExternal && !ta.deploymentManaged && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Trust anchor options">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View Entity Config
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+
         </div>
       </CardHeader>
       <CardContent>
