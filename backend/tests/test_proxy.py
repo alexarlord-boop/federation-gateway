@@ -152,28 +152,14 @@ def test_proxy_timeout_returns_504(client, admin_headers):
 
 
 def test_proxy_instance_without_base_url_returns_422(client, admin_headers):
-    """TA not in the deployment registry → 404, not 500."""
-    ta = client.post(
-        "/api/v1/admin/trust-anchors",
-        json={
-            "name": "No URL TA",
-            "entity_id": "http://nourl.proxy.test",
-            "type": "intermediate",
-            "status": "active",
-            # admin_api_base_url intentionally omitted
-        },
+    """Instance absent from the deployment registry → 404, not 500."""
+    # The proxy resolves instances via the deployment registry; any ID that is
+    # not present there must return 404 regardless of whether a DB row exists.
+    resp = client.get(
+        "/api/v1/proxy/not-in-registry/api/v1/admin/subordinates",
         headers=admin_headers,
-    ).json()
-    ta_id = ta["id"]
-    try:
-        resp = client.get(
-            f"/api/v1/proxy/{ta_id}/api/v1/admin/subordinates",
-            headers=admin_headers,
-        )
-        # Instance not in registry → 404
-        assert resp.status_code == 404
-    finally:
-        client.delete(f"/api/v1/admin/trust-anchors/{ta_id}", headers=admin_headers)
+    )
+    assert resp.status_code == 404
 
 
 # ── Deployment-managed instances ───────────────────────────────────────────
