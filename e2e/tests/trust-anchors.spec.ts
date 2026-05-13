@@ -8,10 +8,17 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page).toHaveURL(/\/trust-anchors/);
     await expect(page.getByRole('heading', { name: /authority hints and trust anchors/i })).toBeVisible();
     await expect(
-      page.getByText(/review deployment-managed instances, authority hints, and registered intermediates/i),
+      page.getByText(/review deployment-managed instances and authority hints\./i),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: /add authority hint/i })).toBeVisible();
-    await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /registered intermediates/i })).toHaveCount(0);
+  });
+
+  test('Trust Anchors page points intermediate management to Subordinates', async ({ authenticatedPage: page }) => {
+    await page.goto(`${APP_URL}/trust-anchors`);
+    await expect(
+      page.getByText(/manage intermediates from the Subordinates navigation\./i),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: /registered intermediates/i })).toHaveCount(0);
   });
 
   test('authority hint dialog uses consistent wording', async ({ authenticatedPage: page }) => {
@@ -62,14 +69,7 @@ test.describe('Trust Anchors page @bff', () => {
     await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
   });
 
-  test('shows guidance to register intermediates in the empty state', async ({ authenticatedPage: page }) => {
-    await page.goto(`${APP_URL}/trust-anchors`);
 
-    const emptyState = page.getByText(/no intermediates registered/i);
-    await expect(emptyState).toBeVisible();
-    await expect(page.getByText(/register new intermediates from the Subordinates navigation\./i)).toBeVisible();
-    await expect(page.locator('main').getByRole('link', { name: /register intermediate/i })).toHaveCount(0);
-  });
 
   test('My Instances shows the updated subordinate count after a registration', async ({ authenticatedPage: page }) => {
     const token = await page.evaluate(() => {
