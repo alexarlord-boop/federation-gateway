@@ -151,10 +151,11 @@ def test_proxy_timeout_returns_504(client, admin_headers):
     assert resp.status_code == 504
 
 
-def test_proxy_instance_without_base_url_returns_422(client, admin_headers):
-    """Instance absent from the deployment registry → 404, not 500."""
-    # The proxy resolves instances via the deployment registry; any ID that is
-    # not present there must return 404 regardless of whether a DB row exists.
+def test_proxy_instance_not_in_registry_returns_404(client, admin_headers):
+    """Instance absent from the deployment registry → 404, not 500.
+    Distinct from test_proxy_unknown_instance_returns_404: that test uses a
+    completely unknown id; this test uses an id that is similarly absent but
+    emphasises the registry-lookup code path."""
     resp = client.get(
         "/api/v1/proxy/not-in-registry/api/v1/admin/subordinates",
         headers=admin_headers,

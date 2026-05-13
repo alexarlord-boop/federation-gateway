@@ -85,8 +85,9 @@ def test_manual_trust_anchor_create_route_is_not_supported(client, admin_headers
 
 
 def test_manual_trust_anchor_delete_route_is_not_supported(client, admin_headers):
-    """DELETE on a per-anchor path must return 404 — no per-anchor routes remain."""
-    resp = client.delete("/api/v1/admin/trust-anchors/ta-does-not-exist", headers=admin_headers)
+    """DELETE on a known anchor must return 404 — no per-anchor routes exist, proving
+    the route itself is absent rather than just missing-resource 404."""
+    resp = client.delete("/api/v1/admin/trust-anchors/ta-1", headers=admin_headers)
     assert resp.status_code == 404
 
 
@@ -94,3 +95,24 @@ def test_trust_anchor_config_route_is_not_supported(client, admin_headers):
     """The /config sub-path must be absent (404) — config is deployment-managed only."""
     resp = client.get("/api/v1/admin/trust-anchors/ta-1/config", headers=admin_headers)
     assert resp.status_code == 404
+
+
+def test_capabilities_trust_anchors_only_exposes_list_operation(client):
+    """The capabilities manifest must advertise only the 'list' operation for
+    trust_anchors — create/read/update/delete routes have been removed."""
+    resp = client.get("/api/v1/capabilities")
+    assert resp.status_code == 200
+    data = resp.json()
+    ta = data["features"].get("trust_anchors")
+    assert ta is not None, "trust_anchors must appear in capabilities"
+    assert ta["enabled"] is True
+    ops = set(ta["operations"])
+    assert ops == {"list"}, (
+        f"trust_anchors should expose only ['list'], got {sorted(ops)}"
+    )
+    # No CRUD endpoints should be advertised
+    endpoints = ta.get("endpoints", [])
+    for ep in endpoints:
+        assert not any(
+            method in ep for method in ["POST", "DELETE", "PUT", "PATCH"]
+        ), f"Unexpected mutating endpoint in capabilities: {ep}"

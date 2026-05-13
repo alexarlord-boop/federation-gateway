@@ -62,16 +62,12 @@ def seed_rbac_data(db: Session, spec_path: str = None):
             "feature_name": "trust_anchors",
             "enabled": True,
             "reason": None,
-            "operations": ["list", "create", "read", "update", "delete"],
+            "operations": ["list"],
             "config_metadata": {
-                "description": "Manage Trust Anchors and Intermediate Authorities (gateway-local)",
+                "description": "View deployment-managed Trust Anchors (gateway-local, read-only)",
                 "openapi_path": "/api/v1/admin/trust-anchors",
                 "endpoints": [
                     "GET /api/v1/admin/trust-anchors",
-                    "POST /api/v1/admin/trust-anchors",
-                    "GET /api/v1/admin/trust-anchors/{id}",
-                    "DELETE /api/v1/admin/trust-anchors/{id}",
-                    "PUT /api/v1/admin/trust-anchors/{id}/config",
                 ],
                 "tag": "trust-anchors",
             },

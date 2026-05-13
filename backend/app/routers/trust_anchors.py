@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 import json
 from app.db.database import get_db
+from app.db.seed import DEPLOYMENT_MANAGED_DESCRIPTION_PREFIX
 from app.models.trust_anchor import TrustAnchor
 from app.models.tenant import Tenant
 from app.models.entity_registration import EntityRegistration
@@ -51,7 +52,7 @@ def list_trust_anchors(db: Session = Depends(get_db), user=Depends(require_permi
             except Exception:
                 cfg = {}
 
-        deployment_managed = (a.description or "").startswith("Deployment-managed instance")
+        deployment_managed = (a.description or "").startswith(DEPLOYMENT_MANAGED_DESCRIPTION_PREFIX)
 
         result.append(
             TrustAnchorResponse(

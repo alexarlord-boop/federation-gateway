@@ -8,6 +8,10 @@ from app.auth.security import get_password_hash
 from app.config.deployment import DeploymentConfig
 import json
 
+# Prefix used to flag trust anchors that are owned by the deployment config.
+# The trust_anchors router reads this same prefix to compute deployment_managed.
+DEPLOYMENT_MANAGED_DESCRIPTION_PREFIX = "Deployment-managed instance"
+
 
 def seed_data(instance_config: Optional[DeploymentConfig] = None):
     db: Session = SessionLocal()
@@ -54,7 +58,7 @@ def seed_data(instance_config: Optional[DeploymentConfig] = None):
                         id=item.id,
                         name=item.name,
                         entity_id=str(item.public_base_url),
-                        description=f"Deployment-managed instance {item.name}",
+                        description=f"{DEPLOYMENT_MANAGED_DESCRIPTION_PREFIX} {item.name}",
                         type="federation",
                         status="active",
                         subordinate_count=0,
