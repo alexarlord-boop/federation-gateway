@@ -110,30 +110,62 @@ test.describe('Trust Marks UI correctness @proxy', () => {
     const trustMarkType = `https://tm-desc-${Date.now()}.example.org`;
 
     await page.goto(`${APP_URL}/trust-marks`);
-    await page.getByRole('tab', { name: /issuance/i }).click();
 
-    await page.getByRole('button', { name: /add spec/i }).click();
-    await page.getByLabel(/trust mark type/i).fill(trustMarkType);
-    await page.getByRole('button', { name: /^create$/i }).click();
-
-    await page.route('**/api/v1/admin/trust-marks/issuance-spec/*/subjects*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 999,
-            entity_id: 'https://subject.example.org',
-            status: 'active',
-            description: 'Demo subject description',
-          },
-        ]),
-      });
+    // Capture the auth token before navigating away so it is available for cleanup.
+    const token = await page.evaluate(() => {
+      const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
+      return tokenKey ? localStorage.getItem(tokenKey) : null;
     });
 
-    await page.getByRole('heading', { name: trustMarkType }).click();
+    await page.getByRole('tab', { name: /issuance/i }).click();
+    await page.getByRole('button', { name: /add spec/i }).click();
+    await page.getByLabel(/trust mark type/i).fill(trustMarkType);
 
-    await expect(page.getByText('https://subject.example.org')).toBeVisible();
-    await expect(page.getByText('Demo subject description')).toBeVisible();
+    // Capture the POST response so we can extract the new spec's ID for cleanup.
+    const [createResp] = await Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/admin/trust-marks/issuance-spec') &&
+          resp.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: /^create$/i }).click(),
+    ]);
+
+    let createdSpecId: number | null = null;
+    if (createResp.ok()) {
+      const body = await createResp.json().catch(() => null);
+      createdSpecId = body?.id ?? null;
+    }
+
+    try {
+      await page.route('**/api/v1/admin/trust-marks/issuance-spec/*/subjects*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              id: 999,
+              entity_id: 'https://subject.example.org',
+              status: 'active',
+              description: 'Demo subject description',
+            },
+          ]),
+        });
+      });
+
+      await page.getByRole('heading', { name: trustMarkType }).click();
+
+      await expect(page.getByText('https://subject.example.org')).toBeVisible();
+      await expect(page.getByText('Demo subject description')).toBeVisible();
+    } finally {
+      // Remove the created issuance spec so repeated runs against the same
+      // stack do not accumulate test data.
+      if (createdSpecId !== null) {
+        await page.request.delete(
+          `${APP_URL}/api/v1/admin/trust-marks/issuance-spec/${createdSpecId}`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+        );
+      }
+    }
   });
 });
