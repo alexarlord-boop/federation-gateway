@@ -239,6 +239,12 @@ This change is configuration and documentation only; it should not add applicati
   - ESLint passes
   - the frontend build passes
 
+  **Actual results (recorded on completion):**
+
+  - `npx tsc --noEmit` — ✅ typecheck passed
+  - `npm run lint` — ❌ lint failed due to the known pre-existing ESLint baseline issue (already failing on `main` before this work began; unrelated to this branch)
+  - `npm run build` — ⏭ did not run because the lint step failed first
+
 - [x] **Step 4: Commit the reset/demo/aggregate task additions**
 
   ```bash
