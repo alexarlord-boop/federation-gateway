@@ -1,0 +1,71 @@
+[tasks."dev:ui"]
+description = "Start the Vite dev server from the repository root"
+run = "npm run dev"
+
+[tasks."dev:backend"]
+description = "Start the FastAPI backend with reload from backend/"
+run = "cd backend && uvicorn app.main:app --reload --port 8765"
+
+[tasks."stack:up"]
+description = "Build and start the full Docker stack in the foreground"
+run = "docker compose up --build"
+
+[tasks."stack:up-detached"]
+description = "Build and start the full Docker stack in the background"
+run = "docker compose up --build -d"
+
+[tasks."stack:down"]
+description = "Stop the Docker stack"
+run = "docker compose down"
+
+[tasks."stack:rebuild-ui"]
+description = "Rebuild and restart only the UI service"
+run = "docker compose build ui && docker compose up -d ui"
+
+[tasks."stack:rebuild-backend"]
+description = "Rebuild and restart only the backend service"
+run = "docker compose build backend && docker compose up -d backend"
+
+[tasks."test:lint"]
+description = "Run the frontend ESLint check"
+run = "npm run lint"
+
+[tasks."test:build"]
+description = "Run the frontend production build"
+run = "npm run build"
+
+[tasks."test:types"]
+description = "Run the frontend TypeScript typecheck"
+run = "npx tsc --noEmit"
+
+[tasks."test:backend-trust-anchors"]
+description = "Run backend trust-anchor tests with a clean test database"
+run = "cd backend && rm -f test_bff.db && pytest tests/test_trust_anchors.py"
+
+[tasks."test:backend-proxy"]
+description = "Run backend proxy tests with a clean test database"
+run = "cd backend && rm -f test_bff.db && pytest tests/test_proxy.py"
+
+[tasks."test:backend-instances"]
+description = "Run backend instance registry tests with a clean test database"
+run = "cd backend && rm -f test_bff.db && pytest tests/test_instances.py"
+
+[tasks."test:bff"]
+description = "Run the Playwright BFF-only suite from e2e/"
+run = "cd e2e && npm run test:bff"
+
+[tasks."test:full"]
+description = "Run the Playwright full-stack suite from e2e/ (requires Docker stack)"
+run = "cd e2e && npm run test:full"
+
+[tasks."test:trust-anchors"]
+description = "Run the focused Trust Anchors Playwright slice"
+run = "cd e2e && npm run test:bff -- tests/trust-anchors.spec.ts"
+
+[tasks."test:trust-marks-correctness"]
+description = "Run the focused Trust Marks correctness slice (requires Docker stack)"
+run = "cd e2e && npx playwright test --project=full-stack tests/trust-marks-correctness.spec.ts"
+
+[tasks."clean:playwright"]
+description = "Remove Playwright HTML reports and test artifacts"
+run = "rm -rf e2e/test-results e2e/playwright-report"
