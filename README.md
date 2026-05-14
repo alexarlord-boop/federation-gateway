@@ -234,6 +234,28 @@ docker compose up -d --build --force-recreate backend
 
 ---
 
+### Use mise tasks (optional)
+
+The repo includes a root `mise.toml` with common workflows as named tasks. If you have [mise](https://mise.jdx.dev/) installed:
+
+```sh
+mise tasks ls                      # list all available tasks
+
+mise run dev:ui                    # start the Vite dev server (no Docker)
+mise run stack:up-detached         # docker compose up -d --build
+
+mise run test:bff                  # BFF-only Playwright tests (no Docker)
+mise run test:backend-proxy        # full-stack proxy tests
+
+mise run verify:frontend           # lint + type-check + build
+```
+
+Safe cleanup tasks live under `clean:*`. Destructive state-reset tasks live under `reset:*` and `demo:*` — use with care.
+
+The raw `npm`, `pytest`, and `docker compose` commands documented below remain the source of truth; mise tasks are thin wrappers around them.
+
+---
+
 ### Local UI development (without Docker)
 
 The UI can run against the Dockerised backend:
