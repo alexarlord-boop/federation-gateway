@@ -69,3 +69,50 @@ run = "cd e2e && npx playwright test --project=full-stack tests/trust-marks-corr
 [tasks."clean:playwright"]
 description = "Remove Playwright HTML reports and test artifacts"
 run = "rm -rf e2e/test-results e2e/playwright-report"
+
+[tasks."reset:lighthouse-data"]
+description = "Delete LightHouse runtime data under lighthouse/data (destructive)"
+run = '''
+find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
+'''
+
+[tasks."reset:test-registrations"]
+description = "Delete test subordinate rows from the LightHouse SQLite database (destructive)"
+run = '''
+docker compose stop lighthouse &&
+sqlite3 lighthouse/data/lighthouse.db \
+  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events; DELETE FROM authority_hints WHERE entity_id LIKE '%ta-test-%';" &&
+docker compose start lighthouse
+'''
+
+[tasks."demo:fresh-start"]
+description = "Recreate the demo stack from a clean LightHouse state (destructive)"
+run = '''
+docker compose down &&
+find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete &&
+LIGHTHOUSE_ADMIN_USERNAME=gateway \
+LIGHTHOUSE_ADMIN_PASSWORD=gateway \
+docker compose up --build --force-recreate
+'''
+
+[tasks."verify:frontend"]
+description = "Run the frontend typecheck, lint, and production build"
+run = '''
+npx tsc --noEmit &&
+npm run lint &&
+npm run build
+'''
+
+[tasks."verify:sharemd"]
+description = "Run the focused ShareMD verification flow (trust anchors, trust marks, backend, types, build; requires Docker stack)"
+run = '''
+cd backend &&
+rm -f test_bff.db &&
+.venv/bin/pytest tests/test_trust_anchors.py tests/test_proxy.py tests/test_instances.py &&
+cd ../e2e &&
+npm run test:bff -- tests/trust-anchors.spec.ts &&
+npx playwright test --project=full-stack tests/trust-marks-correctness.spec.ts &&
+cd .. &&
+npx tsc --noEmit &&
+npm run build
+'''
