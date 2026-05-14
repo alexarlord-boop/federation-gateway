@@ -4,7 +4,7 @@ run = "npm run dev"
 
 [tasks."dev:backend"]
 description = "Start the FastAPI backend with reload from backend/"
-run = "cd backend && uvicorn app.main:app --reload --port 8765"
+run = "cd backend && .venv/bin/uvicorn app.main:app --reload --port 8765"
 
 [tasks."stack:up"]
 description = "Build and start the full Docker stack in the foreground"
@@ -40,15 +40,15 @@ run = "npx tsc --noEmit"
 
 [tasks."test:backend-trust-anchors"]
 description = "Run backend trust-anchor tests with a clean test database"
-run = "cd backend && rm -f test_bff.db && pytest tests/test_trust_anchors.py"
+run = "cd backend && rm -f test_bff.db && .venv/bin/pytest tests/test_trust_anchors.py"
 
 [tasks."test:backend-proxy"]
 description = "Run backend proxy tests with a clean test database"
-run = "cd backend && rm -f test_bff.db && pytest tests/test_proxy.py"
+run = "cd backend && rm -f test_bff.db && .venv/bin/pytest tests/test_proxy.py"
 
 [tasks."test:backend-instances"]
 description = "Run backend instance registry tests with a clean test database"
-run = "cd backend && rm -f test_bff.db && pytest tests/test_instances.py"
+run = "cd backend && rm -f test_bff.db && .venv/bin/pytest tests/test_instances.py"
 
 [tasks."test:bff"]
 description = "Run the Playwright BFF-only suite from e2e/"
