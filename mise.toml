@@ -79,10 +79,10 @@ find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
 [tasks."reset:test-registrations"]
 description = "Delete test subordinate rows from the LightHouse SQLite database (destructive)"
 run = '''
-docker compose stop lighthouse &&
+docker compose stop lighthouse
+trap 'docker compose start lighthouse' EXIT
 sqlite3 lighthouse/data/lighthouse.db \
-  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events; DELETE FROM authority_hints WHERE entity_id LIKE '%ta-test-%';" &&
-docker compose start lighthouse
+  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events; DELETE FROM authority_hints WHERE entity_id LIKE '%ta-test-%';"
 '''
 
 [tasks."demo:fresh-start"]
@@ -90,8 +90,6 @@ description = "Recreate the demo stack from a clean LightHouse state (destructiv
 run = '''
 docker compose down &&
 find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete &&
-LIGHTHOUSE_ADMIN_USERNAME=gateway \
-LIGHTHOUSE_ADMIN_PASSWORD=gateway \
 docker compose up --build --force-recreate
 '''
 
