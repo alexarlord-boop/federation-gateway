@@ -244,10 +244,10 @@ mise tasks ls                      # list all available tasks
 mise run dev:ui                    # start the Vite dev server (no Docker)
 mise run stack:up-detached         # docker compose up -d --build
 
-mise run test:bff                  # BFF-only Playwright tests (no Docker)
+mise run test:bff                  # BFF-only Playwright tests
 mise run test:backend-proxy        # full-stack proxy tests
 
-mise run verify:frontend           # lint + type-check + build
+mise run verify:frontend           # type-check + lint + build
 ```
 
 Safe cleanup tasks live under `clean:*`. Destructive state-reset tasks live under `reset:*` and `demo:*` — use with care.
