@@ -326,6 +326,16 @@ This change is configuration and documentation only; it should not add applicati
   - the representative safe tasks pass
   - the destructive demo reset can be dry-run and inspected without mutating local state
 
+  **Actual results (recorded on completion):**
+
+  - `mise tasks validate` — ✅ passed
+  - key task names (`dev:ui`, `stack:up`, `test:bff`, `clean:playwright`, `reset:lighthouse-data`, `demo:fresh-start`, `verify:sharemd`) — ✅ all present
+  - `mise run test:types` — ✅ passed
+  - `mise run test:backend-proxy` — ✅ passed
+  - `mise run test:trust-anchors` — ✅ passed
+  - `mise run verify:frontend` — ❌ **failed** due to the known pre-existing ESLint baseline issue (unrelated to this branch; lint was already failing on `main` before this work began)
+  - `mise run -n demo:fresh-start` (dry-run) — ✅ passed
+
 - [x] **Step 2: Mark completed steps in this plan file and commit the final bookkeeping update**
 
   ```bash
