@@ -34,11 +34,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
-type EntityStatus = 'draft' | 'pending' | 'approved' | 'active' | 'inactive';
+type EntityStatus = 'active' | 'blocked' | 'pending' | 'inactive';
 type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 import { useEntities } from '@/hooks/useEntities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SubordinatesService } from '@/client/services/SubordinatesService';
+import { gatewayFetch } from '@/lib/gateway-fetch';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Loader2 } from 'lucide-react';
@@ -59,8 +59,29 @@ export default function EntitiesPage() {
   const canUpdate = useOperationAllowed('subordinates', 'update');
   const queryClient = useQueryClient();
   const updateStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      SubordinatesService.changeSubordinateStatus(id, { status }),
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const token = (await import('@/lib/token-manager')).getAccessToken();
+      const { GATEWAY_BASE } = await import('@/lib/api-config');
+      const proxyBase = instanceId
+        ? `${GATEWAY_BASE}/api/v1/proxy/${encodeURIComponent(instanceId)}`
+        : GATEWAY_BASE;
+      const res = await fetch(
+        `${proxyBase}/api/v1/admin/subordinates/${id}/status`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'text/plain',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: status,
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw Object.assign(new Error('Status update failed'), { body });
+      }
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subordinates', instanceId] });
     },
@@ -134,8 +155,8 @@ export default function EntitiesPage() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="blocked">Blocked</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
@@ -202,15 +223,26 @@ export default function EntitiesPage() {
                         </DropdownMenuItem>
                         {canUpdate && (
                           <>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
-                              Set Pending
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
-                              Set Active
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'inactive' })}>
-                              Set Inactive
-                            </DropdownMenuItem>
+                            {(entity.status === 'blocked' || entity.status === 'inactive' || entity.status === 'pending') && (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'active' })}>
+                                Set Active
+                              </DropdownMenuItem>
+                            )}
+                            {entity.status === 'active' && (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'blocked' })}>
+                                Block
+                              </DropdownMenuItem>
+                            )}
+                            {entity.status !== 'pending' && (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
+                                Set Pending
+                              </DropdownMenuItem>
+                            )}
+                            {entity.status !== 'inactive' && (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'inactive' })}>
+                                Set Inactive
+                              </DropdownMenuItem>
+                            )}
                           </>
                         )}
                         <DropdownMenuItem>

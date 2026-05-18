@@ -629,6 +629,11 @@ export default function EntityDetailPage() {
                        <XCircle className="w-4 h-4 mr-2 text-warning" /> Block (Suspend Operations)
                      </DropdownMenuItem>
                    )}
+                   {entity.status !== 'pending' && (
+                     <DropdownMenuItem onClick={() => handleStatusChange('pending')}>
+                       Set Pending
+                     </DropdownMenuItem>
+                   )}
                    {entity.status !== 'inactive' && (
                      <DropdownMenuItem onClick={() => handleStatusChange('inactive')}>
                        Set Inactive
