@@ -21,7 +21,7 @@ import {
   ALL_ENTITY_TYPES,
 } from '@/components/ui/entity-type-badge';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
-import { useCreateSubordinate, useDeleteSubordinate } from '@/hooks/useSubordinates';
+import { useCreateSubordinate, useDeleteSubordinate, useSubordinates } from '@/hooks/useSubordinates';
 import { useToast } from '@/hooks/use-toast';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 import { SubordinateMetadataService } from '@/client/services/SubordinateMetadataService';
@@ -62,6 +62,9 @@ export default function EntityRegisterPage() {
   const { trustAnchors } = useTrustAnchors();
   const createSubordinate = useCreateSubordinate();
   const deleteSubordinate = useDeleteSubordinate();
+  const { data: existingSubordinates = [] } = useSubordinates();
+  const isDuplicateEntityId = !!formData.entityId &&
+    existingSubordinates.some((s) => s.entity_id === formData.entityId);
 
   if (!activeTrustAnchor) {
     return (
@@ -97,14 +100,33 @@ export default function EntityRegisterPage() {
             : typeof firstContact === 'object' && firstContact !== null
               ? (firstContact as any).email ?? ''
               : '';
+        const firstContactName =
+          typeof firstContact === 'object' && firstContact !== null
+            ? (firstContact as any).name ?? ''
+            : '';
         const detectedTypes = ALL_ENTITY_TYPES.filter(
           (t) => t in (payload.metadata ?? {}),
         );
+        // Prefer federation_entity fields; fall back to the first detected entity-type metadata
+        const firstEntityMeta: any = detectedTypes.length > 0
+          ? (payload.metadata?.[detectedTypes[0]] ?? {})
+          : {};
+        const resolvedDisplayName =
+          fedEntity.display_name ?? fedEntity.organization_name ??
+          firstEntityMeta.client_name ?? firstEntityMeta.display_name ?? '';
+        const resolvedOrgName =
+          fedEntity.organization_name ?? fedEntity.display_name ?? '';
+        const resolvedDescription = fedEntity.description ?? '';
+        const resolvedPolicyUri = fedEntity.policy_uri ?? '';
         setFetchedConfig(payload);
         setFormData((prev) => ({
           ...prev,
-          organizationName: fedEntity.organization_name ?? prev.organizationName,
+          displayName: resolvedDisplayName || prev.displayName,
+          organizationName: resolvedOrgName || prev.organizationName,
+          description: resolvedDescription || prev.description,
           contactEmail: firstEmail || prev.contactEmail,
+          contactName: firstContactName || prev.contactName,
+          policyUri: resolvedPolicyUri || prev.policyUri,
           entityTypes: isIntermediate
             ? ['federation_entity']
             : detectedTypes.length > 0 ? detectedTypes : prev.entityTypes,
@@ -199,9 +221,14 @@ export default function EntityRegisterPage() {
             console.error('Rollback failed for subordinate', createdId);
           }
         }
+        const errBody = (e as any)?.body;
+        const errMsg: string = errBody?.detail ?? errBody?.error ?? '';
+        const isNilPointer = errMsg.includes('nil pointer') || errMsg.includes('runtime error');
         toast({
           title: 'Registration Failed',
-          description: 'Could not complete registration. Please try again.',
+          description: isNilPointer
+            ? 'This entity ID was previously registered and soft-deleted in this instance. To re-register it, an administrator must restore or purge the old record.'
+            : 'Could not complete registration. Please try again.',
           variant: 'destructive',
         });
     } finally {
@@ -212,9 +239,9 @@ export default function EntityRegisterPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return !!(formData.entityId && formData.trustAnchorId && (isIntermediate || formData.entityTypes.length > 0));
+        return !!(formData.entityId && formData.trustAnchorId);
       case 1:
-        return fetchedConfig !== null;
+        return fetchedConfig !== null && (isIntermediate || formData.entityTypes.length > 0) && !isDuplicateEntityId;
       case 2:
         return formData.displayName && formData.contactEmail;
       case 3:
@@ -272,19 +299,9 @@ export default function EntityRegisterPage() {
               </Select>
             </div>
 
-            {!isIntermediate && (
-              <div className="space-y-2">
-                <Label>Subordinate Type</Label>
-                <EntityTypeMultiSelect
-                  selected={formData.entityTypes}
-                  onChange={(types) => setFormData({ ...formData, entityTypes: types })}
-                />
-              </div>
-            )}
-
             <Button 
               onClick={handleFetchConfig} 
-              disabled={!formData.entityId || !formData.trustAnchorId || (!isIntermediate && formData.entityTypes.length === 0) || isLoading}
+              disabled={!formData.entityId || !formData.trustAnchorId || isLoading}
               className="w-full"
             >
               {isLoading ? (
@@ -327,6 +344,18 @@ export default function EntityRegisterPage() {
               </div>
             )}
 
+            {isDuplicateEntityId && (
+              <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+                <div>
+                  <p className="font-medium text-destructive">Already Registered</p>
+                  <p className="text-sm text-muted-foreground">
+                    A subordinate with this entity ID is already registered in this instance. You cannot register the same entity ID twice.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <Label className="text-muted-foreground">Subordinate ID</Label>
@@ -334,15 +363,12 @@ export default function EntityRegisterPage() {
               </div>
 
               {!isIntermediate && (
-                <div data-testid="entity-type-display">
+                <div data-testid="entity-type-display" className="space-y-2">
                   <Label className="text-muted-foreground">Subordinate Type</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.entityTypes.map((type) => (
-                      <span key={type} className="entity-badge bg-info/10 text-info border border-info/30">
-                        {ENTITY_TYPE_LABELS[type]}
-                      </span>
-                    ))}
-                  </div>
+                  <EntityTypeMultiSelect
+                    selected={formData.entityTypes}
+                    onChange={(types) => setFormData({ ...formData, entityTypes: types })}
+                  />
                 </div>
               )}
 
