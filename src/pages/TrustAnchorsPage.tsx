@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Shield, Plus, ArrowUpToLine, Server, Globe, Loader2, Trash2, MoreHorizontal } from 'lucide-react';
+import { gatewayFetch } from '@/lib/gateway-fetch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -28,10 +30,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
-import { useDebugContext } from '@/hooks/useDebugContext';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useToast } from '@/hooks/use-toast';
-import { useBackend } from '@/contexts/BackendContext';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -47,11 +48,17 @@ function TrustAnchorCard({
   isLocal = false, 
   isExternal = false,
   isActive = false,
+  online,
+  liveSubordinateCount,
+  statsLoading = false,
 }: { 
   ta: any; 
   isLocal?: boolean;
   isExternal?: boolean;
   isActive?: boolean;
+  online?: boolean;
+  liveSubordinateCount?: number;
+  statsLoading?: boolean;
 }) {
   const typeConfig = typeLabels[ta.type];
 
@@ -73,8 +80,10 @@ function TrustAnchorCard({
             <div>
               <div className="flex items-center gap-2">
                 <CardTitle className="text-lg">{ta.name}</CardTitle>
-                {ta.status === 'active' && isLocal && (
-                  <span className="w-2 h-2 bg-success rounded-full animate-pulse" title="In Operation" />
+                {isLocal && (
+                  online
+                    ? <span className="w-2 h-2 bg-success rounded-full animate-pulse" title="Online" />
+                    : !statsLoading && <span className="w-2 h-2 bg-destructive rounded-full" title="Offline" />
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -104,19 +113,24 @@ function TrustAnchorCard({
           </p>
         )}
         
-        {!isExternal && ta.subordinateCount !== undefined && (
+        {!isExternal && (
           <div className="flex items-center justify-between text-sm">
             <div>
               <p className="text-muted-foreground">Subordinates</p>
-              <p className="text-2xl font-bold">{ta.subordinateCount}</p>
+              {statsLoading
+                ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-1" />
+                : <p className="text-2xl font-bold">{liveSubordinateCount ?? 0}</p>
+              }
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              ta.status === 'active' 
-                ? 'bg-success/10 text-success' 
-                : 'bg-muted text-muted-foreground'
-            }`}>
-              {ta.status}
-            </div>
+            {!statsLoading && (
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                online
+                  ? 'bg-success/10 text-success'
+                  : 'bg-destructive/10 text-destructive'
+              }`}>
+                {online ? 'online' : 'offline'}
+              </div>
+            )}
           </div>
         )}
 
@@ -209,20 +223,48 @@ function AddAuthorityHintDialog() {
 }
 
 export default function TrustAnchorsPage() {
-  const { selectedBackend } = useBackend();
+  const { activeTrustAnchor } = useTrustAnchor();
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: 'hint'; id: string; label: string }
     | null
   >(null);
 
-  const { context: currentCtxData } = useDebugContext(selectedBackend.id, selectedBackend.baseUrl);
-
   const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs } = useTrustAnchors();
   const localTAs = allAnchors.filter((ta) => ta.type === 'federation' || ta.type === 'intermediate');
 
-  const { hints: authorityHints, isLoading: isLoadingHints, deleteHint } = useAuthorityHints();
+  // Live liveness + subordinate count — one parallel query per local instance.
+  const instanceQueries = useQueries({
+    queries: localTAs.map((ta) => ({
+      queryKey: ['instance-stats', ta.id],
+      queryFn: async () => {
+        try {
+          const result = await gatewayFetch({
+            path: `/api/v1/proxy/${encodeURIComponent(ta.id)}/api/v1/admin/subordinates/`,
+            softFail: [400, 404, 500, 502, 503, 504],
+          });
+          return result as any[] | null;
+        } catch {
+          return null;
+        }
+      },
+      retry: false,
+      staleTime: 30_000,
+      refetchInterval: 60_000,
+    })),
+  });
 
-  const activeTrustAnchor = allAnchors.find((ta) => ta.id === currentCtxData?.contextId) || null;
+  const statsByTaId = Object.fromEntries(
+    localTAs.map((ta, i) => [
+      ta.id,
+      {
+        online: instanceQueries[i].isSuccess && Array.isArray(instanceQueries[i].data),
+        subordinateCount: Array.isArray(instanceQueries[i].data) ? instanceQueries[i].data!.length : 0,
+        isLoading: instanceQueries[i].isLoading,
+      },
+    ])
+  );
+
+  const { hints: authorityHints, isLoading: isLoadingHints, deleteHint } = useAuthorityHints();
 
   const { toast } = useToast();
 
@@ -272,12 +314,16 @@ export default function TrustAnchorsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {
              const isActive = activeTrustAnchor?.id === ta.id;
+             const stats = statsByTaId[ta.id];
              return (
                  <TrustAnchorCard
                    key={ta.id}
                    ta={ta}
                    isLocal
                    isActive={isActive}
+                   online={stats?.online}
+                   liveSubordinateCount={stats?.subordinateCount}
+                   statsLoading={stats?.isLoading}
                  />
              );
           })}

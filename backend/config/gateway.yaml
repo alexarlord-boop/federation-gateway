@@ -13,3 +13,13 @@ instances:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
       password_env: LIGHTHOUSE_ADMIN_PASSWORD
+  - id: ta-2
+    name: LightHouse 2
+    public_base_url: http://localhost:8082
+    admin_base_url: http://lighthouse2:8080
+    public_port: 8082
+    admin_port: 8080
+    admin_auth:
+      type: basic
+      username_env: LIGHTHOUSE_ADMIN_USERNAME
+      password_env: LIGHTHOUSE_ADMIN_PASSWORD

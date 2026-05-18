@@ -1,0 +1,30 @@
+# LightHouse configuration — second instance (port 8082).
+entity_id: "http://localhost:8082"
+
+server:
+  port: 8080
+
+storage:
+  driver: sqlite
+  data_dir: /data
+
+signing:
+  kms: filesystem
+  auto_generate_keys: true
+  filesystem:
+    key_dir: /data/keys
+
+api:
+  admin:
+    enabled: true
+    users_enabled: false
+    actor_source: "header"
+    actor_header: "X-Gateway-User-Email"
+
+endpoints:
+  fetch:
+    path: /fetch
+  list:
+    path: /list
+  resolve:
+    path: /resolve
