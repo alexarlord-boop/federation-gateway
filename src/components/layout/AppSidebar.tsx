@@ -66,7 +66,6 @@ const sidebarSections: SidebarSection[] = [
         children: [
           { title: 'All Subordinates', href: '/entities', feature: 'subordinates', operation: 'list' },
           { title: 'Register Subordinate', href: '/entities/register', feature: 'subordinates', operation: 'create' },
-          { title: 'Register Intermediate', href: '/entities/register?type=intermediate', feature: 'subordinates', operation: 'create' },
         ]
       },
       { 

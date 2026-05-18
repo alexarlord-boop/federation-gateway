@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, ExternalLink, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +36,6 @@ const steps = [
 
 export default function EntityRegisterPage() {
   const { activeTrustAnchor } = useTrustAnchor();
-  const [searchParams] = useSearchParams();
-  const isIntermediate = searchParams.get('type') === 'intermediate';
-  const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
-  const pageDescription = isIntermediate
-    ? 'Register an intermediate subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.'
-    : 'Register a new subordinate in the federation. The subordinate configuration will be fetched automatically from the subordinate well-known endpoint.';
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -53,10 +47,18 @@ export default function EntityRegisterPage() {
     contactEmail: '',
     contactName: '',
     policyUri: '',
-    entityTypes: (isIntermediate ? ['federation_entity'] : ['openid_provider']) as EntityType[],
+    entityTypes: [] as EntityType[],
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // Per OIDF spec §5.1.1: Intermediate MUST publish federation_fetch_endpoint;
+  // Leaf MUST NOT. Derive this from the fetched config, not from entity type selection.
+  // (A Trust Mark Issuer can also have federation_entity without being an Intermediate.)
+  const isIntermediate = !!(fetchedConfig?.metadata?.federation_entity?.federation_fetch_endpoint);
+  const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
+  const pageDescription = isIntermediate
+    ? 'Register an intermediate in the federation. The full configuration will be fetched from the well-known endpoint.'
+    : 'Register a new subordinate in the federation. The configuration will be fetched from the well-known endpoint.';
   const navigate = useNavigate();
   const { toast } = useToast();
   const { trustAnchors } = useTrustAnchors();
@@ -127,9 +129,7 @@ export default function EntityRegisterPage() {
           contactEmail: firstEmail || prev.contactEmail,
           contactName: firstContactName || prev.contactName,
           policyUri: resolvedPolicyUri || prev.policyUri,
-          entityTypes: isIntermediate
-            ? ['federation_entity']
-            : detectedTypes.length > 0 ? detectedTypes : prev.entityTypes,
+          entityTypes: detectedTypes.length > 0 ? detectedTypes : prev.entityTypes,
         }));
       }
     } catch {
@@ -148,7 +148,7 @@ export default function EntityRegisterPage() {
     try {
         const newEntity = await createSubordinate.mutateAsync({
              entity_id: formData.entityId,
-             registered_entity_types: isIntermediate ? ['federation_entity'] : formData.entityTypes,
+             registered_entity_types: formData.entityTypes,
              status: 'pending',
              jwks: fetchedConfig?.jwks ?? undefined,
              ...(formData.displayName && { description: formData.displayName }),
@@ -210,7 +210,7 @@ export default function EntityRegisterPage() {
           title: 'Registration Submitted',
           description: 'Subordinate registered and metadata saved successfully.',
         });
-        navigate(isIntermediate ? '/trust-anchors' : '/entities');
+        navigate('/entities');
     } catch (e) {
         // Roll back: delete the subordinate if it was created before the failure
         if (createdId !== null) {
@@ -241,7 +241,7 @@ export default function EntityRegisterPage() {
       case 0:
         return !!(formData.entityId && formData.trustAnchorId);
       case 1:
-        return fetchedConfig !== null && (isIntermediate || formData.entityTypes.length > 0) && !isDuplicateEntityId;
+        return fetchedConfig !== null && formData.entityTypes.length > 0 && !isDuplicateEntityId;
       case 2:
         return formData.displayName && formData.contactEmail;
       case 3:
@@ -362,15 +362,13 @@ export default function EntityRegisterPage() {
                 <p className="font-mono text-sm mt-1">{fetchedConfig?.iss}</p>
               </div>
 
-              {!isIntermediate && (
-                <div data-testid="entity-type-display" className="space-y-2">
+              <div data-testid="entity-type-display" className="space-y-2">
                   <Label className="text-muted-foreground">Subordinate Type</Label>
                   <EntityTypeMultiSelect
                     selected={formData.entityTypes}
                     onChange={(types) => setFormData({ ...formData, entityTypes: types })}
                   />
                 </div>
-              )}
 
               <div>
                 <Label className="text-muted-foreground">Organization</Label>
@@ -502,8 +500,7 @@ export default function EntityRegisterPage() {
                   <dt className="text-muted-foreground">Contact</dt>
                   <dd>{formData.contactEmail}</dd>
                 </div>
-                {!isIntermediate && (
-                  <div className="flex justify-between">
+                <div className="flex justify-between">
                     <dt className="text-muted-foreground">Subordinate Type</dt>
                     <dd className="flex flex-wrap gap-1 justify-end">
                       {formData.entityTypes.map(t => (
@@ -513,7 +510,6 @@ export default function EntityRegisterPage() {
                       ))}
                     </dd>
                   </div>
-                )}
               </dl>
             </div>
 

@@ -18,10 +18,20 @@ test.describe('Entities page @proxy', () => {
     await expect(page.getByRole('heading', { name: /register subordinate/i })).toBeVisible();
   });
 
-  test('intermediate registration uses subordinate wording', async ({ instancePage: page }) => {
-    await page.goto(`${APP_URL}/entities/register?type=intermediate`);
-    await expect(page.getByRole('heading', { name: /register intermediate/i })).toBeVisible();
-    await expect(page.getByText(/register an intermediate subordinate in the federation/i)).toBeVisible();
+  test('register form shows federation_entity type option', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/entities/register`);
+    await expect(page.getByRole('heading', { name: /register subordinate/i })).toBeVisible();
+    // Advance past step 0 to the config review step where type selection is shown.
+    // Fill required fields first.
+    await page.getByLabel(/subordinate id/i).fill('https://intermediate-test.example.com');
+    await page.getByLabel('Trust Anchor').click();
+    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
+    await expect(
+      page.getByText(/configuration not available|configuration retrieved/i)
+    ).toBeVisible({ timeout: 15_000 });
+    // federation_entity checkbox should be visible in the type selector
+    await expect(page.getByLabel(/federation entity/i)).toBeVisible();
   });
 
   test('can register a new subordinate with pending status', async ({ instancePage: page }) => {
