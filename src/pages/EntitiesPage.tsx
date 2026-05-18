@@ -203,7 +203,11 @@ export default function EntitiesPage() {
                   <TableCell>
                     <div className="flex gap-1">
                       {entity.entityTypes.map((type) => (
-                        <EntityTypeBadge key={type} type={type as EntityType} />
+                        <EntityTypeBadge
+                          key={type}
+                          type={type as EntityType}
+                          showFederationEntity={entity.entityTypes.every((t) => t === 'federation_entity')}
+                        />
                       ))}
                     </div>
                   </TableCell>
