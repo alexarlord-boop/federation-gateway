@@ -33,9 +33,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
+import { EntityRoleBadges } from '@/components/ui/entity-type-badge';
 type EntityStatus = 'active' | 'blocked' | 'pending' | 'inactive';
-type EntityType = 'openid_provider' | 'openid_relying_party' | 'federation_entity' | 'oauth_authorization_server' | 'oauth_client' | 'oauth_resource';
 import { useEntities } from '@/hooks/useEntities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gatewayFetch } from '@/lib/gateway-fetch';
@@ -202,13 +201,7 @@ export default function EntitiesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {entity.entityTypes.map((type) => (
-                        <EntityTypeBadge
-                          key={type}
-                          type={type as EntityType}
-                          showFederationEntity={entity.entityTypes.every((t) => t === 'federation_entity')}
-                        />
-                      ))}
+                      <EntityRoleBadges types={entity.entityTypes} />
                     </div>
                   </TableCell>
                   <TableCell>

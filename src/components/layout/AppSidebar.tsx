@@ -9,7 +9,6 @@ import {
   LogOut,
   ChevronDown,
   Network,
-  Leaf,
   PanelLeftClose,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,7 +51,7 @@ const sidebarSections: SidebarSection[] = [
     label: 'Federation',
     items: [
       { 
-        title: 'TAs and IAs', 
+        title: 'Instances', 
         href: '/trust-anchors', 
         icon: Shield,
         adminOnly: true,
@@ -61,7 +60,7 @@ const sidebarSections: SidebarSection[] = [
       { 
         title: 'Subordinates', 
         href: '/entities', 
-        icon: Leaf,
+        icon: Network,
         feature: 'subordinates',
         children: [
           { title: 'All Subordinates', href: '/entities', feature: 'subordinates', operation: 'list' },

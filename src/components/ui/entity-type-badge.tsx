@@ -74,3 +74,33 @@ export function EntityTypeBadge({ type, className, showFederationEntity = false 
     </span>
   );
 }
+
+/**
+ * Derives human-readable role badges from the full list of registered entity types.
+ * - Pure federation_entity (no protocol type) → "Intermediate"
+ * - Any protocol types present → show those, skip federation_entity
+ */
+export function EntityRoleBadges({ types, className }: { types: string[]; className?: string }) {
+  const isIntermediateOnly = types.length > 0 && types.every(t => t === 'federation_entity');
+
+  if (isIntermediateOnly) {
+    return (
+      <span
+        className={cn('entity-badge bg-primary/10 text-primary border border-primary/30', className)}
+        title="Intermediate — federation-only node with no protocol role"
+      >
+        Intermediate
+      </span>
+    );
+  }
+
+  return (
+    <>
+      {types
+        .filter(t => t !== 'federation_entity')
+        .map(t => (
+          <EntityTypeBadge key={t} type={t as EntityType} className={className} />
+        ))}
+    </>
+  );
+}

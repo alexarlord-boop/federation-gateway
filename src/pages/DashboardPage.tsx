@@ -1,10 +1,10 @@
-import { Building2, Shield, ClipboardCheck, Users, ArrowUpRight } from 'lucide-react';
+import { Building2, CheckCircle2, ClipboardCheck, Network, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
+import { EntityRoleBadges } from '@/components/ui/entity-type-badge';
 import { useEntities } from '@/hooks/useEntities';
 import { BackendInfoPanel } from '@/components/BackendInfoPanel';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
@@ -23,7 +23,7 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <Card className="stat-card group cursor-pointer">
+    <Card className="stat-card group cursor-pointer h-full">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div>
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   if (!activeTrustAnchor) {
     return (
       <div className="text-center py-12">
-        <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <Network className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
         <p className="text-muted-foreground">Choose a federation instance from the sidebar to view the dashboard.</p>
       </div>
@@ -65,8 +65,7 @@ export default function DashboardPage() {
   // Calculate stats from real data
   const totalEntities = entities.length;
   const activeEntities = entities.filter(e => e.status === 'active').length;
-  const opCount = entities.filter(e => e.entityTypes.includes('openid_provider')).length;
-  const rpCount = entities.filter(e => e.entityTypes.includes('openid_relying_party')).length;
+  const intermediateEntities = entities.filter(e => e.entityTypes.every(t => t === 'federation_entity')).length;
   
   const recentEntities = entities.slice(0, 5);
 
@@ -80,7 +79,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 items-stretch">
         <StatCard
           title="Total Entities"
           value={isLoading ? "-" : totalEntities}
@@ -89,28 +88,26 @@ export default function DashboardPage() {
           href="/entities"
         />
         <StatCard
-          title="OpenID Providers"
-          value={isLoading ? "-" : opCount}
-          description="Identity providers"
-          icon={Shield}
-          href="/entities?type=op"
+          title="Active"
+          value={isLoading ? "-" : activeEntities}
+          description="Currently operational"
+          icon={CheckCircle2}
+          href="/entities"
         />
         <StatCard
-          title="Relying Parties"
-          value={isLoading ? "-" : rpCount}
-          description="Service providers"
-          icon={Users}
-          href="/entities?type=rp"
+          title="Intermediates"
+          value={isLoading ? "-" : intermediateEntities}
+          description="Federation-only nodes"
+          icon={Network}
+          href="/entities"
         />
-        {isAdmin && (
-          <StatCard
-            title="Pending Approvals"
-            value={isLoading ? '-' : pendingApprovals.length}
-            description="Awaiting review"
-            icon={ClipboardCheck}
-            href="/approvals"
-          />
-        )}
+        <StatCard
+          title="Pending Approvals"
+          value={isLoading ? '-' : pendingApprovals.length}
+          description="Awaiting review"
+          icon={ClipboardCheck}
+          href={isAdmin ? "/approvals" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -150,9 +147,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="hidden sm:flex gap-1">
-                          {entity.entityTypes.map(type => (
-                             <EntityTypeBadge key={type} type={type as any} />
-                          ))}
+                          <EntityRoleBadges types={entity.entityTypes} />
                         </div>
                         <StatusBadge status={entity.status as any} />
                       </div>
@@ -194,9 +189,6 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-medium text-sm">{entity.displayName || entity.entityId}</p>
-                        <span className="entity-badge bg-pending/10 text-pending border border-pending/30">
-                          registration
-                        </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
                         {entity.entityId}

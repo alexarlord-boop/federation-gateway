@@ -25,7 +25,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { EntityTypeBadge } from '@/components/ui/entity-type-badge';
+import { EntityRoleBadges } from '@/components/ui/entity-type-badge';
 import { useToast } from '@/hooks/use-toast';
 import { useEntityDetail } from '@/hooks/useEntityDetail';
 import { useSubordinateConstraints } from '@/hooks/useSubordinateConstraints';
@@ -602,9 +602,7 @@ export default function EntityDetailPage() {
                 </button>
               </div>
               <div className="flex items-center gap-2 mt-2">
-                {entity.registered_entity_types?.map((type) => (
-                  <EntityTypeBadge key={type} type={type as any} />
-                ))}
+                <EntityRoleBadges types={entity.registered_entity_types ?? []} />
               </div>
             </div>
           </div>

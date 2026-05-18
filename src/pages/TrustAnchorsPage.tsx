@@ -254,9 +254,9 @@ export default function TrustAnchorsPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header mb-8">
-        <h1 className="page-title">Authority Hints and Trust Anchors</h1>
+        <h1 className="page-title">Instances</h1>
         <p className="page-description">
-          Review deployment-managed instances and authority hints.
+          Manage your federation instances and configure upstream authority hints.
         </p>
       </div>
 
@@ -290,7 +290,7 @@ export default function TrustAnchorsPage() {
           <div className="flex items-center gap-2">
             <ArrowUpToLine className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">Authority Hints</h2>
-            <span className="text-sm text-muted-foreground">(Upstream - Read Only)</span>
+            <span className="text-sm text-muted-foreground">(Upstream)</span>
           </div>
           <AddAuthorityHintDialog />
         </div>
@@ -307,8 +307,7 @@ export default function TrustAnchorsPage() {
                       <div>
                         <CardTitle className="text-lg">{hint.description || 'Upstream Authority'}</CardTitle>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="entity-badge border bg-info/10 text-info border-info/30">Federation</span>
-                          <span className="entity-badge bg-muted/50 text-muted-foreground border-muted">External</span>
+                          <span className="entity-badge bg-muted/50 text-muted-foreground border-muted">Upstream Authority</span>
                         </div>
                       </div>
                     </div>
@@ -352,14 +351,6 @@ export default function TrustAnchorsPage() {
           </Card>
         )}
       </section>
-
-      {/* Intermediates guidance */}
-      <Card className="bg-muted/30">
-        <CardContent className="py-6 text-center text-muted-foreground">
-          <p className="font-medium">Intermediate authorities are managed from Subordinates.</p>
-          <p className="text-sm">Manage intermediates from the Subordinates navigation.</p>
-        </CardContent>
-      </Card>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
