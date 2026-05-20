@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Link2, ShieldCheck, AlertCircle, Loader2, ClipboardCopy, Check } from 'lucide-react';
+import { Search, Link2, ShieldCheck, AlertCircle, Info, Loader2, ClipboardCopy, Check } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -156,7 +156,7 @@ export default function ChainInspectorPage() {
 
   const handleResolve = async () => {
     if (!entityId || !selectedTaId) return;
-    const anchor = anchorEntityId || selectedTa?.entityId || '';
+    const anchor = anchorEntityId || selectedTa?.entityId?.replace(/\/$/, '') || '';
     if (!anchor) {
       setResolveError('Anchor entity ID is required');
       return;
@@ -328,7 +328,7 @@ export default function ChainInspectorPage() {
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs font-mono">
-                  {selectedTa?.entityId}/fetch?sub={entityId}
+                  {(selectedTa?.entityId ?? '').replace(/\/$/, '')}/fetch?sub={entityId}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -358,21 +358,31 @@ export default function ChainInspectorPage() {
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs font-mono">
-                  {selectedTa?.entityId}/resolve?sub={entityId}&trust_anchor={anchorEntityId || selectedTa?.entityId}
+                  {(selectedTa?.entityId ?? '').replace(/\/$/, '')}/resolve?sub={entityId}&trust_anchor={anchorEntityId || (selectedTa?.entityId ?? '').replace(/\/$/, '')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {resolveError ? (
+                  resolveError.includes('invalid_trust_chain') || resolveError.includes('no valid trust path') ? (
+                    <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+                      <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium">No trust path found</p>
+                        <p className="mt-1 text-xs opacity-80">
+                          LightHouse could not build a trust chain — the subject entity must serve a
+                          live <code className="font-mono">/.well-known/openid-federation</code> endpoint
+                          so the resolver can fetch its self-signed statement. Demo entities use fake
+                          hostnames. Use <strong>Fetch Statement</strong> above to see the TA-issued
+                          subordinate statement instead.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                    <div>
-                      <p>{resolveError}</p>
-                      <p className="mt-1 text-xs opacity-75">
-                        Note: resolve requires the subject entity to serve a live federation endpoint.
-                        Demo entities use fake hostnames so LightHouse cannot fetch their self-signed statements — use Fetch Statement instead to see the TA-issued subordinate statement.
-                      </p>
-                    </div>
+                    <span>{resolveError}</span>
                   </div>
+                  )
                 ) : resolveResult ? (
                   <JwtResult jwt={resolveResult} label="Resolved trust chain" />
                 ) : null}
