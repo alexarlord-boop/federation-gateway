@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import * as SelectPrimitive from '@radix-ui/react-select';
 import { 
   Select, 
   SelectContent, 
-  SelectItem, 
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
@@ -286,14 +286,21 @@ export default function EntityRegisterPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {trustAnchors.map((ta) => (
-                    <SelectItem key={ta.id} value={ta.id} className="group">
-                      <div>
-                        <p>{ta.name}</p>
-                        <p className="text-xs select-sublabel group-data-[highlighted]:select-sublabel-active">
-                          {ta.type}
-                        </p>
-                      </div>
-                    </SelectItem>
+                    <SelectPrimitive.Item
+                      key={ta.id}
+                      value={ta.id}
+                      className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground group"
+                    >
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        <SelectPrimitive.ItemIndicator>
+                          <Check className="h-4 w-4" />
+                        </SelectPrimitive.ItemIndicator>
+                      </span>
+                      <SelectPrimitive.ItemText>{ta.name}</SelectPrimitive.ItemText>
+                      <span className="text-xs select-sublabel ml-2 group-data-[highlighted]:select-sublabel-active">
+                        {ta.type}
+                      </span>
+                    </SelectPrimitive.Item>
                   ))}
                 </SelectContent>
               </Select>
