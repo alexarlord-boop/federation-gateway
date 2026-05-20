@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import * as SelectPrimitive from '@radix-ui/react-select';
+import JsonView from '@uiw/react-json-view';
 import { 
   Select, 
   SelectContent, 
@@ -387,16 +388,34 @@ export default function EntityRegisterPage() {
                 <p className="text-sm mt-1 text-muted-foreground">
                   {fetchedConfig?.jwks?.keys?.length} key(s) found
                 </p>
+                {fetchedConfig?.jwks && (
+                  <div className="mt-2 rounded-md border bg-muted/30 p-2 text-xs overflow-x-auto">
+                    <JsonView
+                      value={fetchedConfig.jwks}
+                      collapsed={1}
+                      displayDataTypes={false}
+                      enableClipboard
+                      style={{ background: 'transparent', fontSize: '0.75rem' }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            <Card className="border-dashed">
-              <CardContent className="p-4">
-                <pre className="text-xs overflow-x-auto">
-                  {JSON.stringify(fetchedConfig?.metadata, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
+            {fetchedConfig?.metadata && (
+              <Card className="border-dashed">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Metadata</p>
+                  <JsonView
+                    value={fetchedConfig.metadata}
+                    collapsed={1}
+                    displayDataTypes={false}
+                    enableClipboard
+                    style={{ background: 'transparent', fontSize: '0.75rem' }}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 

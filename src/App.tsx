@@ -20,6 +20,7 @@ import EntityRegisterPage from "./pages/EntityRegisterPage";
 import TrustAnchorsPage from "./pages/TrustAnchorsPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import TrustMarksPage from "./pages/TrustMarksPage";
+import ChainInspectorPage from "./pages/ChainInspectorPage";
 import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
 import RBACManagementPage from "./pages/RBACManagementPage";
@@ -125,6 +126,7 @@ function AppRoutes() {
             <TrustMarksPage />
           </CapabilityGuard>
         } />
+        <Route path="/chain-inspector" element={<ChainInspectorPage />} />
         <Route path="/users" element={
           <ProtectedRoute adminOnly>
             <UsersPage />

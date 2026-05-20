@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Network,
   PanelLeftClose,
+  ScanSearch,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
@@ -72,6 +73,11 @@ const sidebarSections: SidebarSection[] = [
         href: '/trust-marks', 
         icon: Award,
         feature: 'federation_trust_marks',
+      },
+      {
+        title: 'Chain Inspector',
+        href: '/chain-inspector',
+        icon: ScanSearch,
       },
     ],
   },
