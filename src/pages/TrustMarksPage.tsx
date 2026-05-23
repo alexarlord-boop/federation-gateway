@@ -787,7 +787,7 @@ export default function TrustMarksPage() {
   const showFederation = isFeatureEnabled('federation_trust_marks');
   const showIssuance = isFeatureEnabled('trust_mark_issuance');
 
-  const defaultTab = showSelf ? 'self' : showFederation ? 'federation' : 'issuance';
+  const defaultTab = showFederation ? 'federation' : showIssuance ? 'issuance' : 'self';
 
   if (!activeTrustAnchor) {
     return (

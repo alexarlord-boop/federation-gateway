@@ -6,6 +6,8 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TrustMarkIssuanceService } from '@/client/services/TrustMarkIssuanceService';
+import { OpenAPI } from '@/client';
+import { request as __request } from '@/client/core/request';
 import type { TrustMarkSpec } from '@/client/models/TrustMarkSpec';
 import type { AddTrustMarkSpec } from '@/client/models/AddTrustMarkSpec';
 import type { PatchTrustMarkSpec } from '@/client/models/PatchTrustMarkSpec';
@@ -112,7 +114,13 @@ export const useTrustMarkSubjects = (specId: number) => {
 
   const changeStatus = useMutation({
     mutationFn: ({ subjectId, status }: { subjectId: number; status: string }) =>
-      TrustMarkIssuanceService.changeTrustMarkSubjectStatus(specId, subjectId, { status }),
+      __request(OpenAPI, {
+        method: 'PUT',
+        url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/status',
+        path: { trustMarkSpecID: specId, trustMarkSubjectID: subjectId },
+        body: status,
+        mediaType: 'text/plain',
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trust-mark-subjects', instanceId, specId] });
     },
