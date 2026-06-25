@@ -90,7 +90,7 @@ export default function ApprovalsPage() {
     const typeLabels = (entity.registered_entity_types || [])
       .filter((t: string) => t !== 'federation_entity')
       .map((t: string) => (t === 'openid_provider' ? 'OP' : t === 'openid_relying_party' ? 'RP' : t));
-    const typeLine = typeLabels.length > 0 ? typeLabels.join(', ') : entityRole === 'intermediate' ? 'Intermediate' : 'Leaf Entity';
+    const typeLine = typeLabels.length > 0 ? typeLabels.join(', ') : entityRole === 'intermediate' ? 'Intermediate' : 'Subordinate';
 
     return (
     <Card data-testid="request-card" className="hover:shadow-md transition-shadow mb-4">

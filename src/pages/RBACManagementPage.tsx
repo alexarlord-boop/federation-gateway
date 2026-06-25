@@ -41,7 +41,7 @@ interface FeatureUIMapping {
 const FEATURE_UI_MAP: Record<string, FeatureUIMapping> = {
   subordinates: {
     description: 'Subordinate management: registration, approval, and detail views',
-    sidebar: ['Subordinates', 'All Subordinates', 'Register Subordinate', 'Register Intermediate', 'Approvals'],
+    sidebar: ['Subordinates', 'All Subordinates', 'Register Subordinate', 'Approvals'],
     pages: ['/entities', '/entities/register', '/entities/:id', '/approvals'],
   },
   trust_anchors: {

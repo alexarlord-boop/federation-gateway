@@ -1,0 +1,375 @@
+{
+  "data": {
+    "11": {
+      "id": 11,
+      "item": [
+        2687245793592116,
+        6239990760484702,
+        8345318831959455,
+        5994037793748267,
+        2899345903533514,
+        4482166958978179,
+        3432949153352751,
+        3409063971297630,
+        651995298109122
+      ],
+      "title": "Backlog"
+    },
+    "12": {
+      "id": 12,
+      "item": [
+        1291669752092277,
+        2447942491169515,
+        5671225207752203,
+        2356343281548689,
+        8763643198435375,
+        7446718823598252,
+        7373198261365678
+      ],
+      "title": "In progress"
+    },
+    "13": {
+      "id": 13,
+      "item": [
+        1,
+        7358021257579797,
+        5210126720695290,
+        7494214942457418,
+        911307278203966,
+        1518209213127155,
+        5001470727009869,
+        1187223330651314,
+        2942564791561141,
+        410690455392685,
+        7186686351176450,
+        2060177682846617,
+        4024965210053419,
+        5390184443885517,
+        6524173740898942,
+        3589223407319135
+      ],
+      "title": "Done"
+    },
+    "7424578884046769": {
+      "id": 7424578884046769,
+      "item": [
+        7966149582855652,
+        2,
+        4205132479327825,
+        7554260783770668,
+        2769423556673819,
+        7570366842388113
+      ],
+      "title": "Ready"
+    }
+  },
+  "items": {
+    "1": {
+      "body": "",
+      "id": 1,
+      "tags": [
+        "alex"
+      ],
+      "title": "TI Wizard (cycle 9) -> OIDFed Registry GUI"
+    },
+    "2": {
+      "body": "\n\n* Gabriel: https://gitlab.software.geant.org/TI_Incubator/federation-admin-api/-/blob/gabriel/federation_admin_openapi.yaml?ref_type=heads\n* Kushal:\n\n\n",
+      "id": 2,
+      "tags": [
+        "gabriel",
+        "kushal",
+        "niels",
+        "amin",
+        "halil"
+      ],
+      "title": "Registry API"
+    },
+    "410690455392685": {
+      "body": "- [x] Ask Gabriel for slides regarding the API\n- [x] Ask Niel to help Alexandr\n- [ ] prepare all the slides",
+      "id": 410690455392685,
+      "tags": [
+        "andrijana"
+      ],
+      "title": "Incubator mid-term demo "
+    },
+    "651995298109122": {
+      "body": "https://openid.net/specs/openid-federation-wallet-1_0.html#name-wallet-architecture-entity-\n+wallet provider\n+verifier\n+issuer\n\nDiscussion with Niels done: the types themselves are needed and they have slightly different claims sets. Gabriel: already supported in principle, thanks to generic API/data design",
+      "id": 651995298109122,
+      "title": "talk to wallet team regarding what they need for the new entity types"
+    },
+    "911307278203966": {
+      "body": "new version 0.20\nadding documentation",
+      "id": 911307278203966,
+      "tags": [
+        "gabriel"
+      ],
+      "title": "finishing up admin API for lighthouse"
+    },
+    "1187223330651314": {
+      "body": "https://openapi-generator.tech/docs/generators\n\n\n**All-in-one service for mocking OpenApi schema:** [prism](https://stoplight.io/open-source/prism)\n\n**Command used:** `prism mock https://gitlab.software.geant.org/TI_Incubator/federation-admin-api/-/raw/gabriel/federation_admin_openapi.yaml --errors false`\n\n",
+      "id": 1187223330651314,
+      "tags": [
+        "alex"
+      ],
+      "title": "Generate API mockup from the spec"
+    },
+    "1291669752092277": {
+      "body": "https://oidfed.data.kit.edu/migration/",
+      "id": 1291669752092277,
+      "tags": [
+        "mihaly"
+      ],
+      "title": "migrate lighthouse:"
+    },
+    "1518209213127155": {
+      "body": "\nfixes to the bugs discovered, Merge Request submitted",
+      "id": 1518209213127155,
+      "tags": [
+        "amin"
+      ],
+      "title": "Fix/improve problems in Admin Registry API"
+    },
+    "2060177682846617": {
+      "body": "Amsterdam, Feb 09-13, 2026 (https://tiime-unconference.eu/)\n\nParticipants: \n-Kushal\n-Mihaly (end of week only) 13rd Friday\n-Alexandr (with Visa thingy)\n-Marko \n-Peter: likely\n-Halil: not sure\n-Jovan: needs to ask\n-András: likes to\n-Amin: likes to",
+      "id": 2060177682846617,
+      "tags": [
+        "niels",
+        "gabriel",
+        "amin",
+        "mihaly",
+        "andrijana",
+        "kushal",
+        "andras"
+      ],
+      "title": "TIIME unconference"
+    },
+    "2356343281548689": {
+      "body": "",
+      "id": 2356343281548689,
+      "tags": [
+        "alex"
+      ],
+      "title": "(UI) trust chain resolver page - parked"
+    },
+    "2447942491169515": {
+      "body": "https://github.com/alexarlord-boop/federation-gateway",
+      "id": 2447942491169515,
+      "tags": [
+        "halil",
+        "andrijana",
+        "mihaly"
+      ],
+      "title": "test out registry+lighthouse"
+    },
+    "2687245793592116": {
+      "body": "what people are using, what they need to migrate from",
+      "id": 2687245793592116,
+      "title": "Survey of current registries"
+    },
+    "2769423556673819": {
+      "body": "move “Intermediate” handling into the subordinate flow, support more than just OP/RP, allow multiple entity types per entity, and support types like federation_entity ~~and trust mark issuers~~[GZ: trust mark issuer does not exist as entity type]",
+      "id": 2769423556673819,
+      "tags": [
+        "alex"
+      ],
+      "title": "Subordinates and entity-type modeling"
+    },
+    "2899345903533514": {
+      "id": 2899345903533514,
+      "title": "step-by-step guide on key managment possibilities"
+    },
+    "2942564791561141": {
+      "body": "Prepare the session:\n1. in the morning General session:\n- 10:00 - 10:45 Incubator work (45 min) - Please you choose relevant work and speakers. As you an see below, no need to (technically) deep dive all of it as the afternoon has additional opportunity\n\n\n* [ ] Intro\n\n* [ ] OIDFed discovery\n\n* [ ] Entity Collection Endpoint\n\n* [ ] OFFA\n\n* [ ] Authmem cookie\n\n* [ ] Fed. Admin API\n\n* [ ] Our Current work, RP, Apache mod_oidfed?\n\n\nOIDFed Admin API\n\n \n\n2. Afternoon breakouts (not lead, but contribute)\n- 13:30 - 14.15 Running an OIDfed OP, what does it mean for home organisations - Niels (convener), Marko , Henri\n- 14:15 - 15:00 Discovery - Mihaly (convener) & Kushal\nRP support, migration scenario - Mihaly (OFFA / Apache mod)",
+      "id": 2942564791561141,
+      "tags": [
+        "andrijana"
+      ],
+      "title": "TIIME OIDFed Workshop"
+    },
+    "3409063971297630": {
+      "body": "some attributes are free to change others are not\nuse case: saml metadata scope\nperhaps scopes could be done with trust marks?\n* this is an example of complex trust marks",
+      "id": 3409063971297630,
+      "title": "centrally restricting what a leaf can change"
+    },
+    "3432949153352751": {
+      "body": "",
+      "id": 3432949153352751,
+      "title": "survey participants of eduGAIN pilot about their key rotation needs"
+    },
+    "3589223407319135": {
+      "body": "rename and reorganize concepts like TAs/IAs, Authority Hints, Superior Authorities, and Leaf Entities → Subordinates so the product uses spec-aligned language consistently.",
+      "id": 3589223407319135,
+      "tags": [
+        "alex"
+      ],
+      "title": "UI terminology and navigation cleanup"
+    },
+    "4024965210053419": {
+      "body": "1. mock Admin API implementation\n2. test \"full\" setup\n3. clean up mocks, lean BFF\n4. e2e tests, wire up UI and lighthouse properly\n\n+ expand for multi-tenant use cases",
+      "id": 4024965210053419,
+      "tags": [
+        "alex"
+      ],
+      "title": "integration"
+    },
+    "4205132479327825": {
+      "body": "based on feedback: https://sharemd.nikhef.nl/s/1XPuQoIgA#\nfrom 23.04\n\nReplace the hardcoded single-instance topology with a config-driven multi-instance registry that supports separate public/admin endpoints, backend-only admin credentials, and explicit instance selection in the UI.\n\n**Progress**: deployment is implemented. The stack\nexposes configurable UI_PORT, BACKEND_PORT, and LIGHTHOUSE_PUBLIC_PORT, the backend reads \nbackend/config/gateway.yaml, each instance has separate public_base_url and admin_base_url,\nadmin basic auth is injected from env, and the UI does not auto-select the first instance",
+      "id": 4205132479327825,
+      "tags": [
+        "alex"
+      ],
+      "title": "Deployment and configuration flow"
+    },
+    "4482166958978179": {
+      "body": "* who initiates the information exchange?\n** subordinate notifies TA or TA finds out\n* there could be an endpoint to trigger fetching the subordinate statement\n* configurable periodic fetch of JWKS endpoint",
+      "id": 4482166958978179,
+      "title": "TA/lighthouse key rotation concept"
+    },
+    "5001470727009869": {
+      "body": "\n* Prism as Mock / Proxy service\n* UI with TS client\n* Some basic route auth with extendable interface\n\n\nhttps://www.npmjs.com/package/@openapi-codegen/cli\n",
+      "id": 5001470727009869,
+      "tags": [
+        "alex"
+      ],
+      "title": "Generate TypeScript client from the spec to bridge UI and Mock Backend"
+    },
+    "5210126720695290": {
+      "body": "Deployment: https://oidfed.data.kit.edu/deployment/caddy/\n\nConfig options: https://oidfed.data.kit.edu/config/",
+      "id": 5210126720695290,
+      "tags": [
+        "alex"
+      ],
+      "title": "deploy dockerized lightouse 0.20.0:"
+    },
+    "5390184443885517": {
+      "body": "Implement an intermediate service between UI and Registry Admin API\n\nrepo(ui+gateway): https://github.com/alexarlord-boop/oidfed-registry-ui\n\n\n1. Users local authentication with basic creds\n2. Users SSO with OIDC providers (Keycloak, Github implemented)\n3. Admin User management features (CRUD, registration approval, account activation)\n\n4. Still no persistence on POST/PUT/DELETE requests -- wip\n",
+      "id": 5390184443885517,
+      "tags": [
+        "alex"
+      ],
+      "title": "feat(gateway) Auth gateway service"
+    },
+    "5671225207752203": {
+      "body": "cover lighthouse /stats endpoint and visualise kpis",
+      "id": 5671225207752203,
+      "tags": [
+        "alex"
+      ],
+      "title": "(UI) oidfed stats page - parked"
+    },
+    "5994037793748267": {
+      "body": "aimed for fedops\nonce done, reach out to eduGAIN testbed",
+      "id": 5994037793748267,
+      "title": "step-by-step deployment guide"
+    },
+    "6239990760484702": {
+      "body": "create an initial mock AI for initial UX development\nhttps://penpot.app/ ?",
+      "id": 6239990760484702,
+      "tags": [
+        "andrijana",
+        "alex"
+      ],
+      "title": "UI/UX mockups"
+    },
+    "6524173740898942": {
+      "body": "\n1. Full OAS coverage (verification)\n2. Feature flags\n3. RBAC\n4. Actual features\n5. Unit Tests",
+      "id": 6524173740898942,
+      "tags": [
+        "alex"
+      ],
+      "title": "feat(UI) Management"
+    },
+    "7186686351176450": {
+      "body": "T6: Invite Stefan\n\n* DIIP, etc.\n\n* OIDFed\nhttps://openid.net/specs/openid-federation-wallet-1_0.html",
+      "id": 7186686351176450,
+      "tags": [
+        "niels",
+        "mihaly"
+      ],
+      "title": "Training on wallets  - Thu 18th Dec, 14h"
+    },
+    "7358021257579797": {
+      "body": "testing the registration process with the existing leafs in Mihaly's test fed",
+      "id": 7358021257579797,
+      "tags": [
+        "mihaly"
+      ],
+      "title": "test leafs"
+    },
+    "7373198261365678": {
+      "body": "separate cleanup pass for leftover inconsistencies, dead assumptions, and polish once the main flows are redesigned.",
+      "id": 7373198261365678,
+      "tags": [
+        "alex"
+      ],
+      "title": " General product cleanup / repo cleanup - parked"
+    },
+    "7446718823598252": {
+      "body": "support global additional claims for a trust mark, fix broken subject-level custom claims, show existing claims correctly, and display subject descriptions where available",
+      "id": 7446718823598252,
+      "tags": [
+        "alex"
+      ],
+      "title": "Trust mark issuance and claims management - parked"
+    },
+    "7494214942457418": {
+      "body": "* [x] Keys & KMS\n* [x] Users & Authentication\n* [x] Entity Configuration(inc. metadata)\n* [x] Trust Marks\n* [x] Subordinates\n  * [x] Base & History\n  * [x] Keys & Lifetime\n  * [x] Metadata & Claims\n  * [x] Constraints\n  * [x] Policies & Statement\n* [x] Extra coverage\n  * [x] Tests Optimization\n  * [x] Extending current tests further\n  * [x] More tests (stats, entity trust marks, subordinate events, cache middlewares)",
+      "id": 7494214942457418,
+      "tags": [
+        "amin"
+      ],
+      "title": "Implement Admin Registry API Test Coverage"
+    },
+    "7554260783770668": {
+      "body": "fix wording like Expiry vs Lifetime, correct the refresh_grace_period explanation, and align the screens with actual runtime behavior",
+      "id": 7554260783770668,
+      "tags": [
+        "alex"
+      ],
+      "title": "Trust marks UX and semantics"
+    },
+    "7570366842388113": {
+      "body": "fix the inactive/suspended behavior so operators can set subject status correctly and predictably",
+      "id": 7570366842388113,
+      "tags": [
+        "alex"
+      ],
+      "title": " Subject lifecycle/status management"
+    },
+    "7966149582855652": {
+      "body": "Task: read through the spec and decide if this is good enough\n\n* Define the requirements\n* Define the federation admin processes, business logic\n\n* Management of signing keys \n\n* Start a document: https://docs.google.com/document/d/1KSkUY3WqzPETBZzWUDobLGjodkkcKEE-Zfm4r8ByaYE/edit?tab=t.0#heading=h.jzkoqvhwtp8m\n\n\n\n* First concentrate on the processes\n1. Set TA with Subordinates\n2. Set TMs\n3. etc.\n",
+      "id": 7966149582855652,
+      "tags": [
+        "niels",
+        "gabriel",
+        "halil",
+        "amin",
+        "alex",
+        "mihaly"
+      ],
+      "title": "OIDFed Registry GUI - features"
+    },
+    "8345318831959455": {
+      "body": "\n* Investigate the integration possibility into the OIDFed testbed\n* Improve Testbed\n",
+      "id": 8345318831959455,
+      "tags": [
+        "niels"
+      ],
+      "title": "R&E OpenID Fed Testbed"
+    },
+    "8763643198435375": {
+      "body": "\n1. audit logging (BFF side, track actions)\n2. audit log page (search,filter, paginate logs)\n\n",
+      "id": 8763643198435375,
+      "tags": [
+        "alex"
+      ],
+      "title": "(feature) audit log viewer - parked"
+    }
+  },
+  "list": [
+    11,
+    12,
+    7424578884046769,
+    13
+  ]
+}

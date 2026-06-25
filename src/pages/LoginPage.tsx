@@ -80,7 +80,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <p className="text-primary-foreground font-semibold">2. Register Subordinates</p>
-                <p className="text-sm text-primary-foreground/70">Onboard intermediates and leaf entities via workflow.</p>
+                <p className="text-sm text-primary-foreground/70">Onboard subordinates via workflow.</p>
               </div>
             </div>
 
