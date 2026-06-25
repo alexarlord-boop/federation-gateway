@@ -25,7 +25,7 @@ test.describe('Entities page @proxy', () => {
     // Fill required fields first.
     await page.getByLabel(/subordinate id/i).fill('https://intermediate-test.example.com');
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
     await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
@@ -46,7 +46,7 @@ test.describe('Entities page @proxy', () => {
 
     // Select the LightHouse trust anchor
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
 
     // Entity type defaults to openid_provider, so continue
     // Click "Fetch Subordinate Configuration" button
@@ -57,6 +57,9 @@ test.describe('Entities page @proxy', () => {
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
+
+    // Config fetch fails for fake URL → entityTypes defaults to []; must select one so Next is enabled
+    await page.getByLabel(/openid provider/i).check();
 
     // Advance to Additional Details step
     await page.getByRole('button', { name: 'Next' }).click();
@@ -140,7 +143,16 @@ test.describe('Entities page @proxy', () => {
   test('register page shows expanded entity-type multi-select for non-intermediate flow', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities/register`);
 
-    // All 6 entity types should be shown as checkboxes
+    // Entity type selection is in Step 1 (config review), not Step 0 — advance there first.
+    await page.getByLabel(/subordinate id/i).fill('https://type-select-test.example.com');
+    await page.getByLabel('Trust Anchor').click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
+    await expect(
+      page.getByText(/configuration not available|configuration retrieved/i)
+    ).toBeVisible({ timeout: 15_000 });
+
+    // All 6 entity types should be shown as checkboxes in the config review step
     await expect(page.getByLabel(/openid provider/i)).toBeVisible();
     await expect(page.getByLabel(/relying party/i)).toBeVisible();
     await expect(page.getByLabel(/federation entity/i)).toBeVisible();
@@ -162,19 +174,19 @@ test.describe('Entities page @proxy', () => {
     const subordinateId = `https://e2e-type-label-test-${Date.now()}.example.com`;
     await page.getByLabel(/subordinate id/i).fill(subordinateId);
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
 
-    // Select oauth_client in addition to openid_provider
-    await page.getByLabel(/openid provider/i).check();
-    await page.getByLabel(/oauth client/i).check();
-
-    // Fetch config (will likely fail for fake URL, that's fine)
+    // Fetch config (will likely fail for fake URL, that's fine) — entity type selection is in Step 1
     await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
 
-    // Review step (config): friendly labels should appear scoped to the Subordinate Type container
+    // Select entity types in the config review step (Step 1)
+    await page.getByLabel(/openid provider/i).check();
+    await page.getByLabel(/oauth client/i).check();
+
+    // Config review: friendly labels should appear scoped to the Subordinate Type container
     const configTypeRow = page.locator('[data-testid="entity-type-display"]');
     await expect(configTypeRow.getByText(/openid provider/i)).toBeVisible();
     await expect(configTypeRow.getByText(/oauth client/i)).toBeVisible();
@@ -220,13 +232,14 @@ test.describe.serial('Approvals page @proxy', () => {
     await page.getByLabel(/subordinate id/i).fill(testSubordinateId);
 
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
 
     await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
 
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel(/openid provider/i).check();
     await page.getByRole('button', { name: 'Next' }).click();
 
     const displayName1 = `Approval Test Entity ${Date.now()}`;
@@ -251,13 +264,14 @@ test.describe.serial('Approvals page @proxy', () => {
     await page.getByLabel(/subordinate id/i).fill(testSubordinateId2);
 
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
 
     await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
 
     await expect(
       page.getByText(/configuration not available|configuration retrieved/i)
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel(/openid provider/i).check();
     await page.getByRole('button', { name: 'Next' }).click();
 
     const displayName2 = `Approval Test Entity2 ${Date.now()}`;

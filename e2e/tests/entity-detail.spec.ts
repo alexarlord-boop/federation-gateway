@@ -11,15 +11,17 @@ const APP_URL = process.env.APP_URL ?? 'http://localhost:8080';
 async function getFirstEntityHref(page: any): Promise<string | null> {
   await page.goto(`${APP_URL}/entities`);
   await expect(page.locator('table tbody')).toBeVisible({ timeout: 10_000 });
-  const link = page.locator('table tbody tr a[href*="/entities/"]').first();
-  return await link.getAttribute('href').catch(() => null);
+  const links = page.locator('table tbody tr a[href*="/entities/"]');
+  if (await links.count() === 0) return null;
+  return await links.first().getAttribute('href');
 }
 
 async function getEntityWithStatus(page: any, status: string): Promise<string | null> {
   await page.goto(`${APP_URL}/entities?status=${status}`);
   await expect(page.locator('table tbody')).toBeVisible({ timeout: 10_000 });
-  const link = page.locator('table tbody tr a[href*="/entities/"]').first();
-  return await link.getAttribute('href').catch(() => null);
+  const links = page.locator('table tbody tr a[href*="/entities/"]');
+  if (await links.count() === 0) return null;
+  return await links.first().getAttribute('href');
 }
 
 test.describe('Entity Detail Page @proxy', () => {
@@ -28,7 +30,7 @@ test.describe('Entity Detail Page @proxy', () => {
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
     await expect(page.getByRole('tab', { name: /overview/i })).toBeVisible();
-    await expect(page.getByText(/entity information/i)).toBeVisible();
+    await expect(page.getByText(/subordinate information/i)).toBeVisible();
   });
 
   test('metadata tab renders entity JSON with Edit JSON button', async ({ instancePage: page }) => {
@@ -114,13 +116,15 @@ test.describe('Entity Detail Page @proxy', () => {
   test('can delete an entity from detail page', async ({ instancePage: page }) => {
     // Register a throwaway entity first
     await page.goto(`${APP_URL}/entities`);
-    await page.getByRole('link', { name: /register entity/i }).click();
+    await page.locator('main').getByRole('link', { name: /register subordinate/i }).click();
     const entityId = `https://delete-test-${Date.now()}.example.com`;
-    await page.getByLabel(/entity id/i).fill(entityId);
+    await page.getByLabel(/subordinate id/i).fill(entityId);
     await page.getByLabel('Trust Anchor').click();
-    await page.getByRole('option', { name: /lighthouse/i }).click();
-    await page.getByRole('button', { name: /fetch entity configuration/i }).click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
     await expect(page.getByText(/configuration not available|configuration retrieved/i)).toBeVisible({ timeout: 15_000 });
+    // Config fetch fails for fake URL → must select entity type so Next is enabled
+    await page.getByLabel(/openid provider/i).check();
     await page.getByRole('button', { name: 'Next' }).click();
     await expect(page.getByLabel(/display name/i)).toBeVisible({ timeout: 5_000 });
     await page.getByLabel(/display name/i).fill('Delete Test Entity');

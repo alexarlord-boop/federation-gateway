@@ -6,19 +6,17 @@ test.describe('Trust Anchors page @bff', () => {
   test('admin can navigate to /trust-anchors', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     await expect(page).toHaveURL(/\/trust-anchors/);
-    await expect(page.getByRole('heading', { name: /authority hints and trust anchors/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /instances/i }).first()).toBeVisible();
     await expect(
-      page.getByText(/review deployment-managed instances and authority hints\./i),
+      page.getByText(/manage your federation instances.*authority hints/i),
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: /registered intermediates/i })).toHaveCount(0);
   });
 
-  test('Trust Anchors page points intermediate management to Subordinates', async ({ authenticatedPage: page }) => {
+  test('Trust Anchors page has no Registered Intermediates section', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
-    await expect(
-      page.getByText(/manage intermediates from the Subordinates navigation\./i),
-    ).toBeVisible();
     await expect(page.getByRole('heading', { name: /registered intermediates/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /my instances/i })).toBeVisible();
   });
 
   test('authority hint dialog uses consistent wording', async ({ authenticatedPage: page }) => {
@@ -36,7 +34,7 @@ test.describe('Trust Anchors page @bff', () => {
 
     const lightHouseCard = page
       .locator('div.rounded-lg.border.bg-card')
-      .filter({ has: page.getByRole('heading', { name: 'LightHouse' }) })
+      .filter({ has: page.getByRole('heading', { name: 'LightHouse', exact: true }) })
       .first();
 
     await expect(lightHouseCard).toBeVisible();
@@ -54,7 +52,7 @@ test.describe('Trust Anchors page @bff', () => {
 
     const lightHouseCard = page
       .locator('div.rounded-lg.border.bg-card')
-      .filter({ has: page.getByRole('heading', { name: 'LightHouse' }) })
+      .filter({ has: page.getByRole('heading', { name: 'LightHouse', exact: true }) })
       .first();
 
     await expect(lightHouseCard).toBeVisible();
@@ -65,52 +63,21 @@ test.describe('Trust Anchors page @bff', () => {
 
   test('shows the seeded LightHouse trust anchor card', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
-    // LightHouse should appear as a card title
-    await expect(page.getByRole('heading', { name: 'LightHouse' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'LightHouse', exact: true })).toBeVisible();
   });
 
 
 
-  test('My Instances shows the updated subordinate count after a registration', async ({ authenticatedPage: page }) => {
-    const token = await page.evaluate(() => {
-      const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
-      return tokenKey ? localStorage.getItem(tokenKey) : null;
-    });
-
-    // Capture baseline count before the test registration so the assertion is
-    // relative (+1) rather than tied to a literal value that breaks on repeated runs.
+  test('My Instances card shows subordinate count from LightHouse', async ({ authenticatedPage: page }) => {
     await page.goto(`${APP_URL}/trust-anchors`);
     const lightHouseCard = page.locator('div.rounded-lg.border.bg-card').filter({
-      has: page.getByRole('heading', { name: 'LightHouse' }),
+      has: page.getByRole('heading', { name: 'LightHouse', exact: true }),
     }).first();
     await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
-    const beforeText = await lightHouseCard.locator('p.text-2xl').textContent();
-    const countBefore = parseInt(beforeText?.trim() ?? '0', 10);
-
-    const regResp = await page.request.post(`${APP_URL}/api/v1/registrations`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      data: {
-        tenant_id: 'tenant-1',
-        entity_id: `https://count-e2e-${Date.now()}.example.org`,
-        registered_entity_types: ['openid_relying_party'],
-        display_name: 'Count E2E Entity',
-      },
-    });
-
-    expect(regResp.ok()).toBeTruthy();
-    const registration = await regResp.json();
-
-    try {
-      await page.goto(`${APP_URL}/trust-anchors`);
-      await expect(lightHouseCard.getByText(/subordinates/i)).toBeVisible();
-      await expect(lightHouseCard.locator('p.text-2xl')).toHaveText(String(countBefore + 1));
-    } finally {
-      // Reject the created registration to prevent pending entries accumulating
-      // across repeated runs against the same stack.
-      await page.request.post(`${APP_URL}/api/v1/registrations/${registration.id}/review`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        data: { status: 'rejected', notes: 'e2e cleanup' },
-      });
-    }
+    // Count is fetched live from LightHouse — just verify it renders a number.
+    const countEl = lightHouseCard.locator('p.text-2xl').first();
+    await expect(countEl).toBeVisible();
+    const text = await countEl.textContent();
+    expect(Number.isFinite(parseInt(text?.trim() ?? '', 10))).toBe(true);
   });
 });

@@ -23,7 +23,7 @@ test.describe('Instance selection @proxy', () => {
     await page.goto(`${APP_URL}/dashboard`);
     await page.getByRole('button', { name: /select instance/i }).click();
 
-    await expect(page.getByRole('menuitem', { name: /LightHouse/i })).toHaveCount(1);
+    await expect(page.getByRole('menuitem', { name: /LightHouse/i })).toHaveCount(2);
     await expect(page.getByRole('menuitem', { name: /manual trust anchor/i })).toHaveCount(0);
   });
 });

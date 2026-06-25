@@ -15,20 +15,19 @@ test.describe.serial('Settings mutations @proxy', () => {
 
     // Use a unique URL to avoid duplicate-rejection across test runs
     const uniqueHint = `https://ta-test-${Date.now()}.example.org`;
-    await expect(page.getByText(/authority hints/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /authority hints/i })).toBeVisible({ timeout: 5_000 });
     const hintInput = page.getByPlaceholder('https://superior-federation.example.org');
     await hintInput.fill(uniqueHint);
-    // Use CSS adjacent sibling — the Add button is a direct sibling of the input
-    await page.locator('input[placeholder="https://superior-federation.example.org"] + button').click();
+    await page.getByRole('button', { name: /^add$/i }).click();
     await expect(
-      page.getByText('Authority hint added').first()
+      page.getByText(/authority hint added/i).first()
     ).toBeVisible({ timeout: 5_000 });
   });
 
   test('can delete an authority hint', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/settings`);
     await page.getByRole('tab', { name: /general/i }).click();
-    await expect(page.getByText(/authority hints/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: /authority hints/i })).toBeVisible({ timeout: 5_000 });
 
     // Delete buttons on hint rows are icon-only (size="icon" → h-10 w-10, no accessible name).
     // Scope to the Authority Hints card via heading, then find the first trash icon button.

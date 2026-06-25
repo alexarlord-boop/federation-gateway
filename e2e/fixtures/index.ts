@@ -16,8 +16,8 @@ async function loginAsAdmin(page: Page) {
 async function selectInstance(page: Page, name = 'LightHouse') {
   await page.goto(`${APP_URL}/dashboard`);
   await page.getByRole('button', { name: /select instance|lighthouse/i }).click();
-  await page.getByRole('menuitem', { name: new RegExp(name, 'i') }).click();
-  await expect(page.getByRole('button', { name: new RegExp(name, 'i') })).toBeVisible();
+  await page.getByRole('menuitem', { name: new RegExp(name, 'i') }).first().click();
+  await expect(page.getByRole('button', { name: new RegExp(name, 'i') }).first()).toBeVisible();
 }
 
 type AuthFixtures = {
