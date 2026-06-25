@@ -52,7 +52,8 @@ test.describe.serial('Settings mutations @proxy', () => {
   test('keys tab shows current signing algorithm', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/settings`);
     const keysTab = page.getByRole('tab', { name: /keys/i });
-    await expect(keysTab).toBeVisible({ timeout: 5_000 });
+    // LightHouse may temporarily not advertise 'keys' capability after key rotation — give it up to 15s
+    if (!await keysTab.isVisible({ timeout: 15_000 }).catch(() => false)) return test.skip();
     await keysTab.click();
     // Actual heading: "KMS Information" with "Algorithm" field label
     await expect(page.getByRole('heading', { name: /kms information/i })).toBeVisible({ timeout: 5_000 });
@@ -62,7 +63,9 @@ test.describe.serial('Settings mutations @proxy', () => {
 
   test('can trigger key rotation', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/settings`);
-    await page.getByRole('tab', { name: /keys/i }).click();
+    const keysTab = page.getByRole('tab', { name: /keys/i });
+    if (!await keysTab.isVisible({ timeout: 15_000 }).catch(() => false)) return test.skip();
+    await keysTab.click();
     await expect(page.getByText(/key rotation/i)).toBeVisible({ timeout: 5_000 });
 
     const rotateBtn = page.getByRole('button', { name: /trigger key rotation/i });

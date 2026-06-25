@@ -78,7 +78,7 @@ test.describe('Entity Detail Page @proxy', () => {
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible({ timeout: 3_000 });
   });
 
-  test('can lock an active entity from detail page', async ({ instancePage: page }) => {
+  test('can block an active entity from detail page', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities`);
     await expect(page.locator('table tbody')).toBeVisible({ timeout: 10_000 });
     // Guard: count active rows first to avoid infinite getAttribute wait
@@ -89,28 +89,25 @@ test.describe('Entity Detail Page @proxy', () => {
     if (!href) return test.skip();
 
     await page.goto(`${APP_URL}${href}`);
-    const lockBtn = page.getByRole('button', { name: /^lock$/i });
-    await expect(lockBtn).toBeVisible({ timeout: 5_000 });
-    // Lock button opens a DropdownMenu — requires two clicks
-    await lockBtn.click();
-    const lockMenuItem = page.getByRole('menuitem', { name: /lock \(suspend/i });
-    await expect(lockMenuItem).toBeVisible({ timeout: 3_000 });
-    await lockMenuItem.click();
-    // GAP: if LightHouse rejects 'locked' status (valid: active/blocked/pending/inactive)
-    // then "Update Failed" appears instead of "Status Updated" — real product bug.
+    const blockBtn = page.getByRole('button', { name: /^block$/i });
+    await expect(blockBtn).toBeVisible({ timeout: 5_000 });
+    // Block button opens a DropdownMenu — requires two clicks
+    await blockBtn.click();
+    const blockMenuItem = page.getByRole('menuitem', { name: /block \(suspend/i });
+    await expect(blockMenuItem).toBeVisible({ timeout: 3_000 });
+    await blockMenuItem.click();
     await expect(page.getByText('Status Updated', { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('GAP: cannot change status of inactive entity from detail page', async ({ instancePage: page }) => {
-    // Find an inactive/rejected entity
+  test('can change status of inactive entity from detail page', async ({ instancePage: page }) => {
     const href = await getEntityWithStatus(page, 'inactive');
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
-    // The lock/unlock button is only shown for active/locked statuses
-    // An inactive entity has no status change UI — this is a gap
-    const lockBtn = page.getByRole('button', { name: /lock|unlock|activate/i });
-    await expect(lockBtn).not.toBeVisible({ timeout: 3_000 });
-    // There is no way to reactivate an inactive entity from the UI
+    // Inactive entities now have a "Change Status" dropdown with Set Active / Set Pending options
+    const changeStatusBtn = page.getByRole('button', { name: /change status/i });
+    await expect(changeStatusBtn).toBeVisible({ timeout: 5_000 });
+    await changeStatusBtn.click();
+    await expect(page.getByRole('menuitem', { name: /set active/i })).toBeVisible({ timeout: 3_000 });
   });
 
   test('can delete an entity from detail page', async ({ instancePage: page }) => {
