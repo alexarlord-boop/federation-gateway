@@ -46,7 +46,7 @@ const FEATURE_UI_MAP: Record<string, FeatureUIMapping> = {
   },
   trust_anchors: {
     description: 'Trust anchor and authority-hint management',
-    sidebar: ['TAs and IAs'],
+    sidebar: ['Instances'],
     pages: ['/trust-anchors'],
   },
   federation_trust_marks: {

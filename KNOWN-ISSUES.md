@@ -71,4 +71,4 @@ Items originally thought to need external collaboration were self-fixable:
 - Back navigation from entity detail works
 - Authority hint error details are surfaced in the UI toast
 - Entity status URL deep-link (`?status=`) works for bookmarkable/shareable filters
-- 64/65 e2e tests pass (1 skipped = ongoing UX gap: no direct "issue to entity" shortcut)
+- 106/109 e2e tests pass (3 skipped: 2 trust-marks UI spec gaps, 1 entity-detail no-direct-issue shortcut)

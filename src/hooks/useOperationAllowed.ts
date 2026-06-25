@@ -11,7 +11,7 @@
  *   const canCreate = useOperationAllowed('subordinates', 'create');
  *   const canDelete = useOperationAllowed('subordinates', 'delete');
  *   // …
- *   {canCreate && <Button>Register Entity</Button>}
+ *   {canCreate && <Button>Register Subordinate</Button>}
  */
 import { useCapabilities } from '@/contexts/CapabilityContext';
 

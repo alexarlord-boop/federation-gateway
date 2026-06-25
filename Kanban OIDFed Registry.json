@@ -23,7 +23,6 @@
         5671225207752203,
         2356343281548689,
         8763643198435375,
-        7446718823598252,
         7373198261365678
       ],
       "title": "In progress"
@@ -46,7 +45,8 @@
         4024965210053419,
         5390184443885517,
         6524173740898942,
-        3589223407319135
+        3589223407319135,
+        7446718823598252
       ],
       "title": "Done"
     },
@@ -302,7 +302,7 @@
       "tags": [
         "alex"
       ],
-      "title": " General product cleanup / repo cleanup - parked"
+      "title": "General product cleanup / repo cleanup"
     },
     "7446718823598252": {
       "body": "support global additional claims for a trust mark, fix broken subject-level custom claims, show existing claims correctly, and display subject descriptions where available",
@@ -310,7 +310,7 @@
       "tags": [
         "alex"
       ],
-      "title": "Trust mark issuance and claims management - parked"
+      "title": "Trust mark issuance and claims management"
     },
     "7494214942457418": {
       "body": "* [x] Keys & KMS\n* [x] Users & Authentication\n* [x] Entity Configuration(inc. metadata)\n* [x] Trust Marks\n* [x] Subordinates\n  * [x] Base & History\n  * [x] Keys & Lifetime\n  * [x] Metadata & Claims\n  * [x] Constraints\n  * [x] Policies & Statement\n* [x] Extra coverage\n  * [x] Tests Optimization\n  * [x] Extending current tests further\n  * [x] More tests (stats, entity trust marks, subordinate events, cache middlewares)",
