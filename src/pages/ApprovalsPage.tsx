@@ -35,7 +35,7 @@ const PLACEHOLDER_JWKS = {
 export default function ApprovalsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'decline' | null>(null);
   const { toast } = useToast();
   const updateStatus = useChangeSubordinateStatus();
   const { data: pendingEntities, isLoading: isLoadingPending } = useSubordinates(undefined, 'pending');
@@ -56,7 +56,7 @@ export default function ApprovalsPage() {
     if (!selectedRequest || !actionType) return;
     
     const newStatus = actionType === 'approve' ? 'active' : 'inactive';
-    
+
     try {
         try {
             await updateStatus.mutateAsync({ id: selectedRequest, status: newStatus });
@@ -70,7 +70,7 @@ export default function ApprovalsPage() {
             }
         }
         toast({
-            title: actionType === 'approve' ? 'Request Approved' : 'Request Rejected',
+            title: actionType === 'approve' ? 'Request Approved' : 'Request Declined',
             description: `The subordinate status has been set to ${newStatus}.`,
         });
     } catch (e) {
@@ -134,16 +134,16 @@ export default function ApprovalsPage() {
                   Review
                 </Link>
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={() => {
                   setSelectedRequest(entity.id);
-                  setActionType('reject');
+                  setActionType('decline');
                 }}
               >
                 <X className="w-4 h-4 mr-1" />
-                Reject
+                Decline
               </Button>
               <Button 
                 size="sm"
@@ -192,7 +192,7 @@ export default function ApprovalsPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="rejected">Declined</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -248,13 +248,13 @@ export default function ApprovalsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'approve' ? 'Approve' : 'Reject'} Request
+              {actionType === 'approve' ? 'Approve' : 'Decline'} Request
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to {actionType} this registration request?
-              {actionType === 'approve' 
-                ? ' The entity will be added to the federation.' 
-                : ' The entity will be notified of the rejection.'}
+              Are you sure you want to {actionType === 'approve' ? 'approve' : 'decline'} this registration request?
+              {actionType === 'approve'
+                ? ' The entity will be added to the federation.'
+                : ' The entity will be set to inactive.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -265,10 +265,10 @@ export default function ApprovalsPage() {
               Cancel
             </Button>
             <Button 
-              variant={actionType === 'reject' ? 'destructive' : 'default'}
+              variant={actionType === 'decline' ? 'destructive' : 'default'}
               onClick={handleAction}
             >
-              Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}
+              Confirm {actionType === 'approve' ? 'Approval' : 'Decline'}
             </Button>
           </DialogFooter>
         </DialogContent>

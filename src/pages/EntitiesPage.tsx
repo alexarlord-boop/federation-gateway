@@ -230,11 +230,6 @@ export default function EntitiesPage() {
                                 Block
                               </DropdownMenuItem>
                             )}
-                            {entity.status !== 'pending' && (
-                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'pending' })}>
-                                Set Pending
-                              </DropdownMenuItem>
-                            )}
                             {entity.status !== 'inactive' && (
                               <DropdownMenuItem onClick={() => updateStatus.mutate({ id: entity.id, status: 'inactive' })}>
                                 Set Inactive

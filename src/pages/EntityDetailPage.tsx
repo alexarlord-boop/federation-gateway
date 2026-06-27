@@ -624,12 +624,7 @@ export default function EntityDetailPage() {
                    )}
                    {entity.status === 'active' && (
                      <DropdownMenuItem onClick={() => handleStatusChange('blocked')}>
-                       <XCircle className="w-4 h-4 mr-2 text-warning" /> Block (Suspend Operations)
-                     </DropdownMenuItem>
-                   )}
-                   {entity.status !== 'pending' && (
-                     <DropdownMenuItem onClick={() => handleStatusChange('pending')}>
-                       Set Pending
+                       <XCircle className="w-4 h-4 mr-2 text-warning" /> Block
                      </DropdownMenuItem>
                    )}
                    {entity.status !== 'inactive' && (

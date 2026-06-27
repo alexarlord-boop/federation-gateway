@@ -93,7 +93,7 @@ test.describe('Entity Detail Page @proxy', () => {
     await expect(blockBtn).toBeVisible({ timeout: 5_000 });
     // Block button opens a DropdownMenu — requires two clicks
     await blockBtn.click();
-    const blockMenuItem = page.getByRole('menuitem', { name: /block \(suspend/i });
+    const blockMenuItem = page.getByRole('menuitem', { name: /^block$/i });
     await expect(blockMenuItem).toBeVisible({ timeout: 3_000 });
     await blockMenuItem.click();
     await expect(page.getByText('Status Updated', { exact: true })).toBeVisible({ timeout: 10_000 });
@@ -103,7 +103,7 @@ test.describe('Entity Detail Page @proxy', () => {
     const href = await getEntityWithStatus(page, 'inactive');
     if (!href) return test.skip();
     await page.goto(`${APP_URL}${href}`);
-    // Inactive entities now have a "Change Status" dropdown with Set Active / Set Pending options
+    // Inactive entities have a "Change Status" dropdown; valid transitions are: Set Active, Set Inactive removed (already inactive)
     const changeStatusBtn = page.getByRole('button', { name: /change status/i });
     await expect(changeStatusBtn).toBeVisible({ timeout: 5_000 });
     await changeStatusBtn.click();
