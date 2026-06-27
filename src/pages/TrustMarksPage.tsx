@@ -703,7 +703,7 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status}</Badge></TableCell>
+                    <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status === 'active' ? 'Active' : 'Inactive'}</Badge></TableCell>
                     <TableCell>
                       <Button
                         variant={isExpanded ? 'secondary' : 'ghost'}
