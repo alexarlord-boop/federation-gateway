@@ -62,11 +62,15 @@ export function EntityTypeBadge({ type, className, showFederationEntity = false 
   if (type === 'federation_entity' && !showFederationEntity) {
     return null;
   }
-  
-  const config = typeConfig[type];
-  
+
+  const config = typeConfig[type] ?? {
+    label: type,
+    short: type.split('_').map((w) => w[0]?.toUpperCase() ?? '').join(''),
+    className: 'bg-muted text-muted-foreground border border-muted',
+  };
+
   return (
-    <span 
+    <span
       className={cn('entity-badge', config.className, className)}
       title={config.label}
     >

@@ -25,15 +25,21 @@ export function EntityTypeMultiSelect({ selected, onChange }: EntityTypeMultiSel
       {ALL_ENTITY_TYPES.map((type) => {
         const id = `entity-type-${type}`;
         return (
-          <div key={type} className="flex items-center gap-2">
+          <div key={type} className="flex items-start gap-2">
             <Checkbox
               id={id}
+              className="mt-0.5"
               checked={selected.includes(type)}
               onCheckedChange={() => toggle(type)}
             />
-            <Label htmlFor={id} className="cursor-pointer font-normal">
-              {ENTITY_TYPE_LABELS[type]}
-            </Label>
+            <div>
+              <Label htmlFor={id} className="cursor-pointer font-normal">
+                {ENTITY_TYPE_LABELS[type]}
+              </Label>
+              {type === 'federation_entity' && (
+                <p className="text-xs text-muted-foreground leading-tight">Intermediate — federation-layer node with no protocol role</p>
+              )}
+            </div>
           </div>
         );
       })}

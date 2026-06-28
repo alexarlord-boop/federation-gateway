@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ClipboardCheck, Check, X, Eye, Loader2 } from 'lucide-react';
+import { EntityRoleBadges } from '@/components/ui/entity-type-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -86,11 +87,7 @@ export default function ApprovalsPage() {
   };
 
   const RequestCard = ({ entity, tabType }: { entity: any, tabType: 'pending' | 'approved' | 'rejected' }) => {
-    const entityRole = entity?.metadata?.federation_entity?.entity_role;
-    const typeLabels = (entity.registered_entity_types || [])
-      .filter((t: string) => t !== 'federation_entity')
-      .map((t: string) => (t === 'openid_provider' ? 'OP' : t === 'openid_relying_party' ? 'RP' : t));
-    const typeLine = typeLabels.length > 0 ? typeLabels.join(', ') : entityRole === 'intermediate' ? 'Intermediate' : 'Subordinate';
+    const registeredTypes: string[] = entity.registered_entity_types ?? [];
 
     return (
     <Card data-testid="request-card" className="hover:shadow-md transition-shadow mb-4">
@@ -117,9 +114,12 @@ export default function ApprovalsPage() {
                 <h3 className="font-semibold">{entity.description}</h3>
               )}
               <h3 className={entity.description ? "text-sm text-muted-foreground" : "font-semibold"}>{entity.entity_id}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {typeLine}
-                </p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {registeredTypes.length > 0
+                  ? <EntityRoleBadges types={registeredTypes} />
+                  : <span className="text-xs text-muted-foreground">Subordinate</span>
+                }
+              </div>
                <p className="text-xs text-muted-foreground mt-1">
                 ID: {entity.id}
               </p>

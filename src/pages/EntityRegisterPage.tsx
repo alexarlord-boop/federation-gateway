@@ -52,10 +52,13 @@ export default function EntityRegisterPage() {
   });
   const [fetchedConfig, setFetchedConfig] = useState<any>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  // Per OIDF spec §5.1.1: Intermediate MUST publish federation_fetch_endpoint;
-  // Leaf MUST NOT. Derive this from the fetched config, not from entity type selection.
-  // (A Trust Mark Issuer can also have federation_entity without being an Intermediate.)
-  const isIntermediate = !!(fetchedConfig?.metadata?.federation_entity?.federation_fetch_endpoint);
+  // Per OIDF spec §5.1.1: Intermediate MUST publish federation_fetch_endpoint.
+  // Auto-detect from fetched config when available; fall back to type selection when
+  // the fetch failed (operator manually selects only federation_entity to register
+  // a node whose well-known endpoint is temporarily unreachable).
+  const isIntermediate =
+    !!(fetchedConfig?.metadata?.federation_entity?.federation_fetch_endpoint) ||
+    (formData.entityTypes.length > 0 && formData.entityTypes.every((t) => t === 'federation_entity'));
   const pageTitle = isIntermediate ? 'Register Intermediate' : 'Register Subordinate';
   const pageDescription = isIntermediate
     ? 'Register an intermediate in the federation. The full configuration will be fetched from the well-known endpoint.'

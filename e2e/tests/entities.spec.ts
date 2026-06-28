@@ -167,6 +167,25 @@ test.describe('Entities page @proxy', () => {
     await expect(page.getByLabel(/oauth client/i)).toBeChecked();
   });
 
+  test('selecting only federation_entity type marks registration as intermediate', async ({ instancePage: page }) => {
+    await page.goto(`${APP_URL}/entities/register`);
+
+    await page.getByLabel(/subordinate id/i).fill('https://intermediate-manual-test.example.com');
+    await page.getByLabel('Trust Anchor').click();
+    await page.getByRole('option', { name: /lighthouse/i }).first().click();
+    await page.getByRole('button', { name: /fetch subordinate configuration/i }).click();
+    await expect(
+      page.getByText(/configuration not available|configuration retrieved/i)
+    ).toBeVisible({ timeout: 15_000 });
+
+    // Select only federation_entity — this signals an Intermediate node
+    await page.getByLabel(/federation entity/i).check();
+    await expect(page.getByLabel(/federation entity/i)).toBeChecked();
+
+    // Page heading should switch to "Register Intermediate"
+    await expect(page.getByRole('heading', { name: /register intermediate/i })).toBeVisible();
+  });
+
   test('registration review shows friendly entity-type labels', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/entities/register`);
 
@@ -342,7 +361,7 @@ test.describe.serial('Approvals page @proxy', () => {
     ).not.toBeAttached({ timeout: 10_000 });
   });
 
-  test('can reject a pending subordinate from approvals page', async ({ instancePage: page }) => {
+  test('can decline a pending subordinate from approvals page', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
     // Make sure we're on the pending tab
@@ -351,20 +370,20 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(pendingTab).toHaveAttribute('aria-selected', 'true');
 
     // Locate the card for subordinate 2 by its display name
-    const rejectCard = page.locator('article, [data-testid], .card, li')
+    const declineCard = page.locator('article, [data-testid], .card, li')
       .filter({ hasText: createdDisplayName2! })
-      .filter({ has: page.getByRole('button', { name: /reject/i }) });
-    await expect(rejectCard).toBeVisible({ timeout: 10_000 });
+      .filter({ has: page.getByRole('button', { name: /decline/i }) });
+    await expect(declineCard).toBeVisible({ timeout: 10_000 });
 
-    // Click the Reject button on that card
-    await rejectCard.getByRole('button', { name: /reject/i }).click();
+    // Click the Decline button on that card
+    await declineCard.getByRole('button', { name: /decline/i }).click();
 
     // Confirmation dialog should appear
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(/are you sure you want to reject/i)).toBeVisible();
+    await expect(page.getByText(/are you sure you want to decline/i)).toBeVisible();
 
-    // Click confirm rejection in dialog
-    const confirmButton = page.getByRole('button', { name: /confirm rejection/i });
+    // Click confirm decline in dialog
+    const confirmButton = page.getByRole('button', { name: /confirm decline/i });
     await confirmButton.click();
 
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
@@ -389,11 +408,11 @@ test.describe.serial('Approvals page @proxy', () => {
     await expect(panel.getByText(new RegExp(createdDisplayName1!, 'i'))).toBeVisible({ timeout: 10_000 });
   });
 
-  test('rejected subordinates appear in rejected tab', async ({ instancePage: page }) => {
+  test('declined subordinates appear in declined tab', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/approvals`);
 
-    // Click rejected tab
-    const rejectedTab = page.getByRole('tab', { name: /rejected/i });
+    // Click declined tab
+    const rejectedTab = page.getByRole('tab', { name: /declined/i });
     await rejectedTab.click();
     await expect(rejectedTab).toHaveAttribute('aria-selected', 'true');
 
