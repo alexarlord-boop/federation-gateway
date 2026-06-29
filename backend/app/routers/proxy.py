@@ -31,6 +31,7 @@ from app.auth.dependencies import get_current_user
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
 from app.models.user import User
+from app.utils import audit as audit_utils
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +228,27 @@ async def proxy(
             detail=f"Error communicating with Admin API: {exc}",
         )
 
-    # 6. Build response
+    # 6. Audit mutating actions that succeeded
+    if request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and upstream_response.is_success:
+        classification = audit_utils.classify_proxy_request(request.method, path)
+        if classification is not None:
+            action, resource_type = classification
+            # Best-effort: extract resource_id from the last path segment
+            resource_id = path.rstrip("/").rsplit("/", 1)[-1] if "/" in path else None
+            try:
+                audit_utils.record(
+                    db,
+                    user_id=str(user.id),
+                    user_email=user.email,
+                    action=action,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    tenant_id=instance_id,
+                )
+            except Exception:
+                logger.warning("Failed to write audit log entry", exc_info=True)
+
+    # 7. Build response
     response_headers: dict[str, str] = {}
     for key, value in upstream_response.headers.items():
         if key.lower() not in _RESPONSE_STRIP:

@@ -1,9 +1,9 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Shield, 
-  Users, 
-  ClipboardCheck, 
+import {
+  LayoutDashboard,
+  Shield,
+  Users,
+  ClipboardCheck,
   Award,
   Settings,
   LogOut,
@@ -11,6 +11,8 @@ import {
   Network,
   PanelLeftClose,
   ScanSearch,
+  BarChart3,
+  ScrollText,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
@@ -78,6 +80,16 @@ const sidebarSections: SidebarSection[] = [
         title: 'Chain Inspector',
         href: '/chain-inspector',
         icon: ScanSearch,
+      },
+      {
+        title: 'Stats',
+        href: '/stats',
+        icon: BarChart3,
+      },
+      {
+        title: 'Audit Log',
+        href: '/audit-log',
+        icon: ScrollText,
       },
     ],
   },

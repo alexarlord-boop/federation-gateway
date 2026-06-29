@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
 from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, users, instances
-from app.routers import resolve, tenants, tech_contacts, registrations
+from app.routers import resolve, tenants, tech_contacts, registrations, audit
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
 from app.config.deployment import load_deployment_config, resolve_deployment_config_path
@@ -11,6 +11,7 @@ import app.models.tenant          # noqa: F401
 import app.models.tech_contact    # noqa: F401
 import app.models.entity_registration  # noqa: F401
 import app.models.oidc_provider   # noqa: F401
+import app.models.audit_log       # noqa: F401
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -89,6 +90,7 @@ app.include_router(registrations.router)
 app.include_router(proxy.router)
 # Instance registry — lists deployment-managed instances
 app.include_router(instances.router)
+app.include_router(audit.router)
 
 
 @app.get("/health")

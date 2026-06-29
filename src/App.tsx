@@ -21,6 +21,8 @@ import TrustAnchorsPage from "./pages/TrustAnchorsPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import TrustMarksPage from "./pages/TrustMarksPage";
 import ChainInspectorPage from "./pages/ChainInspectorPage";
+import StatsPage from "./pages/StatsPage";
+import AuditLogPage from "./pages/AuditLogPage";
 import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
 import RBACManagementPage from "./pages/RBACManagementPage";
@@ -127,6 +129,8 @@ function AppRoutes() {
           </CapabilityGuard>
         } />
         <Route path="/chain-inspector" element={<ChainInspectorPage />} />
+        <Route path="/stats" element={<StatsPage />} />
+        <Route path="/audit-log" element={<AuditLogPage />} />
         <Route path="/users" element={
           <ProtectedRoute adminOnly>
             <UsersPage />

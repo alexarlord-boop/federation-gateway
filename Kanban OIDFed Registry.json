@@ -19,10 +19,7 @@
       "id": 12,
       "item": [
         1291669752092277,
-        2447942491169515,
-        5671225207752203,
-        2356343281548689,
-        8763643198435375
+        2447942491169515
       ],
       "title": "In progress"
     },
@@ -50,7 +47,10 @@
         7554260783770668,
         7570366842388113,
         2769423556673819,
-        4205132479327825
+        4205132479327825,
+        2356343281548689,
+        5671225207752203,
+        8763643198435375
       ],
       "title": "Done"
     },
@@ -149,7 +149,7 @@
       "tags": [
         "alex"
       ],
-      "title": "(UI) trust chain resolver page - parked"
+      "title": "(UI) trust chain resolver page"
     },
     "2447942491169515": {
       "body": "https://github.com/alexarlord-boop/federation-gateway",
@@ -255,7 +255,7 @@
       "tags": [
         "alex"
       ],
-      "title": "(UI) oidfed stats page - parked"
+      "title": "(UI) oidfed stats page"
     },
     "5994037793748267": {
       "body": "aimed for fedops\nonce done, reach out to eduGAIN testbed",
@@ -363,7 +363,7 @@
       "tags": [
         "alex"
       ],
-      "title": "(feature) audit log viewer - parked"
+      "title": "(feature) audit log viewer"
     }
   },
   "list": [
