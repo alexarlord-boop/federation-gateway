@@ -96,10 +96,20 @@ def test_pagination(client, admin_headers):
 
 
 def test_classify_proxy_request():
-    assert audit_utils.classify_proxy_request("POST", "admin/subordinates") == ("register", "subordinate")
-    assert audit_utils.classify_proxy_request("PATCH", "admin/subordinates/sub-123") == ("update_status", "subordinate")
-    assert audit_utils.classify_proxy_request("DELETE", "admin/subordinates/sub-123") == ("delete", "subordinate")
-    assert audit_utils.classify_proxy_request("POST", "admin/trust-marks/issuance/specs") == ("create", "trust_mark_spec")
-    assert audit_utils.classify_proxy_request("DELETE", "admin/trust-marks/issuance/specs/99") == ("delete", "trust_mark_spec")
-    assert audit_utils.classify_proxy_request("GET", "admin/subordinates") is None
-    assert audit_utils.classify_proxy_request("POST", "admin/unknown-endpoint") is None
+    # Subordinate register
+    assert audit_utils.classify_proxy_request("POST", "api/v1/admin/subordinates") == ("register", "subordinate")
+    # Status change — path ends in /status, not bare ID
+    assert audit_utils.classify_proxy_request("PATCH", "api/v1/admin/subordinates/123/status") == ("update_status", "subordinate")
+    # Delete — path ends at the ID
+    assert audit_utils.classify_proxy_request("DELETE", "api/v1/admin/subordinates/123") == ("delete", "subordinate")
+    # JWKS update
+    assert audit_utils.classify_proxy_request("POST", "api/v1/admin/subordinates/123/jwks") == ("update_jwks", "subordinate")
+    # Trust mark spec — correct path is issuance-spec (hyphen, singular)
+    assert audit_utils.classify_proxy_request("POST", "api/v1/admin/trust-marks/issuance-spec") == ("create", "trust_mark_spec")
+    assert audit_utils.classify_proxy_request("DELETE", "api/v1/admin/trust-marks/issuance-spec/99") == ("delete", "trust_mark_spec")
+    # Trust mark subject issue / revoke
+    assert audit_utils.classify_proxy_request("POST", "api/v1/admin/trust-marks/issuance-spec/5/subjects") == ("issue", "trust_mark")
+    assert audit_utils.classify_proxy_request("DELETE", "api/v1/admin/trust-marks/issuance-spec/5/subjects/7") == ("revoke", "trust_mark")
+    # Non-mutating and unknown paths → None
+    assert audit_utils.classify_proxy_request("GET", "api/v1/admin/subordinates") is None
+    assert audit_utils.classify_proxy_request("POST", "api/v1/admin/unknown-endpoint") is None
