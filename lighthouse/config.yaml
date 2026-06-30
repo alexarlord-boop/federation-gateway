@@ -35,3 +35,6 @@ endpoints:
     path: /list
   resolve:
     path: /resolve
+
+stats:
+  enabled: true

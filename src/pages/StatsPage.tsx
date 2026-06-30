@@ -1,12 +1,31 @@
-import { useMemo } from 'react';
-import { BarChart3, Building2, CheckCircle2, Clock, XCircle, Shield, Award, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { BarChart3, Activity, Clock, Users, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useSubordinates } from '@/hooks/useSubordinates';
-import { useTrustMarkSpecs } from '@/hooks/useTrustMarkIssuance';
-import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
+import { Button } from '@/components/ui/button';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
-import { ENTITY_TYPE_LABELS, type EntityType } from '@/components/ui/entity-type-badge';
+import {
+  useStatsSummary,
+  useStatsTimeseries,
+  useStatsTopEndpoints,
+  type TimeRange,
+} from '@/hooks/useStats';
+
+const RANGES: { label: string; value: TimeRange }[] = [
+  { label: '1h', value: '1h' },
+  { label: '24h', value: '24h' },
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+];
 
 function KpiCard({
   label,
@@ -16,7 +35,7 @@ function KpiCard({
   color = 'text-accent',
 }: {
   label: string;
-  value: number | string;
+  value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
   color?: string;
@@ -24,11 +43,11 @@ function KpiCard({
   return (
     <Card>
       <CardContent className="p-6 flex items-start gap-4">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted`}>
+        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <div>
-          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-2xl font-bold tabular-nums">{value}</p>
           <p className="text-sm font-medium">{label}</p>
           {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
         </div>
@@ -37,55 +56,30 @@ function KpiCard({
   );
 }
 
-function BarRow({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-sm">
-        <span>{label}</span>
-        <span className="font-medium tabular-nums">{count} <span className="text-muted-foreground font-normal">({pct}%)</span></span>
-      </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
+function fmt(n: number, decimals = 0) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toFixed(decimals);
+}
+
+function fmtTs(ts: string, range: TimeRange) {
+  const d = new Date(ts);
+  if (range === '1h') return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (range === '24h') return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function StatsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
-  const { data: subordinates, isLoading: subLoading } = useSubordinates();
-  const { specs, isLoading: specsLoading } = useTrustMarkSpecs();
-  const { trustMarkTypes, isLoading: typesLoading } = useTrustMarkTypes();
+  const instanceId = activeTrustAnchor?.id;
+  const [range, setRange] = useState<TimeRange>('24h');
 
-  const stats = useMemo(() => {
-    const subs = subordinates ?? [];
-    const total = subs.length;
-    const byStatus = {
-      active: subs.filter((s) => s.status === 'active').length,
-      pending: subs.filter((s) => s.status === 'pending').length,
-      blocked: subs.filter((s) => s.status === 'blocked').length,
-      inactive: subs.filter((s) => s.status === 'inactive').length,
-    };
+  const summary = useStatsSummary(instanceId, range);
+  const timeseries = useStatsTimeseries(instanceId, range);
+  const topEndpoints = useStatsTopEndpoints(instanceId, range);
 
-    // Entity-type distribution (one subordinate can have multiple types)
-    const typeCounts: Record<string, number> = {};
-    for (const s of subs) {
-      for (const t of s.registered_entity_types ?? []) {
-        typeCounts[t] = (typeCounts[t] ?? 0) + 1;
-      }
-    }
-
-    const intermediates = subs.filter(
-      (s) =>
-        (s.registered_entity_types ?? []).length > 0 &&
-        (s.registered_entity_types ?? []).every((t) => t === 'federation_entity'),
-    ).length;
-
-    return { total, byStatus, typeCounts, intermediates };
-  }, [subordinates]);
-
-  const isLoading = subLoading || specsLoading || typesLoading;
+  const isLoading = summary.isLoading;
+  const statsDisabled = summary.data === null && !summary.isLoading;
 
   if (!activeTrustAnchor) {
     return (
@@ -105,142 +99,175 @@ export default function StatsPage() {
     );
   }
 
-  const typeEntries = Object.entries(stats.typeCounts)
-    .sort(([, a], [, b]) => b - a);
+  if (statsDisabled) {
+    return (
+      <div className="text-center py-16">
+        <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Statistics Not Enabled</h3>
+        <p className="text-muted-foreground max-w-sm mx-auto text-sm">
+          Add <code className="bg-muted px-1 rounded">stats: enabled: true</code> to{' '}
+          <code className="bg-muted px-1 rounded">lighthouse/config.yaml</code> and restart to enable traffic metrics.
+        </p>
+      </div>
+    );
+  }
+
+  const s = summary.data?.summary;
+  const tsData = (timeseries.data?.timeseries ?? []).map((p) => ({
+    ...p,
+    label: fmtTs(p.ts, range),
+  }));
+  const endpoints = topEndpoints.data?.endpoints ?? [];
+  const totalEndpointRequests = endpoints.reduce((a, e) => a + e.count, 0);
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Federation Stats</h1>
-        <p className="text-muted-foreground mt-1">
-          Live counts for <span className="font-medium">{activeTrustAnchor.name}</span>
-        </p>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Federation Stats</h1>
+          <p className="text-muted-foreground mt-1">
+            Traffic metrics for <span className="font-medium">{activeTrustAnchor.name}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          {RANGES.map((r) => (
+            <Button
+              key={r.value}
+              size="sm"
+              variant={range === r.value ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setRange(r.value)}
+            >
+              {r.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
-      {/* KPI row */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total Subordinates" value={stats.total} icon={Building2} />
         <KpiCard
-          label="Active"
-          value={stats.byStatus.active}
-          sub={`${stats.total > 0 ? Math.round((stats.byStatus.active / stats.total) * 100) : 0}% of total`}
-          icon={CheckCircle2}
-          color="text-success"
+          label="Total Requests"
+          value={fmt(s?.total_requests ?? 0)}
+          icon={Activity}
+          color="text-accent"
         />
         <KpiCard
-          label="Pending Approval"
-          value={stats.byStatus.pending}
+          label="Error Rate"
+          value={`${((s?.error_rate ?? 0) * 100).toFixed(1)}%`}
+          sub={`${fmt(s?.total_errors ?? 0)} errors`}
+          icon={AlertCircle}
+          color={(s?.error_rate ?? 0) > 0.05 ? 'text-destructive' : 'text-success'}
+        />
+        <KpiCard
+          label="Avg / P95 Latency"
+          value={`${fmt(s?.avg_latency_ms ?? 0, 1)} ms`}
+          sub={`p95: ${fmt(s?.p95_latency_ms ?? 0, 1)} ms`}
           icon={Clock}
-          color="text-warning"
-        />
-        <KpiCard
-          label="Intermediates"
-          value={stats.intermediates}
-          sub="Federation-only nodes"
-          icon={Shield}
           color="text-primary"
         />
+        <KpiCard
+          label="Unique Clients"
+          value={fmt(s?.unique_clients ?? 0)}
+          sub={`${fmt(s?.unique_user_agents ?? 0)} user agents`}
+          icon={Users}
+          color="text-warning"
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Status breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <BarRow label="Active" count={stats.byStatus.active} total={stats.total} color="bg-success" />
-            <BarRow label="Pending" count={stats.byStatus.pending} total={stats.total} color="bg-warning" />
-            <BarRow label="Blocked" count={stats.byStatus.blocked} total={stats.total} color="bg-destructive" />
-            <BarRow label="Inactive" count={stats.byStatus.inactive} total={stats.total} color="bg-muted-foreground" />
-          </CardContent>
-        </Card>
+      {/* Timeseries chart */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-base">Request Traffic</CardTitle>
+          {timeseries.isFetching && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
+        </CardHeader>
+        <CardContent>
+          {tsData.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
+              No traffic data for this period
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={tsData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ fontSize: 12 }}
+                  labelFormatter={(l) => `Time: ${l}`}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  name="Requests"
+                  strokeWidth={2}
+                  dot={false}
+                  stroke="hsl(var(--accent))"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="errors"
+                  name="Errors"
+                  strokeWidth={1.5}
+                  dot={false}
+                  stroke="hsl(var(--destructive))"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Entity-type distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Entity-Type Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {typeEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No entity type data.</p>
-            ) : (
-              <div className="space-y-4">
-                {typeEntries.map(([type, count]) => (
-                  <BarRow
-                    key={type}
-                    label={ENTITY_TYPE_LABELS[type as EntityType] ?? type.replace(/_/g, ' ')}
-                    count={count}
-                    total={stats.total}
-                    color="bg-accent"
-                  />
-                ))}
-                <p className="text-xs text-muted-foreground pt-1">
-                  Subordinates may have multiple types — percentages are of total subordinate count.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Trust marks summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Award className="w-4 h-4" />
-              Trust Mark Coverage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Registered types</span>
-              <Badge variant="secondary">{trustMarkTypes.length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Issuance specs</span>
-              <Badge variant="secondary">{specs.length}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Coverage ratio</span>
-              <Badge variant="secondary">
-                {stats.total > 0
-                  ? `${Math.min(specs.length, stats.total)} / ${stats.total}`
-                  : '—'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Blocked / inactive summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <XCircle className="w-4 h-4 text-destructive" />
-              Attention Needed
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Pending approvals</span>
-              <Badge variant={stats.byStatus.pending > 0 ? 'default' : 'secondary'}>
-                {stats.byStatus.pending}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Blocked entities</span>
-              <Badge variant={stats.byStatus.blocked > 0 ? 'destructive' : 'secondary'}>
-                {stats.byStatus.blocked}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Inactive entities</span>
-              <Badge variant="secondary">{stats.byStatus.inactive}</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Top endpoints */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top Endpoints</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {endpoints.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-6">No endpoint data for this period.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="py-2 px-4 text-left text-xs font-medium text-muted-foreground">Endpoint</th>
+                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Requests</th>
+                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Errors</th>
+                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Avg Latency</th>
+                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {endpoints.map((ep, i) => {
+                  const pct = totalEndpointRequests > 0 ? (ep.count / totalEndpointRequests) * 100 : 0;
+                  return (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-2.5 px-4 font-mono text-xs">{ep.endpoint}</td>
+                      <td className="py-2.5 px-4 text-right tabular-nums">{fmt(ep.count)}</td>
+                      <td className="py-2.5 px-4 text-right tabular-nums text-destructive">
+                        {ep.error_count > 0 ? fmt(ep.error_count) : '—'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                        {fmt(ep.avg_latency_ms, 1)} ms
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{pct.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
