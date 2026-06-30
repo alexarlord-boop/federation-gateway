@@ -18,7 +18,7 @@ _PATH_RULES: list[tuple[str, str, str, str]] = [
 
     # ── Subordinates ──────────────────────────────────────────────────────────
     ("POST",   r"subordinates$",                              "register",           "subordinate"),
-    ("PATCH",  r"subordinates/[^/]+/status$",                 "update_status",      "subordinate"),
+    ("PUT",    r"subordinates/[^/]+/status$",                  "update_status",      "subordinate"),
     ("DELETE", r"subordinates/[^/]+$",                        "delete",             "subordinate"),
     # JWKS
     ("POST",   r"subordinates/[^/]+/jwks$",                   "update_jwks",        "subordinate"),
@@ -43,7 +43,7 @@ _PATH_RULES: list[tuple[str, str, str, str]] = [
     ("DELETE", r"trust-marks/issuance-spec/[^/]+$",           "delete",             "trust_mark_spec"),
     # Trust mark subjects
     ("POST",   r"trust-marks/issuance-spec/[^/]+/subjects$",  "issue",              "trust_mark"),
-    ("PATCH",  r"trust-marks/issuance-spec/[^/]+/subjects/[^/]+/status$", "update_status", "trust_mark"),
+    ("PUT",    r"trust-marks/issuance-spec/[^/]+/subjects/[^/]+/status$", "update_status", "trust_mark"),
     ("DELETE", r"trust-marks/issuance-spec/[^/]+/subjects/[^/]+$", "revoke",        "trust_mark"),
 ]
 

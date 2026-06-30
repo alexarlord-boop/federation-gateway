@@ -98,8 +98,8 @@ def test_pagination(client, admin_headers):
 def test_classify_proxy_request():
     # Subordinate register
     assert audit_utils.classify_proxy_request("POST", "api/v1/admin/subordinates") == ("register", "subordinate")
-    # Status change — path ends in /status, not bare ID
-    assert audit_utils.classify_proxy_request("PATCH", "api/v1/admin/subordinates/123/status") == ("update_status", "subordinate")
+    # Status change — PUT to /status (the generated client uses PUT, not PATCH)
+    assert audit_utils.classify_proxy_request("PUT", "api/v1/admin/subordinates/123/status") == ("update_status", "subordinate")
     # Delete — path ends at the ID
     assert audit_utils.classify_proxy_request("DELETE", "api/v1/admin/subordinates/123") == ("delete", "subordinate")
     # JWKS update
