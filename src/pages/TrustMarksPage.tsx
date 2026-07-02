@@ -781,7 +781,7 @@ function FederationTrustMarksTab() {
 
 export default function TrustMarksPage() {
   const { activeTrustAnchor } = useTrustAnchor();
-  const { isFeatureEnabled } = useCapabilities();
+  const { isFeatureEnabled, capabilities } = useCapabilities();
 
   const showSelf = isFeatureEnabled('entity_configuration_trust_marks');
   const showFederation = isFeatureEnabled('federation_trust_marks');
@@ -822,16 +822,22 @@ export default function TrustMarksPage() {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList>
-          {showSelf && <TabsTrigger value="self">My Trust Marks</TabsTrigger>}
-          {showFederation && <TabsTrigger value="federation">Federation Trust Marks</TabsTrigger>}
-          {showIssuance && <TabsTrigger value="issuance">Issuance</TabsTrigger>}
-        </TabsList>
-        {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
-        {showFederation && <TabsContent value="federation"><FederationTrustMarksTab /></TabsContent>}
-        {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
-      </Tabs>
+      {capabilities ? (
+        <Tabs defaultValue={defaultTab} className="space-y-6">
+          <TabsList>
+            {showSelf && <TabsTrigger value="self">My Trust Marks</TabsTrigger>}
+            {showFederation && <TabsTrigger value="federation">Federation Trust Marks</TabsTrigger>}
+            {showIssuance && <TabsTrigger value="issuance">Issuance</TabsTrigger>}
+          </TabsList>
+          {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
+          {showFederation && <TabsContent value="federation"><FederationTrustMarksTab /></TabsContent>}
+          {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
+        </Tabs>
+      ) : (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      )}
     </div>
   );
 }
