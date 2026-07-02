@@ -77,7 +77,7 @@ export function useStatsSummary(instanceId: string | undefined, range: TimeRange
     queryFn: () =>
       gatewayFetch<StatsSummaryResponse>({
         path: `${proxyPath(instanceId!, 'summary')}?from=${encodeURIComponent(from)}`,
-        softFail: [404, 501],
+        softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
     refetchInterval: 60_000,
@@ -93,7 +93,7 @@ export function useStatsTimeseries(instanceId: string | undefined, range: TimeRa
     queryFn: () =>
       gatewayFetch<StatsTimeseriesResponse>({
         path: `${proxyPath(instanceId!, 'timeseries')}?from=${encodeURIComponent(from)}&interval=${interval}`,
-        softFail: [404, 501],
+        softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
     refetchInterval: 60_000,
@@ -108,7 +108,7 @@ export function useStatsTopEndpoints(instanceId: string | undefined, range: Time
     queryFn: () =>
       gatewayFetch<StatsTopEndpointsResponse>({
         path: `${proxyPath(instanceId!, 'top/endpoints')}?from=${encodeURIComponent(from)}&limit=${limit}`,
-        softFail: [404, 501],
+        softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
     refetchInterval: 60_000,

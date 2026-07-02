@@ -40,8 +40,22 @@ RUN echo 'server { \
         proxy_set_header X-Forwarded-Proto $scheme; \
     } \
     \
+    # Hashed assets (JS/CSS/fonts) — cache forever, filename changes on rebuild \
+    location ~* \\.(?:js|css|woff2?|ttf|eot|svg|png|ico|webp)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, max-age=31536000, immutable"; \
+        try_files $uri =404; \
+    } \
+    \
+    # HTML — never cache so the browser always fetches the current entry point \
+    location ~* \\.html$ { \
+        add_header Cache-Control "no-store, no-cache, must-revalidate"; \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
     # SPA routing \
     location / { \
+        add_header Cache-Control "no-store, no-cache, must-revalidate"; \
         try_files $uri $uri/ /index.html; \
     } \
 }' > /etc/nginx/conf.d/default.conf
