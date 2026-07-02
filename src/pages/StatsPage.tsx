@@ -1,21 +1,10 @@
 import { useState } from 'react';
-import { BarChart3, Activity, Clock, Users, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
+import { BarChart3, Activity, Clock, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import {
   useStatsSummary,
-  useStatsTimeseries,
   useStatsTopEndpoints,
   type TimeRange,
 } from '@/hooks/useStats';
@@ -62,11 +51,24 @@ function fmt(n: number, decimals = 0) {
   return n.toFixed(decimals);
 }
 
-function fmtTs(ts: string, range: TimeRange) {
-  const d = new Date(ts);
-  if (range === '1h') return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  if (range === '24h') return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const STATUS_COLORS: Record<string, string> = {
+  '200': 'bg-green-500',
+  '201': 'bg-green-400',
+  '400': 'bg-yellow-400',
+  '401': 'bg-orange-400',
+  '403': 'bg-orange-500',
+  '404': 'bg-yellow-500',
+  '500': 'bg-red-500',
+  '502': 'bg-red-400',
+  '503': 'bg-red-400',
+};
+
+function statusColor(code: string) {
+  if (STATUS_COLORS[code]) return STATUS_COLORS[code];
+  if (code.startsWith('2')) return 'bg-green-400';
+  if (code.startsWith('3')) return 'bg-blue-400';
+  if (code.startsWith('4')) return 'bg-yellow-400';
+  return 'bg-red-400';
 }
 
 export default function StatsPage() {
@@ -75,7 +77,6 @@ export default function StatsPage() {
   const [range, setRange] = useState<TimeRange>('24h');
 
   const summary = useStatsSummary(instanceId, range);
-  const timeseries = useStatsTimeseries(instanceId, range);
   const topEndpoints = useStatsTopEndpoints(instanceId, range);
 
   const isLoading = summary.isLoading;
@@ -113,10 +114,8 @@ export default function StatsPage() {
   }
 
   const s = summary.data?.summary;
-  const tsData = (timeseries.data?.timeseries ?? []).map((p) => ({
-    ...p,
-    label: fmtTs(p.ts, range),
-  }));
+  const byStatus = Object.entries(s?.requests_by_status ?? {}).sort((a, b) => a[0].localeCompare(b[0]));
+  const totalForPct = byStatus.reduce((acc, [, v]) => acc + v, 0);
   const endpoints = topEndpoints.data?.endpoints ?? [];
   const totalEndpointRequests = endpoints.reduce((a, e) => a + e.count, 0);
 
@@ -176,46 +175,43 @@ export default function StatsPage() {
         />
       </div>
 
-      {/* Timeseries chart */}
+      {/* Status breakdown */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base">Request Traffic</CardTitle>
-          {timeseries.isFetching && <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />}
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Requests by Status</CardTitle>
         </CardHeader>
         <CardContent>
-          {tsData.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
-              No traffic data for this period
+          {byStatus.length === 0 ? (
+            <div className="flex items-center justify-center h-16 text-sm text-muted-foreground">
+              No data for this period
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={tsData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 12 }}
-                  labelFormatter={(l) => `Time: ${l}`}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  name="Requests"
-                  strokeWidth={2}
-                  dot={false}
-                  stroke="hsl(var(--accent))"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="errors"
-                  name="Errors"
-                  strokeWidth={1.5}
-                  dot={false}
-                  stroke="hsl(var(--destructive))"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              {/* Stacked bar */}
+              <div className="flex h-4 rounded-full overflow-hidden gap-px">
+                {byStatus.map(([code, count]) => (
+                  <div
+                    key={code}
+                    className={`${statusColor(code)} transition-all`}
+                    style={{ width: `${(count / totalForPct) * 100}%` }}
+                    title={`HTTP ${code}: ${count}`}
+                  />
+                ))}
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {byStatus.map(([code, count]) => (
+                  <div key={code} className="flex items-center gap-2 text-sm">
+                    <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${statusColor(code)}`} />
+                    <span className="font-mono text-xs text-muted-foreground">HTTP {code}</span>
+                    <span className="font-medium tabular-nums">{fmt(count)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {totalForPct > 0 ? `${((count / totalForPct) * 100).toFixed(0)}%` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
