@@ -234,8 +234,6 @@ export default function StatsPage() {
                 <tr className="border-b bg-muted/50">
                   <th className="py-2 px-4 text-left text-xs font-medium text-muted-foreground">Endpoint</th>
                   <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Requests</th>
-                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Errors</th>
-                  <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Avg Latency</th>
                   <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Share</th>
                 </tr>
               </thead>
@@ -244,14 +242,8 @@ export default function StatsPage() {
                   const pct = totalEndpointRequests > 0 ? (ep.count / totalEndpointRequests) * 100 : 0;
                   return (
                     <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-2.5 px-4 font-mono text-xs">{ep.endpoint}</td>
+                      <td className="py-2.5 px-4 font-mono text-xs">{ep.value}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums">{fmt(ep.count)}</td>
-                      <td className="py-2.5 px-4 text-right tabular-nums text-destructive">
-                        {ep.error_count > 0 ? fmt(ep.error_count) : '—'}
-                      </td>
-                      <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
-                        {fmt(ep.avg_latency_ms, 1)} ms
-                      </td>
                       <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">

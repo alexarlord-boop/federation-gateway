@@ -36,10 +36,8 @@ export interface StatsTimeseriesResponse {
 }
 
 export interface TopEndpointItem {
-  endpoint: string;
+  value: string;
   count: number;
-  error_count: number;
-  avg_latency_ms: number;
 }
 
 export interface StatsTopEndpointsResponse {
