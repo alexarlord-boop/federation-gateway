@@ -42,16 +42,16 @@ export function JwtDetailDialog({ jwt, open, onClose }: Props) {
         {payload ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {payload.id && (
+              {payload.trust_mark_type && (
                 <div className="col-span-2 space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Trust Mark Type (id)
+                    Trust Mark Type
                   </Label>
                   <div className="flex items-center gap-1">
                     <p className="font-mono text-xs break-all bg-muted/50 px-2 py-1.5 rounded flex-1">
-                      {String(payload.id)}
+                      {String(payload.trust_mark_type)}
                     </p>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copy(String(payload.id))}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copy(String(payload.trust_mark_type))}>
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>

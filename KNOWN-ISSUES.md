@@ -55,6 +55,14 @@ Items originally thought to need external collaboration were self-fixable:
 - [x] ~~**Authority hint validation silently drops error detail**~~  
   **Fixed:** `handleAdd` in `AuthorityHintsSection` now surfaces `err?.body?.detail` in the error toast so operators see actionable validation messages. (`src/pages/SettingsPage.tsx`)
 
+- [x] ~~**Public `federation_trust_mark_endpoint`/`_list`/`_status` were never advertised or served**~~  
+  **Found by:** comparing our own instance's entity configuration against real eduGAIN federations on `testbed.oidf.lab.surf.nl` — every real trust anchor there advertises these three endpoints; ours advertised none, and hitting `/trust_mark` returned a bare 404 rather than a spec-compliant `invalid_request`. Root cause: `lighthouse/config.yaml` / `lighthouse2/config.yaml` only enabled `fetch`, `list`, `resolve` under `endpoints:` — LightHouse supports `trust_mark`, `trust_mark_status`, `trust_mark_list` the same way but they were never turned on.  
+  **Fixed:** added the three endpoint entries to both config files. Verified: issued a mark to a real testbed subject entity and round-tripped it through our own instance's public `/trust_mark` endpoint successfully (matches the shape of real federation responses: `alg: ES512`, `typ: trust-mark+jwt`). Without this, marks we issue are only visible in our own admin UI — never resolvable by an external relying party querying the standard federation protocol.
+
+- [x] ~~**Trust mark JWT viewer decoded the wrong claim for the trust mark type**~~  
+  **Found by:** the round-trip above — the real JWT LightHouse returns uses the claim `trust_mark_type`, not `id`. `jwt-utils.ts`'s `TrustMarkPayload` type and `JwtDetailDialog.tsx` assumed `id` (an older/different spec draft's claim name), so the "Trust Mark Type" field in the JWT detail dialog was always blank for every real issued mark — silently, since no test ever opened that dialog and asserted on its content.  
+  **Fixed:** `src/lib/jwt-utils.ts`, `src/components/trust-marks/JwtDetailDialog.tsx`, `src/components/trust-marks/SelfTrustMarksTab.tsx` now read `trust_mark_type`. Added `e2e/tests/trust-marks-testbed-validation.spec.ts` (opt-in via `RUN_TESTBED_TESTS=1`, skips gracefully if the testbed is unreachable) which issues a mark to a real testbed entity, fetches it back via the public endpoint, and asserts the correct claim names — guarding this regression going forward.
+
 ---
 
 ## ✅ Confirmed working (from e2e tests)

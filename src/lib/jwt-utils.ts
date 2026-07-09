@@ -4,13 +4,16 @@
  * Parses and analyses Trust Mark JWTs WITHOUT signature validation.
  * Validation is the responsibility of the federation server itself.
  *
- * Per OIDF §5 the Trust Mark payload carries:
- *   iss  — issuer entity identifier
- *   sub  — subject entity identifier (the entity holding the mark)
- *   id   — trust mark type identifier
- *   iat  — issued-at UNIX timestamp
- *   exp  — optional expiry UNIX timestamp
- *   ref  — optional URL reference
+ * Confirmed against LightHouse 0.20.0's actual `/trust_mark` endpoint output
+ * (round-tripped against a real testbed subject) — the trust mark type claim
+ * is `trust_mark_type`, not `id`.
+ *
+ *   iss              — issuer entity identifier
+ *   sub              — subject entity identifier (the entity holding the mark)
+ *   trust_mark_type  — trust mark type identifier
+ *   iat              — issued-at UNIX timestamp
+ *   exp              — optional expiry UNIX timestamp
+ *   ref              — optional URL reference
  */
 
 export type TrustMarkPayload = {
@@ -19,7 +22,7 @@ export type TrustMarkPayload = {
   /** Subject (entity that holds the mark) */
   sub?: string;
   /** Trust mark type identifier URI */
-  id?: string;
+  trust_mark_type?: string;
   /** Issued-at */
   iat?: number;
   /** Expiry */

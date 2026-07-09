@@ -436,7 +436,7 @@ export function SelfTrustMarksTab() {
               {trustMarks.map(tm => {
                 const payload = tm.trust_mark ? decodeTrustMarkJwt(tm.trust_mark) : null;
                 const validity = getTrustMarkValidity(payload);
-                const typeLabel = payload?.id ?? tm.trust_mark_type ?? '—';
+                const typeLabel = payload?.trust_mark_type ?? tm.trust_mark_type ?? '—';
                 const isSelfIssued = !!tm.self_issuance_spec;
                 const issuerLabel = isSelfIssued ? '(self-issued)' : (payload?.iss ?? tm.trust_mark_issuer ?? '—');
 
