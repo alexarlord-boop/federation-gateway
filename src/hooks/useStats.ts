@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 import { getAccessToken } from '@/lib/token-manager';
 import { GATEWAY_BASE } from '@/lib/api-config';
@@ -24,9 +24,10 @@ export interface StatsSummaryResponse {
 }
 
 export interface TimeseriesPoint {
-  ts: string;
-  count: number;
-  errors: number;
+  timestamp: string;
+  request_count: number;
+  error_count: number;
+  avg_latency_ms: number;
 }
 
 export interface StatsTimeseriesResponse {
@@ -138,6 +139,9 @@ export function useStatsTimeseries(instanceId: string | undefined, range: TimeRa
         softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
+    // Keep the previous chart on screen (at reduced opacity in the UI) while a
+    // new range loads, instead of flashing to a loading state.
+    placeholderData: keepPreviousData,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });

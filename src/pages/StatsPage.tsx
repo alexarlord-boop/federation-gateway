@@ -3,6 +3,10 @@ import {
   BarChart3, Activity, Clock, Users, AlertCircle, Loader2, Download,
   Monitor, Network, SlidersHorizontal, Globe, TriangleAlert, ChevronDown,
 } from 'lucide-react';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, Legend,
+} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +22,7 @@ import {
   useStatsTopCountries,
   useStatsTopParams,
   useStatsLatency,
+  useStatsTimeseries,
   downloadStatsExport,
   type TimeRange,
   type TopItem,
@@ -143,6 +148,109 @@ function TopListCard({
               })}
             </tbody>
           </table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatTick(ts: string, interval: string) {
+  const d = new Date(ts);
+  if (interval === 'minute' || interval === 'hour') {
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function TimeseriesTooltip({ active, payload, label, interval }: {
+  active?: boolean;
+  payload?: { dataKey: string; name: string; value: number; color: string }[];
+  label?: string;
+  interval: string;
+}) {
+  if (!active || !payload?.length || !label) return null;
+  return (
+    <div className="rounded-md border bg-popover px-3 py-2 shadow-md text-xs min-w-[140px]">
+      <p className="text-muted-foreground mb-1.5">{formatTick(label, interval)}</p>
+      <div className="space-y-1">
+        {payload.map((p) => (
+          <div key={p.dataKey} className="flex items-center gap-2">
+            <span className="inline-block w-3 h-0.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+            <span className="text-muted-foreground">{p.name}</span>
+            <span className="font-semibold tabular-nums text-foreground ml-auto">{fmt(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RequestsTimeseriesChart({ instanceId, range }: { instanceId: string | undefined; range: TimeRange }) {
+  const timeseries = useStatsTimeseries(instanceId, range);
+  const points = timeseries.data?.timeseries ?? [];
+  const interval = timeseries.data?.interval ?? 'hour';
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Requests Over Time</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {timeseries.isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : points.length === 0 ? (
+          <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
+            No data for this period
+          </div>
+        ) : (
+          <div style={{ opacity: timeseries.isPlaceholderData ? 0.5 : 1, transition: 'opacity 150ms' }}>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={points} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={(v) => formatTick(v, interval)}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={false}
+                  minTickGap={32}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                  tickFormatter={(v) => fmt(v)}
+                />
+                <RechartsTooltip
+                  content={<TimeseriesTooltip interval={interval} />}
+                  cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                />
+                <Legend verticalAlign="top" align="right" height={28} iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="request_count"
+                  name="Total Requests"
+                  stroke="hsl(var(--accent))"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: 'hsl(var(--card))' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="error_count"
+                  name="Errors"
+                  stroke="hsl(var(--chart-line-2))"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: 'hsl(var(--card))' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -283,6 +391,9 @@ export default function StatsPage() {
           color="text-warning"
         />
       </div>
+
+      {/* Requests over time */}
+      <RequestsTimeseriesChart instanceId={instanceId} range={range} />
 
       {/* Latency percentiles */}
       <Card>
@@ -439,8 +550,6 @@ export default function StatsPage() {
           Daily aggregates (<code className="bg-muted px-1 rounded">stats/daily</code>) are
           unavailable — LightHouse returns an empty result even with real traffic in range.
           Reported upstream; not something this gateway can fix.
-          (<code className="bg-muted px-1 rounded">stats/timeseries</code> was affected by the
-          same class of bug but is now fixed upstream — not yet wired into this page.)
         </p>
       </div>
     </div>
