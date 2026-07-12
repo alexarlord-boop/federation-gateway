@@ -21,7 +21,7 @@ services:
     depends_on:
       - backend
   lighthouse:
-    image: oidfed/lighthouse@sha256:e7fe82e7d347a6f279b81639d0444c60fa47f01aca82b27590541dfa9edec6be
+    image: oidfed/lighthouse@sha256:fd4d64df17d582d4e2f4e47f17a585d4a86cf8e66bf18d833515817557f973e5
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -37,7 +37,7 @@ services:
 
   # Second LightHouse instance — serves as a second federation Trust Anchor on port 8082.
   lighthouse2:
-    image: oidfed/lighthouse@sha256:e7fe82e7d347a6f279b81639d0444c60fa47f01aca82b27590541dfa9edec6be
+    image: oidfed/lighthouse@sha256:fd4d64df17d582d4e2f4e47f17a585d4a86cf8e66bf18d833515817557f973e5
     restart: unless-stopped
     entrypoint:
       - /bin/sh
