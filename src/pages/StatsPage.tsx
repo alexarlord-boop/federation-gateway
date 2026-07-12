@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import {
@@ -84,30 +83,6 @@ function statusColor(code: string) {
   if (code.startsWith('3')) return 'bg-blue-400';
   if (code.startsWith('4')) return 'bg-yellow-400';
   return 'bg-red-400';
-}
-
-/** Small inline caveat shown above panels sourced from LightHouse's per-request
- * endpoint-path log, which has a known upstream data-corruption bug under
- * concurrent request bursts (short paths can pick up a trailing fragment of a
- * previous, longer path — e.g. "fetch-known/openid-federation"). Not fixable
- * on our side; flagging so the data isn't mistaken for our own bug. */
-function EndpointLogCaveat() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-help">
-          <TriangleAlert className="w-3.5 h-3.5 text-warning" />
-          known data issue
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs text-xs">
-        LightHouse's request-path logging has a concurrency bug: under simultaneous
-        requests, a shorter path can pick up trailing characters from a previous,
-        longer path (e.g. "fetch-known/openid-federation"). This is an upstream
-        LightHouse issue, not something this gateway introduces.
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 /** Generic "top N by value/count" table, shared by user agents, clients, and query params. */
@@ -340,9 +315,8 @@ export default function StatsPage() {
 
       {/* Status breakdown */}
       <Card>
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">Requests by Status</CardTitle>
-          <EndpointLogCaveat />
         </CardHeader>
         <CardContent>
           {byStatus.length === 0 ? (
@@ -382,9 +356,8 @@ export default function StatsPage() {
 
       {/* Top endpoints */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="text-base">Top Endpoints</CardTitle>
-          <EndpointLogCaveat />
         </CardHeader>
         <CardContent className="p-0">
           {endpoints.length === 0 ? (
@@ -463,10 +436,11 @@ export default function StatsPage() {
       <div className="flex items-start gap-1.5">
         <TriangleAlert className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          Time-bucketed trend views (timeseries, daily) are unavailable — LightHouse's
-          date-bucketing query fails against SQLite storage
-          (<code className="bg-muted px-1 rounded">sql: Scan error on column "bucket"</code>).
+          Daily aggregates (<code className="bg-muted px-1 rounded">stats/daily</code>) are
+          unavailable — LightHouse returns an empty result even with real traffic in range.
           Reported upstream; not something this gateway can fix.
+          (<code className="bg-muted px-1 rounded">stats/timeseries</code> was affected by the
+          same class of bug but is now fixed upstream — not yet wired into this page.)
         </p>
       </div>
     </div>

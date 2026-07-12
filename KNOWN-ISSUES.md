@@ -41,17 +41,17 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
   The Lock button opens a DropdownMenu that contains a single menu item to actually change the status. For a single-action button, this adds unnecessary friction. Consider a direct confirmation dialog instead.
 
 - [x] ~~**Stats page only used 2 of 8 available LightHouse stats endpoints**~~  
-  **Fixed:** added `stats/top/user-agents`, `stats/top/clients`, `stats/top/params`, `stats/top/countries`, and `stats/latency` (full p50–p99/min/max) to `useStats.ts` and `StatsPage.tsx`, plus a CSV/JSON export button backed by `stats/export`. `stats/top/countries` gracefully shows an empty state (no GeoIP configured) rather than being hidden. `stats/timeseries` and `stats/daily` are still not wired up — see the LightHouse collaboration section above, both are non-functional upstream on SQLite storage.
+  **Fixed:** added `stats/top/user-agents`, `stats/top/clients`, `stats/top/params`, `stats/top/countries`, and `stats/latency` (full p50–p99/min/max) to `useStats.ts` and `StatsPage.tsx`, plus a CSV/JSON export button backed by `stats/export`. `stats/top/countries` gracefully shows an empty state (no GeoIP configured) rather than being hidden. `stats/daily` is still not wired up (see below); `stats/timeseries` now works upstream but isn't wired into a chart yet.
+
+- [x] ~~**`docker-compose.yml` was pinned to the stale `oidfed/lighthouse:latest` tag**~~  
+  **Found by:** being told the two bugs below were "already fixed" — they weren't, on the image we had. Docker Hub showed `latest` was last pushed 2026-06-15 while `main` and several `sha-*` builds went out as recently as 2026-07-09 — `latest` isn't kept in sync with actual HEAD. **Fixed:** re-pinned both `lighthouse` and `lighthouse2` services to `oidfed/lighthouse@sha256:689b121...` (the real newest build, currently tagged `main`). Note: `lighthouse_version` in the entity config still reports `0.21.0` on this build even though it contains new fixes — the version claim can't be used to tell builds apart, only the image digest can. Caveat: `main` is a floating branch tag, not a stable release — worth watching for a proper versioned tag upstream.
 
 ---
 
 ## 🤝 Requires LightHouse / OIDFed team collaboration
 
-- [ ] **LightHouse's per-request endpoint-path logging is corrupted under concurrent load**  
-  **Found by:** pulling the raw `stats/export` log while auditing Stats page coverage. Under concurrent requests, a *shorter* logged path picks up the trailing bytes of a previous *longer* path — e.g. `fetch` + leftover tail of `.well-known/openid-federation` → `fetch-known/openid-federation`; `resolve` → `resolvenown/openid-federation`; `api/v1/admin/stats/summary` → `...summaryion` (trailing "ion" from a prior "...federation"). Classic shared-buffer-reuse-without-clearing bug. Confirmed present on data from before this session (2026-07-02) and still present on LightHouse 0.21.0 — not caused by us, not fixed by the version bump. Affects `requests_by_endpoint` (in `stats/summary`) and `stats/top/endpoints`. **Not fixable on our side** — surfaced via a "known data issue" tooltip on the affected Stats page panels instead of hiding it. Needs reporting upstream.
-
-- [ ] **`stats/timeseries` and `stats/daily` are non-functional against SQLite storage**  
-  `timeseries` returns a raw `sql: Scan error on column "bucket": unsupported Scan, storing driver.Value type string into type *time.Time` — a driver/schema mismatch in LightHouse's date-bucketing query, specific to the SQLite storage backend (`storage: driver: sqlite` in our config). `daily` doesn't error but silently returns an empty array despite real data existing in range (same underlying bucketing query, different failure mode — swallowed rather than propagated). Confirmed still broken on LightHouse 0.21.0. The Stats page's timeseries chart was already removed for this reason before this session (`27ace21`); we now also skip wiring up `daily` for the same root cause, with an explicit note on the page instead of a silent gap.
+- [ ] **`stats/daily` is non-functional against SQLite storage**  
+  Returns an empty array despite real data existing in range, even with a narrow, sane date window. Same class of bug as the `stats/timeseries` issue below (date-bucketing query), but fails silently (swallowed error) rather than propagating one. Confirmed still broken on the newest available build (`sha256:689b121...`, 2026-07-09). Not wired into the Stats page; noted inline instead of a silent gap.
 
 Items originally thought to need external collaboration turned out to be self-fixable:
 
