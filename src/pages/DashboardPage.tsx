@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EntityRoleBadges } from '@/components/ui/entity-type-badge';
 import { useEntities } from '@/hooks/useEntities';
-import { BackendInfoPanel } from '@/components/BackendInfoPanel';
+import { InstanceInfoPanel } from '@/components/InstanceInfoPanel';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 function StatCard({ 
@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const intermediateEntities = entities.filter(e => e.entityTypes.every(t => t === 'federation_entity')).length;
   
   const recentEntities = entities.slice(0, 5);
+  const visiblePendingApprovals = pendingApprovals.slice(0, 5);
 
   return (
     <div className="animate-fade-in">
@@ -159,50 +160,59 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Pending approvals (admin only) */}
-        {isAdmin && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Pending Approvals</CardTitle>
-                <CardDescription>Requests awaiting review</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/approvals">
-                  View all <ArrowUpRight className="w-4 h-4 ml-1" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {pendingApprovals.length === 0 ? (
-                <div className="text-center py-8">
-                  <ClipboardCheck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No pending approvals</p>
+        {/* At-a-glance sidebar: pending approvals + instance info */}
+        <div className="space-y-6">
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Pending Approvals</CardTitle>
+                  <CardDescription>Requests awaiting review</CardDescription>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingApprovals.map((entity) => (
-                    <Link
-                      key={entity.id}
-                      to={`/entities/${entity.id}`}
-                      className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-sm">{entity.displayName || entity.entityId}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {entity.entityId}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/approvals">
+                    View all <ArrowUpRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {pendingApprovals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <ClipboardCheck className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No pending approvals</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {visiblePendingApprovals.map((entity) => (
+                      <Link
+                        key={entity.id}
+                        to={`/entities/${entity.id}`}
+                        className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-medium text-sm">{entity.displayName || entity.entityId}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {entity.entityId}
+                        </p>
+                      </Link>
+                    ))}
+                    {pendingApprovals.length > visiblePendingApprovals.length && (
+                      <Link
+                        to="/approvals"
+                        className="block text-center text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
+                      >
+                        +{pendingApprovals.length - visiblePendingApprovals.length} more awaiting review
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Backend Info Panel */}
-        <BackendInfoPanel />
+          <InstanceInfoPanel />
+        </div>
       </div>
     </div>
   );
