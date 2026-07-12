@@ -1,12 +1,27 @@
 import { useState } from 'react';
-import { BarChart3, Activity, Clock, Users, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  BarChart3, Activity, Clock, Users, AlertCircle, Loader2, Download,
+  Monitor, Network, SlidersHorizontal, Globe, TriangleAlert, ChevronDown,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import {
   useStatsSummary,
   useStatsTopEndpoints,
+  useStatsTopUserAgents,
+  useStatsTopClients,
+  useStatsTopCountries,
+  useStatsTopParams,
+  useStatsLatency,
+  downloadStatsExport,
   type TimeRange,
+  type TopItem,
 } from '@/hooks/useStats';
 
 const RANGES: { label: string; value: TimeRange }[] = [
@@ -71,16 +86,119 @@ function statusColor(code: string) {
   return 'bg-red-400';
 }
 
+/** Small inline caveat shown above panels sourced from LightHouse's per-request
+ * endpoint-path log, which has a known upstream data-corruption bug under
+ * concurrent request bursts (short paths can pick up a trailing fragment of a
+ * previous, longer path — e.g. "fetch-known/openid-federation"). Not fixable
+ * on our side; flagging so the data isn't mistaken for our own bug. */
+function EndpointLogCaveat() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+          <TriangleAlert className="w-3.5 h-3.5 text-warning" />
+          known data issue
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs">
+        LightHouse's request-path logging has a concurrency bug: under simultaneous
+        requests, a shorter path can pick up trailing characters from a previous,
+        longer path (e.g. "fetch-known/openid-federation"). This is an upstream
+        LightHouse issue, not something this gateway introduces.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Generic "top N by value/count" table, shared by user agents, clients, and query params. */
+function TopListCard({
+  title,
+  icon: Icon,
+  items,
+  isLoading,
+  emptyLabel,
+  valueClassName = 'font-mono text-xs',
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: TopItem[] | null | undefined;
+  isLoading: boolean;
+  emptyLabel: string;
+  valueClassName?: string;
+}) {
+  const list = items ?? [];
+  const total = list.reduce((a, e) => a + e.count, 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Icon className="w-4 h-4 text-muted-foreground" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-muted-foreground p-6">{emptyLabel}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <tbody>
+              {list.map((item, i) => {
+                const pct = total > 0 ? (item.count / total) * 100 : 0;
+                return (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className={`py-2.5 px-4 break-all ${valueClassName}`} title={item.value}>
+                      {item.value}
+                    </td>
+                    <td className="py-2.5 px-4 text-right tabular-nums whitespace-nowrap">{fmt(item.count)}</td>
+                    <td className="py-2.5 px-4 text-right whitespace-nowrap w-24">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-8 text-right">{pct.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function StatsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const instanceId = activeTrustAnchor?.id;
   const [range, setRange] = useState<TimeRange>('24h');
+  const { toast } = useToast();
 
   const summary = useStatsSummary(instanceId, range);
   const topEndpoints = useStatsTopEndpoints(instanceId, range);
+  const topUserAgents = useStatsTopUserAgents(instanceId, range);
+  const topClients = useStatsTopClients(instanceId, range);
+  const topCountries = useStatsTopCountries(instanceId, range);
+  const topParams = useStatsTopParams(instanceId, range);
+  const latency = useStatsLatency(instanceId, range);
 
   const isLoading = summary.isLoading;
   const statsDisabled = summary.data === null && !summary.isLoading;
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!instanceId) return;
+    try {
+      await downloadStatsExport(instanceId, range, format);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Export failed', description: String(err?.message ?? err) });
+    }
+  };
 
   if (!activeTrustAnchor) {
     return (
@@ -118,6 +236,7 @@ export default function StatsPage() {
   const totalForPct = byStatus.reduce((acc, [, v]) => acc + v, 0);
   const endpoints = topEndpoints.data?.endpoints ?? [];
   const totalEndpointRequests = endpoints.reduce((a, e) => a + e.count, 0);
+  const lat = latency.data?.latency;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -129,18 +248,33 @@ export default function StatsPage() {
             Traffic metrics for <span className="font-medium">{activeTrustAnchor.name}</span>
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-          {RANGES.map((r) => (
-            <Button
-              key={r.value}
-              size="sm"
-              variant={range === r.value ? 'default' : 'ghost'}
-              className="h-7 px-3 text-xs"
-              onClick={() => setRange(r.value)}
-            >
-              {r.label}
-            </Button>
-          ))}
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                <Download className="w-3.5 h-3.5" />
+                Export
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>Export as CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            {RANGES.map((r) => (
+              <Button
+                key={r.value}
+                size="sm"
+                variant={range === r.value ? 'default' : 'ghost'}
+                className="h-7 px-3 text-xs"
+                onClick={() => setRange(r.value)}
+              >
+                {r.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -175,10 +309,40 @@ export default function StatsPage() {
         />
       </div>
 
-      {/* Status breakdown */}
+      {/* Latency percentiles */}
       <Card>
         <CardHeader className="pb-2">
+          <CardTitle className="text-base">Latency Percentiles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {latency.isLoading ? (
+            <div className="flex items-center justify-center h-16">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : !lat ? (
+            <p className="text-sm text-muted-foreground">No latency data for this period.</p>
+          ) : (
+            <div className="grid grid-cols-3 md:grid-cols-7 gap-4">
+              {([
+                ['min', lat.min_ms], ['p50', lat.p50_ms], ['p75', lat.p75_ms],
+                ['p90', lat.p90_ms], ['p95', lat.p95_ms], ['p99', lat.p99_ms],
+                ['max', lat.max_ms],
+              ] as const).map(([label, val]) => (
+                <div key={label}>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+                  <p className="text-lg font-semibold tabular-nums">{fmt(val, 1)} ms</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Status breakdown */}
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-base">Requests by Status</CardTitle>
+          <EndpointLogCaveat />
         </CardHeader>
         <CardContent>
           {byStatus.length === 0 ? (
@@ -218,8 +382,9 @@ export default function StatsPage() {
 
       {/* Top endpoints */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Top Endpoints</CardTitle>
+          <EndpointLogCaveat />
         </CardHeader>
         <CardContent className="p-0">
           {endpoints.length === 0 ? (
@@ -256,6 +421,54 @@ export default function StatsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Top user agents / clients */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TopListCard
+          title="Top User Agents"
+          icon={Monitor}
+          items={topUserAgents.data}
+          isLoading={topUserAgents.isLoading}
+          emptyLabel="No user agent data for this period."
+        />
+        <TopListCard
+          title="Top Clients"
+          icon={Network}
+          items={topClients.data}
+          isLoading={topClients.isLoading}
+          emptyLabel="No client data for this period."
+        />
+      </div>
+
+      {/* Top query params + countries */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TopListCard
+          title="Top Query Parameters"
+          icon={SlidersHorizontal}
+          items={topParams.data}
+          isLoading={topParams.isLoading}
+          emptyLabel="No query parameter data for this period."
+        />
+        <TopListCard
+          title="Top Countries"
+          icon={Globe}
+          items={topCountries.data}
+          isLoading={topCountries.isLoading}
+          emptyLabel="No geographic data — GeoIP is not configured on this instance."
+          valueClassName="text-xs"
+        />
+      </div>
+
+      {/* Known-unavailable views */}
+      <div className="flex items-start gap-1.5">
+        <TriangleAlert className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">
+          Time-bucketed trend views (timeseries, daily) are unavailable — LightHouse's
+          date-bucketing query fails against SQLite storage
+          (<code className="bg-muted px-1 rounded">sql: Scan error on column "bucket"</code>).
+          Reported upstream; not something this gateway can fix.
+        </p>
+      </div>
     </div>
   );
 }

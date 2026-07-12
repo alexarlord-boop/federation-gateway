@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { gatewayFetch } from '@/lib/gateway-fetch';
+import { getAccessToken } from '@/lib/token-manager';
+import { GATEWAY_BASE } from '@/lib/api-config';
 
 export interface StatsSummary {
   total_requests: number;
@@ -35,7 +37,7 @@ export interface StatsTimeseriesResponse {
   timeseries: TimeseriesPoint[];
 }
 
-export interface TopEndpointItem {
+export interface TopItem {
   value: string;
   count: number;
 }
@@ -44,7 +46,25 @@ export interface StatsTopEndpointsResponse {
   from: string;
   to: string;
   limit: number;
-  endpoints: TopEndpointItem[];
+  endpoints: TopItem[];
+}
+
+export interface StatsLatency {
+  p50_ms: number;
+  p75_ms: number;
+  p90_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  avg_ms: number;
+  min_ms: number;
+  max_ms: number;
+}
+
+export interface StatsLatencyResponse {
+  from: string;
+  to: string;
+  endpoint: string;
+  latency: StatsLatency;
 }
 
 export type TimeRange = '1h' | '24h' | '7d' | '30d';
@@ -66,6 +86,30 @@ function rangeToInterval(range: TimeRange): string {
 
 function proxyPath(instanceId: string, subPath: string): string {
   return `/api/v1/proxy/${encodeURIComponent(instanceId)}/api/v1/admin/stats/${subPath}`;
+}
+
+/** Generic "top N by value" query shared by user-agents, clients, countries. */
+function useStatsTopList(
+  kind: 'top/user-agents' | 'top/clients' | 'top/countries',
+  responseKey: 'user_agents' | 'clients' | 'countries',
+  instanceId: string | undefined,
+  range: TimeRange,
+  limit: number,
+) {
+  const from = rangeToFrom(range);
+  return useQuery({
+    queryKey: ['stats', kind, instanceId, range, limit],
+    queryFn: async () => {
+      const res = await gatewayFetch<Record<string, TopItem[] | string | number>>({
+        path: `${proxyPath(instanceId!, kind)}?from=${encodeURIComponent(from)}&limit=${limit}`,
+        softFail: [404, 500, 501],
+      });
+      return res ? ((res[responseKey] as TopItem[]) ?? []) : null;
+    },
+    enabled: !!instanceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
 }
 
 export function useStatsSummary(instanceId: string | undefined, range: TimeRange) {
@@ -112,4 +156,74 @@ export function useStatsTopEndpoints(instanceId: string | undefined, range: Time
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+}
+
+export function useStatsTopUserAgents(instanceId: string | undefined, range: TimeRange, limit = 10) {
+  return useStatsTopList('top/user-agents', 'user_agents', instanceId, range, limit);
+}
+
+export function useStatsTopClients(instanceId: string | undefined, range: TimeRange, limit = 10) {
+  return useStatsTopList('top/clients', 'clients', instanceId, range, limit);
+}
+
+export function useStatsTopCountries(instanceId: string | undefined, range: TimeRange, limit = 10) {
+  return useStatsTopList('top/countries', 'countries', instanceId, range, limit);
+}
+
+export function useStatsTopParams(instanceId: string | undefined, range: TimeRange, limit = 10) {
+  const from = rangeToFrom(range);
+  return useQuery({
+    queryKey: ['stats', 'top-params', instanceId, range, limit],
+    queryFn: async () => {
+      const res = await gatewayFetch<{ params: TopItem[] }>({
+        path: `${proxyPath(instanceId!, 'top/params')}?from=${encodeURIComponent(from)}&limit=${limit}`,
+        softFail: [404, 500, 501],
+      });
+      return res?.params ?? null;
+    },
+    enabled: !!instanceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
+export function useStatsLatency(instanceId: string | undefined, range: TimeRange) {
+  const from = rangeToFrom(range);
+  return useQuery({
+    queryKey: ['stats', 'latency', instanceId, range],
+    queryFn: () =>
+      gatewayFetch<StatsLatencyResponse>({
+        path: `${proxyPath(instanceId!, 'latency')}?from=${encodeURIComponent(from)}`,
+        softFail: [404, 500, 501],
+      }),
+    enabled: !!instanceId,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
+/** Triggers a browser download of the raw stats export (not a query — imperative, on click). */
+export async function downloadStatsExport(
+  instanceId: string,
+  range: TimeRange,
+  format: 'csv' | 'json',
+): Promise<void> {
+  const from = rangeToFrom(range);
+  const token = getAccessToken();
+  const url = `${GATEWAY_BASE}${proxyPath(instanceId, 'export')}?from=${encodeURIComponent(from)}&format=${format}`;
+
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = `stats-export-${instanceId}-${Date.now()}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
 }

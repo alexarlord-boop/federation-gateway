@@ -40,11 +40,20 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
   **Fixed:** dropdown now contains multiple contextual actions (Block, Set Active, Set Inactive) so the extra click is justified; removed single-item redundancy. (`src/pages/EntityDetailPage.tsx`)  
   The Lock button opens a DropdownMenu that contains a single menu item to actually change the status. For a single-action button, this adds unnecessary friction. Consider a direct confirmation dialog instead.
 
+- [x] ~~**Stats page only used 2 of 8 available LightHouse stats endpoints**~~  
+  **Fixed:** added `stats/top/user-agents`, `stats/top/clients`, `stats/top/params`, `stats/top/countries`, and `stats/latency` (full p50–p99/min/max) to `useStats.ts` and `StatsPage.tsx`, plus a CSV/JSON export button backed by `stats/export`. `stats/top/countries` gracefully shows an empty state (no GeoIP configured) rather than being hidden. `stats/timeseries` and `stats/daily` are still not wired up — see the LightHouse collaboration section above, both are non-functional upstream on SQLite storage.
+
 ---
 
-## ~~🤝 Requires LightHouse / OIDFed team collaboration~~ → All resolved
+## 🤝 Requires LightHouse / OIDFed team collaboration
 
-Items originally thought to need external collaboration were self-fixable:
+- [ ] **LightHouse's per-request endpoint-path logging is corrupted under concurrent load**  
+  **Found by:** pulling the raw `stats/export` log while auditing Stats page coverage. Under concurrent requests, a *shorter* logged path picks up the trailing bytes of a previous *longer* path — e.g. `fetch` + leftover tail of `.well-known/openid-federation` → `fetch-known/openid-federation`; `resolve` → `resolvenown/openid-federation`; `api/v1/admin/stats/summary` → `...summaryion` (trailing "ion" from a prior "...federation"). Classic shared-buffer-reuse-without-clearing bug. Confirmed present on data from before this session (2026-07-02) and still present on LightHouse 0.21.0 — not caused by us, not fixed by the version bump. Affects `requests_by_endpoint` (in `stats/summary`) and `stats/top/endpoints`. **Not fixable on our side** — surfaced via a "known data issue" tooltip on the affected Stats page panels instead of hiding it. Needs reporting upstream.
+
+- [ ] **`stats/timeseries` and `stats/daily` are non-functional against SQLite storage**  
+  `timeseries` returns a raw `sql: Scan error on column "bucket": unsupported Scan, storing driver.Value type string into type *time.Time` — a driver/schema mismatch in LightHouse's date-bucketing query, specific to the SQLite storage backend (`storage: driver: sqlite` in our config). `daily` doesn't error but silently returns an empty array despite real data existing in range (same underlying bucketing query, different failure mode — swallowed rather than propagated). Confirmed still broken on LightHouse 0.21.0. The Stats page's timeseries chart was already removed for this reason before this session (`27ace21`); we now also skip wiring up `daily` for the same root cause, with an explicit note on the page instead of a silent gap.
+
+Items originally thought to need external collaboration turned out to be self-fixable:
 
 - [x] ~~**Entity detail Policies tab broken for entities with no policies**~~  
   **Fixed:** `useSubordinateMetadataPolicies.ts` query function now catches 404 and returns `{}` — no LightHouse change needed. (`src/hooks/useSubordinateMetadataPolicies.ts`)
