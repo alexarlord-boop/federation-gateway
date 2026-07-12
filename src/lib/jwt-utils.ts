@@ -2,18 +2,23 @@
  * JWT utility functions for Trust Mark handling.
  *
  * Parses and analyses Trust Mark JWTs WITHOUT signature validation.
- * Validation is the responsibility of the federation server itself.
+ * Validation is the responsibility of the federation server itself — see
+ * `useTrustMarkVerification.ts` for the spec-defined *status* check
+ * (OIDF §8.3: ask the issuer's own `trust_mark_status_endpoint`).
  *
- * Confirmed against LightHouse 0.20.0's actual `/trust_mark` endpoint output
- * (round-tripped against a real testbed subject) — the trust mark type claim
- * is `trust_mark_type`, not `id`.
+ * The trust mark type identifier claim name varies across real
+ * implementations — confirmed by decoding live marks from both LightHouse
+ * and the eduGAIN OIDFed testbed (testbed.oidf.lab.surf.nl):
+ *   - `trust_mark_id`    — used by real eduGAIN-issued marks on the testbed
+ *   - `trust_mark_type`  — used by LightHouse 0.20/0.21
+ *   - `id`               — an older/draft spec claim name, seen in some tooling
+ * `getTrustMarkTypeId` below reads whichever is present.
  *
- *   iss              — issuer entity identifier
- *   sub              — subject entity identifier (the entity holding the mark)
- *   trust_mark_type  — trust mark type identifier
- *   iat              — issued-at UNIX timestamp
- *   exp              — optional expiry UNIX timestamp
- *   ref              — optional URL reference
+ *   iss   — issuer entity identifier
+ *   sub   — subject entity identifier (the entity holding the mark)
+ *   iat   — issued-at UNIX timestamp
+ *   exp   — optional expiry UNIX timestamp
+ *   ref   — optional URL reference
  */
 
 export type TrustMarkPayload = {
@@ -21,8 +26,12 @@ export type TrustMarkPayload = {
   iss?: string;
   /** Subject (entity that holds the mark) */
   sub?: string;
-  /** Trust mark type identifier URI */
+  /** Trust mark type identifier URI — real-world claim name, eduGAIN testbed */
+  trust_mark_id?: string;
+  /** Trust mark type identifier URI — LightHouse's claim name */
   trust_mark_type?: string;
+  /** Trust mark type identifier URI — older/draft claim name */
+  id?: string;
   /** Issued-at */
   iat?: number;
   /** Expiry */
@@ -35,6 +44,12 @@ export type TrustMarkPayload = {
   delegation?: string;
   [key: string]: unknown;
 };
+
+/** Read the trust mark type identifier regardless of which claim name the
+ * issuer used (`trust_mark_id`, `trust_mark_type`, or the older `id`). */
+export function getTrustMarkTypeId(payload: TrustMarkPayload | null | undefined): string | undefined {
+  return payload?.trust_mark_id ?? payload?.trust_mark_type ?? payload?.id;
+}
 
 export type ValidityStatus = 'valid' | 'expired' | 'expiring-soon' | 'unknown';
 

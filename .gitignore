@@ -23,6 +23,8 @@ lighthouse/data/lighthouse.db
 backend.db
 backend/.venv/
 backend/test_bff.db
+__pycache__/
+*.pyc
 .worktrees/
 
 # Editor directories and files

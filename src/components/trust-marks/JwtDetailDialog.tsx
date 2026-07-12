@@ -11,8 +11,10 @@ import {
   decodeTrustMarkJwt,
   formatExpiryRelative,
   formatUnixTimestamp,
+  getTrustMarkTypeId,
 } from '@/lib/jwt-utils';
 import { ValidityBadge } from './ValidityBadge';
+import { TrustMarkVerifier } from './TrustMarkVerifier';
 
 interface Props {
   jwt: string;
@@ -23,6 +25,7 @@ interface Props {
 export function JwtDetailDialog({ jwt, open, onClose }: Props) {
   const { toast } = useToast();
   const payload = decodeTrustMarkJwt(jwt);
+  const trustMarkTypeId = getTrustMarkTypeId(payload);
 
   const copy = (value: string) => {
     navigator.clipboard.writeText(value);
@@ -35,23 +38,29 @@ export function JwtDetailDialog({ jwt, open, onClose }: Props) {
         <DialogHeader>
           <DialogTitle>Trust Mark JWT Payload</DialogTitle>
           <DialogDescription>
-            Decoded payload — signature is NOT verified by this viewer.
+            Decoded payload — signature is not checked locally. Use "Verify Live Status"
+            below to ask the issuer directly (OIDF §8.3 status endpoint).
           </DialogDescription>
         </DialogHeader>
 
         {payload ? (
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Verification</Label>
+              <TrustMarkVerifier jwt={jwt} />
+            </div>
+
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {payload.trust_mark_type && (
+              {trustMarkTypeId && (
                 <div className="col-span-2 space-y-1">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wider">
                     Trust Mark Type
                   </Label>
                   <div className="flex items-center gap-1">
                     <p className="font-mono text-xs break-all bg-muted/50 px-2 py-1.5 rounded flex-1">
-                      {String(payload.trust_mark_type)}
+                      {trustMarkTypeId}
                     </p>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copy(String(payload.trust_mark_type))}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copy(trustMarkTypeId)}>
                       <Copy className="w-3 h-3" />
                     </Button>
                   </div>

@@ -20,7 +20,7 @@ import { useEntityConfigTrustMarks } from '@/hooks/useEntityConfigTrustMarks';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
 import {
-  decodeTrustMarkJwt, formatExpiryRelative, getTrustMarkValidity,
+  decodeTrustMarkJwt, formatExpiryRelative, getTrustMarkValidity, getTrustMarkTypeId,
 } from '@/lib/jwt-utils';
 import { ValidityBadge } from './ValidityBadge';
 import { JwtDetailDialog } from './JwtDetailDialog';
@@ -436,7 +436,7 @@ export function SelfTrustMarksTab() {
               {trustMarks.map(tm => {
                 const payload = tm.trust_mark ? decodeTrustMarkJwt(tm.trust_mark) : null;
                 const validity = getTrustMarkValidity(payload);
-                const typeLabel = payload?.trust_mark_type ?? tm.trust_mark_type ?? '—';
+                const typeLabel = getTrustMarkTypeId(payload) ?? tm.trust_mark_type ?? '—';
                 const isSelfIssued = !!tm.self_issuance_spec;
                 const issuerLabel = isSelfIssued ? '(self-issued)' : (payload?.iss ?? tm.trust_mark_issuer ?? '—');
 

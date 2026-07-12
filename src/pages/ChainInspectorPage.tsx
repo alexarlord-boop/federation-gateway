@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Search, Link2, ShieldCheck, AlertCircle, Info, Loader2, ClipboardCopy, Check } from 'lucide-react';
+import {
+  Search, Link2, ShieldCheck, AlertCircle, Info, Loader2, ClipboardCopy, Check, Globe, Award,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +14,9 @@ import {
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { GATEWAY_BASE } from '@/lib/api-config';
-import { gatewayFetch } from '@/lib/gateway-fetch';
+import { decodeTrustMarkJwt, getTrustMarkTypeId } from '@/lib/jwt-utils';
+import { resolveEntity, type ResolvedEntity } from '@/hooks/useExternalEntity';
+import { TrustMarkVerifier } from '@/components/trust-marks/TrustMarkVerifier';
 import JsonView from '@uiw/react-json-view';
 
 // ── JWT decode (client-side, no verification) ───────────────────────────────
@@ -117,9 +121,197 @@ function JwtResult({ jwt, label }: { jwt: string; label: string }) {
   );
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
+// ── Any-entity mode (direct, no Trust Anchor needed) ────────────────────────
 
-export default function ChainInspectorPage() {
+/** Per OIDF §5, an entity's own configuration MAY embed trust marks it holds
+ * as `trust_marks: [{ trust_mark: "<jwt>" }, ...]`. */
+interface EmbeddedTrustMark {
+  trust_mark?: string;
+  [key: string]: unknown;
+}
+
+function AnyEntityPanel() {
+  const [entityId, setEntityId] = useState('');
+  const [result, setResult] = useState<ResolvedEntity | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleInspect = async (idOverride?: string) => {
+    const id = idOverride ?? entityId;
+    if (!id) return;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    try {
+      const res = await resolveEntity(id);
+      setResult(res);
+      if (idOverride) setEntityId(idOverride);
+    } catch (e: any) {
+      setError(e.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const payload = result?.payload;
+  const authorityHints = Array.isArray(payload?.authority_hints)
+    ? (payload!.authority_hints as unknown[]).filter((h): h is string => typeof h === 'string')
+    : [];
+  const trustMarks = Array.isArray(payload?.trust_marks)
+    ? (payload!.trust_marks as EmbeddedTrustMark[]).filter((tm) => typeof tm.trust_mark === 'string')
+    : [];
+  const orgName =
+    (payload?.metadata as any)?.federation_entity?.organization_name as string | undefined;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Inspect Any Entity</CardTitle>
+          <CardDescription>
+            Fetches the entity's own <code className="font-mono">.well-known/openid-federation</code> statement
+            directly — works for any real OpenID Federation entity, not just ones registered with this instance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="any-entity-id">Entity ID</Label>
+            <div className="flex gap-2">
+              <Input
+                id="any-entity-id"
+                placeholder="https://se.swamid.oidf.lab.surf.nl"
+                value={entityId}
+                onChange={e => setEntityId(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleInspect()}
+              />
+              <Button onClick={() => handleInspect()} disabled={!entityId || loading} className="gap-2 shrink-0">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                Inspect
+              </Button>
+            </div>
+          </div>
+
+          {/* Real testbed shortcuts — proven live entities, some with real trust marks */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Live testbed entities (testbed.oidf.lab.surf.nl)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'eduGAIN (root TA)', id: 'https://edugain.oidf.lab.surf.nl' },
+                { label: 'SWAMID (holds a real mark)', id: 'https://se.swamid.oidf.lab.surf.nl' },
+                { label: 'SURFconext (holds a real mark)', id: 'https://nl.surfconext.oidf.lab.surf.nl' },
+                { label: 'HAKA (holds a real mark)', id: 'https://fi.haka.oidf.lab.surf.nl' },
+                { label: 'ACOnet', id: 'https://at.aconet.oidf.lab.surf.nl' },
+              ].map(shortcut => (
+                <button
+                  key={shortcut.id}
+                  type="button"
+                  onClick={() => handleInspect(shortcut.id)}
+                  className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs hover:bg-muted transition-colors"
+                >
+                  <Link2 className="h-3 w-3 text-muted-foreground" />
+                  {shortcut.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {result && payload && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Entity Configuration
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                  fetched live
+                </Badge>
+              </CardTitle>
+              {orgName && <CardDescription>{orgName}</CardDescription>}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {authorityHints.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Authority Hints — click to walk up the chain
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {authorityHints.map(hint => (
+                      <button
+                        key={hint}
+                        type="button"
+                        onClick={() => handleInspect(hint)}
+                        className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs hover:bg-muted transition-colors font-mono"
+                      >
+                        <Link2 className="h-3 w-3 text-muted-foreground" />
+                        {hint}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <JwtResult jwt={result.raw_jwt} label="Entity configuration statement" />
+            </CardContent>
+          </Card>
+
+          {/* Trust marks held by this entity, per OIDF §5 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Trust Marks Held
+              </CardTitle>
+              <CardDescription>
+                Marks embedded in this entity's own configuration, each verifiable live against its issuer.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {trustMarks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  This entity's configuration doesn't embed any trust marks.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {trustMarks.map((tm, i) => {
+                    const tmPayload = decodeTrustMarkJwt(tm.trust_mark!);
+                    const typeId = getTrustMarkTypeId(tmPayload);
+                    return (
+                      <div key={i} className="rounded-md border p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="min-w-0">
+                            <p className="text-xs font-mono break-all">{typeId ?? 'unknown type'}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              issued by <span className="font-mono">{tmPayload?.iss ?? '—'}</span>
+                            </p>
+                          </div>
+                          <TrustMarkVerifier jwt={tm.trust_mark!} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Via Trust Anchor mode (existing behavior) ───────────────────────────────
+
+function ViaTrustAnchorPanel() {
   const { trustAnchors } = useTrustAnchors();
   const { activeTrustAnchor } = useTrustAnchor();
 
@@ -180,21 +372,14 @@ export default function ChainInspectorPage() {
   const hasResult = fetchResult || resolveResult || fetchError || resolveError;
 
   return (
-    <div className="space-y-6 px-4 py-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Trust Chain Inspector</h1>
-        <p className="text-muted-foreground mt-1">
-          Fetch subordinate statements and resolve trust chains for any entity registered in this federation.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Query form */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Inspect Entity</CardTitle>
           <CardDescription>
-            Enter an entity ID and choose which Trust Anchor to query.
+            Enter an entity ID and choose which Trust Anchor to query. Only works for entities
+            registered as subordinates of the selected Trust Anchor.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -391,6 +576,36 @@ export default function ChainInspectorPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
+
+export default function ChainInspectorPage() {
+  return (
+    <div className="space-y-6 px-4 py-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Trust Chain Inspector</h1>
+        <p className="text-muted-foreground mt-1">
+          Inspect any OpenID Federation entity's statement, trust chain, and trust marks —
+          against this instance's own subordinates, or against any real entity on the internet.
+        </p>
+      </div>
+
+      <Tabs defaultValue="any-entity">
+        <TabsList>
+          <TabsTrigger value="any-entity">Any Entity</TabsTrigger>
+          <TabsTrigger value="via-ta">Via Trust Anchor</TabsTrigger>
+        </TabsList>
+        <TabsContent value="any-entity" className="mt-4">
+          <AnyEntityPanel />
+        </TabsContent>
+        <TabsContent value="via-ta" className="mt-4">
+          <ViaTrustAnchorPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
