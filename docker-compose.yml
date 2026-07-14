@@ -7,8 +7,13 @@ services:
       GATEWAY_CONFIG_FILE: /config/gateway.yaml
       LIGHTHOUSE_ADMIN_USERNAME: ${LIGHTHOUSE_ADMIN_USERNAME:-gateway}
       LIGHTHOUSE_ADMIN_PASSWORD: ${LIGHTHOUSE_ADMIN_PASSWORD:-gateway}
+      # Without this, backend.db lives in the container's writable layer and
+      # is silently wiped on every rebuild — users, RBAC roles, and the audit
+      # log all reset with no warning.
+      DATABASE_URL: sqlite:////data/backend.db
     volumes:
       - ./backend/config:/config:ro
+      - ./backend/data:/data
     ports:
       - "${BACKEND_PORT:-8765}:8765"
     depends_on:

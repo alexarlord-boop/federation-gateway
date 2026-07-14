@@ -21,6 +21,7 @@ lighthouse/data/*.sst
 lighthouse/data/keys/
 lighthouse/data/lighthouse.db
 backend.db
+backend/data/*.db
 backend/.venv/
 backend/test_bff.db
 __pycache__/

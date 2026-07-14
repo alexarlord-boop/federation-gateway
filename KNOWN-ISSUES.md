@@ -68,6 +68,10 @@ These are bugs or missing features in our own codebase — no LightHouse or OIDF
   **Fixed as a direct consequence:** `resource_id` extraction previously took the last URL path segment, which is wrong for creates — `POST .../issuance-spec` recorded `resource_id: "issuance-spec"` (the collection name) since the real assigned ID only exists in the response. Now prefers the response body's own `id` field when present.  
   Verified end-to-end against real LightHouse responses: issuing a trust mark correctly captures `{id, entity_id, status, created_at, updated_at}`; creating an issuance spec with a `delegation_jwt` correctly shows `"delegation_jwt": "[REDACTED]"` while leaving the trust mark type and other non-sensitive fields intact.
 
+- [x] ~~**`backend.db` (users, RBAC roles, audit logs) wasn't persisted — every container rebuild silently wiped it**~~  
+  **Found by:** noticing Audit Log pagination had disappeared. Root cause: `docker-compose.yml`'s `backend` service had no volume for its SQLite file — `DEFAULT_DB_PATH` resolves to `/backend.db`, entirely inside the container's writable layer. Any `docker compose up --build backend` (routine during this whole session) silently reset it to a fresh, re-seeded DB, discarding hours of accumulated audit history, registered users, and RBAC customizations with no warning. Explains why the pagination controls (gated on `total > PAGE_SIZE`) vanished: the count had reset to near-zero, not a UI bug.  
+  **Fixed:** added `./backend/data:/data` volume + `DATABASE_URL: sqlite:////data/backend.db` env var, matching the existing `lighthouse/data` bind-mount convention. Verified by rebuilding the backend twice in a row and confirming an audit entry survived both. One-time cost: the transition itself still wipes whatever was in the old container-internal path — but every rebuild from here on preserves data.
+
 ---
 
 ## 🤝 Requires LightHouse / OIDFed team collaboration
