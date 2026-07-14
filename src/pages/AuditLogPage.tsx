@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { ScrollText, ChevronLeft, ChevronRight, Loader2, FileJson } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollText, Loader2, FileJson } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
-import { useAuditLogs, type AuditLogEntry } from '@/hooks/useAuditLogs';
+import { useInfiniteAuditLogs, type AuditLogEntry } from '@/hooks/useAuditLogs';
 import JsonView from '@uiw/react-json-view';
 
 const ACTION_COLORS: Record<string, string> = {
@@ -129,24 +128,52 @@ const ACTIONS = [
   'update_constraints', 'update_policy', 'delete', 'create', 'issue', 'revoke',
   'approve', 'decline',
 ];
-const PAGE_SIZE = 20;
+
+/** Fires `onIntersect` once the sentinel scrolls into view. Used to trigger
+ * the next page load — the standard infinite-scroll pattern, no polling. */
+function useLoadMoreSentinel(onIntersect: () => void, enabled: boolean) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !enabled) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onIntersect();
+      },
+      { rootMargin: '200px' }, // start loading before the sentinel is actually visible
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onIntersect, enabled]);
+
+  return ref;
+}
 
 export default function AuditLogPage() {
   const { activeTrustAnchor } = useTrustAnchor();
-  const [page, setPage] = useState(1);
   const [resourceType, setResourceType] = useState('');
   const [action, setAction] = useState('');
   const [userSearch, setUserSearch] = useState('');
 
-  const { data, isLoading } = useAuditLogs({
+  const {
+    data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useInfiniteAuditLogs({
     tenant_id: activeTrustAnchor?.id,
     resource_type: resourceType || undefined,
     action: action || undefined,
-    page,
-    page_size: PAGE_SIZE,
   });
 
-  const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
+  // Changing a filter changes the query key, so React Query starts a fresh
+  // accumulation from page 1 automatically — no manual page reset needed.
+  const allItems = useMemo(() => data?.pages.flatMap((p) => p?.items ?? []) ?? [], [data]);
+  const total = data?.pages[0]?.total ?? 0;
+
+  const sentinelRef = useLoadMoreSentinel(
+    () => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); },
+    !isLoading,
+  );
 
   if (!activeTrustAnchor) {
     return (
@@ -158,9 +185,15 @@ export default function AuditLogPage() {
     );
   }
 
-  const items = data?.items.filter((e) =>
+  // Client-side text match on user email/ID, applied across every page
+  // loaded *so far* — unlike the old page-by-page view, this widens as you
+  // scroll rather than only ever searching one page of 20 at a time. It
+  // still can't find a match that hasn't been scrolled to yet; there's no
+  // server-side fuzzy user search (only exact user_id), so a very specific
+  // search may need a few scrolls to surface matches from further back.
+  const items = allItems.filter((e) =>
     userSearch ? (e.user_email ?? e.user_id).toLowerCase().includes(userSearch.toLowerCase()) : true,
-  ) ?? [];
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -178,7 +211,7 @@ export default function AuditLogPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Select value={resourceType} onValueChange={(v) => { setResourceType(v === '__all__' ? '' : v); setPage(1); }}>
+            <Select value={resourceType} onValueChange={(v) => setResourceType(v === '__all__' ? '' : v)}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Resource type" />
               </SelectTrigger>
@@ -190,7 +223,7 @@ export default function AuditLogPage() {
               </SelectContent>
             </Select>
 
-            <Select value={action} onValueChange={(v) => { setAction(v === '__all__' ? '' : v); setPage(1); }}>
+            <Select value={action} onValueChange={(v) => setAction(v === '__all__' ? '' : v)}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Action" />
               </SelectTrigger>
@@ -210,7 +243,7 @@ export default function AuditLogPage() {
             />
 
             {(resourceType || action || userSearch) && (
-              <Button variant="ghost" size="sm" onClick={() => { setResourceType(''); setAction(''); setUserSearch(''); setPage(1); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setResourceType(''); setAction(''); setUserSearch(''); }}>
                 Clear
               </Button>
             )}
@@ -250,28 +283,27 @@ export default function AuditLogPage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Infinite-scroll sentinel — invisible, triggers fetchNextPage
+                  when it scrolls near the viewport (see rootMargin above). */}
+              <div ref={sentinelRef} className="h-1" />
+
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                {isFetchingNextPage ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading more…
+                  </span>
+                ) : !hasNextPage ? (
+                  <span>Showing all {total} {total === 1 ? 'entry' : 'entries'}</span>
+                ) : (
+                  <span>{items.length} of {total} loaded — scroll for more</span>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {data?.total ?? 0} total entries
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Badge variant="secondary">Page {page} of {totalPages}</Badge>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
