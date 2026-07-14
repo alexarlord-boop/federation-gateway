@@ -24,6 +24,7 @@ import {
 } from '@/lib/jwt-utils';
 import { ValidityBadge } from './ValidityBadge';
 import { JwtDetailDialog } from './JwtDetailDialog';
+import { TrustMarkTypeSelect } from './TrustMarkTypeSelect';
 import type { TrustMark } from '@/client/models/TrustMark';
 import type { SelfIssuedTrustMarkSpec } from '@/client/models/SelfIssuedTrustMarkSpec';
 
@@ -345,6 +346,10 @@ export function SelfTrustMarksTab() {
 
                 {addMode === 'manual' && (
                   <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      For a mark issued by <strong>someone else's</strong> federation — the type belongs to their
+                      registry, not yours, so it isn't in the dropdown you'd see under Self-Issued.
+                    </p>
                     <div className="space-y-2">
                       <Label>Trust Mark Type (URI) <span className="text-destructive">*</span></Label>
                       <Input placeholder="https://fed.example.org/trust-marks/member" value={typeInput} onChange={e => setTypeInput(e.target.value)} />
@@ -372,8 +377,12 @@ export function SelfTrustMarksTab() {
                       The entity will issue this trust mark to itself. The JWT is regenerated automatically based on the lifetime.
                     </p>
                     <div className="space-y-2">
-                      <Label>Trust Mark Type (URI) <span className="text-destructive">*</span></Label>
-                      <Input placeholder="https://fed.example.org/trust-marks/self-certified" value={selfType} onChange={e => setSelfType(e.target.value)} />
+                      <Label>Trust Mark Type <span className="text-destructive">*</span></Label>
+                      <TrustMarkTypeSelect value={selfType} onChange={setSelfType} />
+                      <p className="text-xs text-muted-foreground">
+                        Only types registered in Federation Trust Marks are selectable — self-issuing an
+                        unregistered type would work internally but 404 for anyone fetching it publicly.
+                      </p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">

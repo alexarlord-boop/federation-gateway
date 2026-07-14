@@ -116,10 +116,33 @@ test.describe('Trust Marks UI correctness @proxy', () => {
       const tokenKey = Object.keys(localStorage).find((key) => key.startsWith('auth_token:'));
       return tokenKey ? localStorage.getItem(tokenKey) : null;
     });
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    // Instance-scoped admin API routes only exist behind the gateway's proxy
+    // hop, not as bare /api/v1/admin/* paths on the gateway itself.
+    const adminApi = `${APP_URL}/api/v1/proxy/ta-1/api/v1/admin`;
+
+    // The Add Spec dialog's type field only accepts already-registered types
+    // (fixes a validation gap — an issuance spec for an unregistered type
+    // silently 404s over the public protocol), so register one via the API
+    // first, same as an operator would via Federation Trust Marks → Types.
+    const typeResp = await page.request.post(`${adminApi}/trust-marks/types`, {
+      headers: authHeaders,
+      data: { trust_mark_type: trustMarkType },
+    });
+    const typeBody = await typeResp.json();
+    const createdTypeId: number | null = typeBody?.id ?? null;
 
     await page.getByRole('tab', { name: /issuance/i }).click();
     await page.getByRole('button', { name: /add spec/i }).click();
-    await page.getByLabel(/trust mark type/i).fill(trustMarkType);
+    await page.getByRole('combobox').first().click();
+    // Radix's typeahead only jumps to the first item *starting with* the
+    // typed characters — with many similarly-prefixed test types in the
+    // list it can land on the wrong one, so scroll to and click the exact
+    // option instead (allow extra time for the just-created type to land
+    // in the select's query cache).
+    const specTypeOption = page.getByRole('option', { name: trustMarkType, exact: true });
+    await specTypeOption.scrollIntoViewIfNeeded({ timeout: 15000 });
+    await specTypeOption.click();
 
     // Capture the POST response so we can extract the new spec's ID for cleanup.
     const [createResp] = await Promise.all([
@@ -158,13 +181,20 @@ test.describe('Trust Marks UI correctness @proxy', () => {
       await expect(page.getByText('https://subject.example.org')).toBeVisible();
       await expect(page.getByText('Demo subject description')).toBeVisible();
     } finally {
-      // Remove the created issuance spec so repeated runs against the same
-      // stack do not accumulate test data.
+      // Best-effort cleanup so repeated runs don't accumulate test data.
+      // Tightly timed and swallowed — a slow/flaky cleanup call must never
+      // fail a test whose actual assertions already passed above.
       if (createdSpecId !== null) {
         await page.request.delete(
-          `${APP_URL}/api/v1/admin/trust-marks/issuance-spec/${createdSpecId}`,
-          { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-        );
+          `${adminApi}/trust-marks/issuance-spec/${createdSpecId}`,
+          { headers: authHeaders, timeout: 5000 },
+        ).catch(() => {});
+      }
+      if (createdTypeId !== null) {
+        await page.request.delete(
+          `${adminApi}/trust-marks/types/${createdTypeId}`,
+          { headers: authHeaders, timeout: 5000 },
+        ).catch(() => {});
       }
     }
   });

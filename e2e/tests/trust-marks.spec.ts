@@ -9,11 +9,13 @@ test.describe('Trust Marks page @proxy', () => {
     await expect(page.getByRole('heading', { level: 1, name: /trust marks/i })).toBeVisible();
   });
 
-  test('shows trust mark management info section', async ({ instancePage: page }) => {
+  test('shows role legend explaining Owner/Issuer/Subject/Relying Party mapping', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/trust-marks`);
-    // Info section should display Trust Mark Management title
-    await expect(page.getByText(/trust mark management/i)).toBeVisible({ timeout: 10_000 });
-    // Should also show description mentioning My Trust Marks and Federation Trust Marks
+    // Role legend cards should be visible, mapping each OIDFed role to its tab
+    await expect(page.getByText('Owner', { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Issuer', { exact: true })).toBeVisible();
+    await expect(page.getByText('Subject', { exact: true })).toBeVisible();
+    await expect(page.getByText('Relying Party', { exact: true })).toBeVisible();
     await expect(page.getByText(/my trust marks/i).first()).toBeVisible();
   });
 

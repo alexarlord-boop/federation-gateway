@@ -14,6 +14,7 @@ import {
   Key,
   Shield,
   FileText,
+  Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,8 @@ import { useSubordinateConstraints } from '@/hooks/useSubordinateConstraints';
 import { useSubordinateKeys } from '@/hooks/useSubordinateKeys';
 import { useSubordinateMetadataPolicies } from '@/hooks/useSubordinateMetadataPolicies';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
+import { useCapabilities } from '@/contexts/CapabilityContext';
+import { IssueTrustMarkDialog } from '@/components/trust-marks/IssueTrustMarkDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -504,6 +507,9 @@ export default function EntityDetailPage() {
   const { entity, isLoading, error, updateStatus, updateMetadata, deleteSubordinate } = useEntityDetail(id!);
   const canUpdate = useOperationAllowed('subordinates', 'update');
   const canDelete = useOperationAllowed('subordinates', 'delete');
+  const canIssueTrustMark = useOperationAllowed('trust_mark_issuance', 'create');
+  const { isFeatureEnabled } = useCapabilities();
+  const showIssueTrustMark = canIssueTrustMark && isFeatureEnabled('trust_mark_issuance');
 
   if (isLoading) {
     return (
@@ -642,7 +648,19 @@ export default function EntityDetailPage() {
                 Config
               </a>
             </Button>
-            
+
+            {showIssueTrustMark && (
+              <IssueTrustMarkDialog
+                lockedEntityId={entity.entity_id}
+                trigger={
+                  <Button variant="outline">
+                    <Award className="w-4 h-4 mr-2" />
+                    Issue Trust Mark
+                  </Button>
+                }
+              />
+            )}
+
             {canDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

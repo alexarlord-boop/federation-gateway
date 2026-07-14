@@ -45,14 +45,32 @@ test.describe('Trust mark issuance vs. real testbed @proxy', () => {
     await page.getByRole('tab', { name: /federation trust marks/i }).click();
     await page.getByRole('button', { name: /add type/i }).click();
     await page.getByLabel(/trust mark type identifier/i).fill(trustMarkType);
-    await page.getByRole('button', { name: /^create$/i }).click();
+    await Promise.all([
+      page.waitForResponse(
+        (resp) => resp.url().includes('/trust-marks/types') && resp.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: /^create$/i }).click(),
+    ]);
 
     await page.getByRole('tab', { name: /issuance/i }).click();
     await page.getByRole('button', { name: /add spec/i }).click();
-    await page.getByLabel(/^trust mark type/i).fill(trustMarkType);
-    await page.getByRole('button', { name: /^create$/i }).click();
+    await page.getByRole('combobox').first().click();
+    // Radix's typeahead only jumps to the first item *starting with* the
+    // typed characters — with many similarly-prefixed test types in the
+    // list it can land on the wrong one, so scroll to and click the exact
+    // option instead (allow extra time for the just-created type to land
+    // in the select's query cache).
+    const specTypeOption = page.getByRole('option', { name: trustMarkType, exact: true });
+    await specTypeOption.scrollIntoViewIfNeeded({ timeout: 15000 });
+    await specTypeOption.click();
+    await Promise.all([
+      page.waitForResponse(
+        (resp) => resp.url().includes('/trust-marks/issuance-spec') && resp.request().method() === 'POST',
+      ),
+      page.getByRole('button', { name: /^create$/i }).click(),
+    ]);
 
-    await page.getByText(trustMarkType).first().click();
+    await page.getByRole('heading', { name: trustMarkType }).click();
     await page.getByPlaceholder(/entity\.example\.org/i).fill(subject!);
     await page.getByRole('button', { name: /^add$/i }).click();
     await expect(page.getByText(subject!)).toBeVisible();

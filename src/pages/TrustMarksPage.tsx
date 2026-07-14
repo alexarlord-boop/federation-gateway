@@ -1,8 +1,8 @@
 import { useState, Fragment } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Award, Info, Loader2, Plus, Trash2, ChevronRight, Users, FileText,
-  Clock, ExternalLink, Pencil, Tag, Send,
+  Award, Loader2, Plus, Trash2, ChevronRight, Users, FileText,
+  Clock, ExternalLink, Pencil, Tag, ShieldCheck, Send, BookMarked, ScrollText,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,10 +29,6 @@ import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useToast } from '@/hooks/use-toast';
-import { TrustMarkIssuanceService } from '@/client/services/TrustMarkIssuanceService';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import type { TrustMarkType } from '@/client/models/TrustMarkType';
 import type { TrustMarkSpec } from '@/client/models/TrustMarkSpec';
 // Trust mark feature components
@@ -41,6 +37,8 @@ import { TrustMarkTypeDetailSheet } from '@/components/trust-marks/TrustMarkType
 import { OwnersTab } from '@/components/trust-marks/OwnersTab';
 import { IssuersTab } from '@/components/trust-marks/IssuersTab';
 import { AdditionalClaimsTableEditor } from '@/components/trust-marks/AdditionalClaimsTableEditor';
+import { TrustMarkTypeSelect } from '@/components/trust-marks/TrustMarkTypeSelect';
+import { IssueTrustMarkDialog } from '@/components/trust-marks/IssueTrustMarkDialog';
 import type { TrustMarkSpecAdditionalClaims } from '@/client/models/TrustMarkSpecAdditionalClaims';
 
 // ── Trust Mark Types Tab ────────────────────────────────
@@ -189,100 +187,6 @@ function TrustMarkTypesTab() {
   );
 }
 
-// ── Issue to Entity Dialog ──────────────────────────────
-
-interface IssueToEntityDialogProps {
-  specs: TrustMarkSpec[];
-  onSuccess?: () => void;
-}
-
-function IssueToEntityDialog({ specs, onSuccess }: IssueToEntityDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [specId, setSpecId] = useState('');
-  const [entityId, setEntityId] = useState('');
-  const [isPending, setIsPending] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const handleIssue = async () => {
-    if (!specId || !entityId) return;
-    setIsPending(true);
-    try {
-      await TrustMarkIssuanceService.createTrustMarkSubject(Number(specId), { entity_id: entityId, status: 'active' });
-      queryClient.invalidateQueries({ queryKey: ['trust-mark-subjects'] });
-      toast({ title: 'Issued', description: `Trust mark issued to ${entityId}` });
-      setEntityId('');
-      setSpecId('');
-      setOpen(false);
-      onSuccess?.();
-    } catch (err: any) {
-      const detail = err?.body?.detail ?? err?.message ?? 'Failed to issue trust mark';
-      toast({ variant: 'destructive', title: 'Error', description: String(detail) });
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Send className="w-4 h-4 mr-2" />Issue to Entity
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Issue Trust Mark to Entity</DialogTitle>
-          <DialogDescription>
-            Select an issuance spec and enter the entity ID to grant it a trust mark.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="issue-spec">Trust Mark Spec <span className="text-destructive">*</span></Label>
-            {specs.length === 0 ? (
-              <Select disabled>
-                <SelectTrigger id="issue-spec">
-                  <SelectValue placeholder="No specs configured — add one first" />
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            ) : (
-              <Select value={specId} onValueChange={setSpecId}>
-                <SelectTrigger id="issue-spec">
-                  <SelectValue placeholder="Select a trust mark spec…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {specs.map((s) => (
-                    <SelectItem key={s.id as number} value={String(s.id)}>
-                      {s.trust_mark_type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="issue-entity">Entity ID <span className="text-destructive">*</span></Label>
-            <Input
-              id="issue-entity"
-              placeholder="https://entity.example.org"
-              value={entityId}
-              onChange={(e) => setEntityId(e.target.value)}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleIssue} disabled={!specId || !entityId || isPending || specs.length === 0}>
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Issue'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ── Trust Mark Issuance Specs Tab ───────────────────────
 
 function IssuanceSpecsTab() {
@@ -356,7 +260,7 @@ function IssuanceSpecsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
-        {canCreate && <IssueToEntityDialog specs={specs ?? []} />}
+        {canCreate && <IssueTrustMarkDialog />}
         {canCreate && (
         <Dialog
           open={isCreateOpen}
@@ -376,7 +280,11 @@ function IssuanceSpecsTab() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="spec-type">Trust Mark Type <span className="text-destructive">*</span></Label>
-                <Input id="spec-type" placeholder="https://federation.example.org/trust-marks/member" value={createForm.trust_mark_type} onChange={(e) => setCreateForm((f) => ({ ...f, trust_mark_type: e.target.value }))} />
+                <TrustMarkTypeSelect
+                  id="spec-type"
+                  value={createForm.trust_mark_type}
+                  onChange={(v) => setCreateForm((f) => ({ ...f, trust_mark_type: v }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="spec-desc">Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
@@ -779,15 +687,79 @@ function FederationTrustMarksTab() {
 
 // ── Main Page ───────────────────────────────────────────
 
+// ── Role legend ──────────────────────────────────────────
+//
+// OIDFed trust marks involve four distinct roles. Your instance can play
+// more than one at once (e.g. Owner + Issuer for marks you define, Subject
+// for marks you hold), which is what makes the flat tab list confusing —
+// this legend makes explicit which tab corresponds to which role.
+
+function RoleLegend() {
+  const roles = [
+    {
+      icon: BookMarked,
+      role: 'Owner',
+      tab: 'Federation Trust Marks',
+      description: 'Defines what a mark type means and who is allowed to issue it.',
+    },
+    {
+      icon: Send,
+      role: 'Issuer',
+      tab: 'Issuance',
+      description: 'Signs and hands marks to subject entities.',
+    },
+    {
+      icon: ScrollText,
+      role: 'Subject',
+      tab: 'My Trust Marks',
+      description: "Holds a mark and publishes it in this entity's own configuration.",
+    },
+    {
+      icon: ShieldCheck,
+      role: 'Relying Party',
+      tab: 'Chain Inspector →',
+      description: 'Checks any mark is genuine and still active with the issuer, live.',
+      link: '/chain-inspector',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {roles.map(({ icon: Icon, role, tab, description, link }) => {
+        const content = (
+          <div className="h-full p-3.5 border rounded-lg bg-card hover:border-accent/50 transition-colors">
+            <div className="flex items-center gap-2 mb-1">
+              <Icon className="w-4 h-4 text-accent shrink-0" />
+              <span className="text-sm font-semibold">{role}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">{tab}</p>
+            <p className="text-xs text-muted-foreground leading-snug">{description}</p>
+          </div>
+        );
+        return link ? (
+          <Link key={role} to={link}>{content}</Link>
+        ) : (
+          <div key={role}>{content}</div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TrustMarksPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const { isFeatureEnabled, capabilities } = useCapabilities();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const showSelf = isFeatureEnabled('entity_configuration_trust_marks');
   const showFederation = isFeatureEnabled('federation_trust_marks');
   const showIssuance = isFeatureEnabled('trust_mark_issuance');
 
+  // Role-lifecycle order: Owner defines the type → Issuer hands it out →
+  // Subject publishes what it received.
   const defaultTab = showFederation ? 'federation' : showIssuance ? 'issuance' : 'self';
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam && ['self', 'federation', 'issuance'].includes(tabParam) ? tabParam : defaultTab;
 
   if (!activeTrustAnchor) {
     return (
@@ -810,28 +782,22 @@ export default function TrustMarksPage() {
         </div>
       </div>
 
-      <div className="mb-6 p-4 bg-info/10 border border-info/30 rounded-lg flex items-start gap-3">
-        <Info className="w-5 h-5 text-info mt-0.5" />
-        <div>
-          <p className="font-medium text-info">Trust Mark Management</p>
-          <p className="text-sm text-muted-foreground">
-            <strong>My Trust Marks</strong> shows the trust marks your entity holds and publishes in its own entity configuration.
-            <strong> Federation Trust Marks</strong> manages the registry of types, owners, and issuers used across the federation.
-            <strong> Issuance</strong> controls which entities may receive each mark you issue.
-          </p>
-        </div>
-      </div>
+      <RoleLegend />
 
       {capabilities ? (
-        <Tabs defaultValue={defaultTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('tab', v); return next; })}
+          className="space-y-6"
+        >
           <TabsList>
-            {showSelf && <TabsTrigger value="self">My Trust Marks</TabsTrigger>}
-            {showFederation && <TabsTrigger value="federation">Federation Trust Marks</TabsTrigger>}
-            {showIssuance && <TabsTrigger value="issuance">Issuance</TabsTrigger>}
+            {showFederation && <TabsTrigger value="federation">Federation Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Owner</span></TabsTrigger>}
+            {showIssuance && <TabsTrigger value="issuance">Issuance <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Issuer</span></TabsTrigger>}
+            {showSelf && <TabsTrigger value="self">My Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Subject</span></TabsTrigger>}
           </TabsList>
-          {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
           {showFederation && <TabsContent value="federation"><FederationTrustMarksTab /></TabsContent>}
           {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
+          {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
         </Tabs>
       ) : (
         <div className="flex items-center justify-center h-48">
