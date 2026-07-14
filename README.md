@@ -45,7 +45,8 @@ federation-gateway/
 |---------|------|-------|
 | **UI** (nginx, SPA) | `8080` (configurable via `UI_PORT`) | Proxies `/api/*` → backend at `8765` |
 | **Backend** (FastAPI) | `8765` (configurable via `BACKEND_PORT`) | BFF: auth + deployment config + proxy to instances |
-| **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | `oidfed/lighthouse@sha256:e7fe82e7d347a6f279b81639d0444c60fa47f01aca82b27590541dfa9edec6be` — federation node (digest-pinned for trust-mark spec PATCH support) |
+| **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | Federation node, digest-pinned in `docker-compose.yml` — check there for the current digest, it moves as we pick up upstream fixes |
+| **LightHouse 2** | `8082` (configurable via `LIGHTHOUSE2_PUBLIC_PORT`) | A second federation node/trust anchor, wired up out of the box for exercising multi-instance behavior |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
@@ -284,12 +285,20 @@ The backend stores state in `backend.db` (SQLite, root of repo).
 
 ---
 
-### Adding a second LightHouse instance
+### Adding another LightHouse instance
 
-The deployment configuration in `backend/config/gateway.yaml` supports multiple instances. To add a second instance:
+`docker-compose.yml` already ships with two instances (`ta-1` / LightHouse on
+`8081`, `ta-2` / LightHouse 2 on `8082`) — use them as the template for a
+third. Both currently reuse the same `LIGHTHOUSE_ADMIN_USERNAME` /
+`LIGHTHOUSE_ADMIN_PASSWORD` env vars (see `backend/config/gateway.yaml`);
+give a new instance its own pair if it needs separate credentials.
 
-1. Create `lighthouse2/config.yaml` and `lighthouse2/data/` directory.
-2. Add a `lighthouse2` service to `docker-compose.yml` (see commented example).
+1. Create `lighthouse3/config.yaml` (copy `lighthouse2/config.yaml` and
+   change `entity_id`) and a `lighthouse3/data/` directory with a
+   `.gitkeep` placeholder.
+2. Add a `lighthouse3` service to `docker-compose.yml`, following the
+   `lighthouse2` service as a template (same image, new port, new volume
+   paths).
 3. Add the instance to `backend/config/gateway.yaml`:
    ```yaml
    instances:
@@ -298,14 +307,17 @@ The deployment configuration in `backend/config/gateway.yaml` supports multiple 
        # ... existing config
      - id: ta-2
        name: LightHouse 2
-       public_base_url: http://localhost:8082
-       admin_base_url: http://lighthouse2:8080
-       public_port: 8082
+       # ... existing config
+     - id: ta-3
+       name: LightHouse 3
+       public_base_url: http://localhost:8083
+       admin_base_url: http://lighthouse3:8080
+       public_port: 8083
        admin_port: 8080
        admin_auth:
          type: basic
-         username_env: LIGHTHOUSE2_ADMIN_USERNAME
-         password_env: LIGHTHOUSE2_ADMIN_PASSWORD
+         username_env: LIGHTHOUSE_ADMIN_USERNAME
+         password_env: LIGHTHOUSE_ADMIN_PASSWORD
    ```
 4. Restart: `docker compose down && docker compose up --build --force-recreate`.
 
@@ -330,7 +342,6 @@ The **Trust Anchors** page presents a read-only view of the deployment topology 
 - ✅ **Backend-Agnostic Design** - Works with any Admin API implementing the OpenAPI spec
 - ✅ **Capability Discovery** - UI adapts dynamically to backend features
 - ✅ **Multiple Backend Support** - Python (FastAPI), Go, Java, .NET implementations
-- ✅ **MSW Mocking** - Development without backend dependency
 - ✅ **Production Ready** - Docker deployment with environment configuration
 
 ---
@@ -341,8 +352,7 @@ The **Trust Anchors** page presents a read-only view of the deployment topology 
 
 1. **UI (React + TypeScript)** - Universal frontend for OIDFed management
 2. **OpenAPI Specification** - The contract all backends must implement
-3. **Reference Backend (FastAPI)** - Example implementation (optional)
-4. **MSW Handlers** - Canonical API behavior specification
+3. **Reference Backend (FastAPI)** - Example implementation (proxies to a real LightHouse federation node)
 
 ### Backend Flexibility
 
@@ -442,28 +452,9 @@ Your backend must:
 
 ---
 
-## Development
-
-### UI Development
-
-```sh
-npm install
-npm run dev  # Starts on http://localhost:5173 with MSW mocking
-```
-
-**MSW (Mock Service Worker)** is enabled in development mode, allowing UI development without a running backend.
-
-### Backend Development (Reference FastAPI)
-
-```sh
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8765
-```
-
----
+> Local UI/backend development without Docker is covered above under
+> "Local UI development (without Docker)" and "Local backend development
+> (without Docker)".
 
 ## Production Deployment
 
@@ -569,7 +560,7 @@ Based on capabilities:
 - **Navigation** shows only available features
 - **Buttons** appear/disappear based on operations
 - **RBAC permissions** are generated from enabled features
-- **Backend info** is displayed to operators
+- **Instance info** (real LightHouse version, signing algorithm, live protocol endpoints — pulled from the connected instance's own entity configuration, not this manifest) is shown on the Dashboard
 
 ### 3. Backend Flexibility
 
@@ -594,11 +585,14 @@ File: [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)
 
 This is your contract - implement all endpoints or a subset.
 
-### 2. Reference MSW Handlers
+### 2. Reference the FastAPI Backend
 
-File: [`src/mocks/handlers.ts`](src/mocks/handlers.ts)
+Directory: [`backend/app/routers/`](backend/app/routers/)
 
-Shows expected behavior, error handling, and edge cases.
+The closest thing to a living behavior reference — `proxy.py` shows how
+mutating requests get audited, `resolve.py` shows the SSRF-guarded pattern
+for fetching arbitrary external entity data, and the e2e suite in `e2e/tests/`
+exercises real request/response shapes end to end.
 
 ### 3. Implement Capability Discovery
 
@@ -638,7 +632,6 @@ federation-gateway/
 │   ├── components/               # React components
 │   ├── contexts/                 # React contexts (Auth, Capability, etc.)
 │   ├── hooks/                    # Custom React hooks
-│   ├── mocks/                    # MSW handlers
 │   ├── pages/                    # Page components
 │   ├── services/                 # Service layer (capabilities, etc.)
 │   └── App.tsx                   # Main app component
@@ -670,9 +663,9 @@ npm run lint        # Run ESLint
 
 ### Current (Demo/Development)
 
-- Mock users in backend database seed
-- JWT tokens issued by reference backend
-- Credentials: `admin@example.com` / `admin123`
+- Seeded local users (see "Default credentials" above), stored in the backend's own database
+- JWT tokens issued by the reference backend
+- Credentials: `admin@oidfed.org` / `admin123`
 
 ### Production (Planned)
 
@@ -687,16 +680,18 @@ npm run lint        # Run ESLint
 
 - **Frontend**: React 18, TypeScript, Vite, TanStack Query
 - **UI Library**: shadcn/ui (Radix UI + Tailwind CSS)
-- **Mocking**: Mock Service Worker (MSW)
 - **Backend**: FastAPI, SQLAlchemy, SQLite (reference implementation)
+- **E2E Testing**: Playwright, against the real Docker-composed stack
 - **Deployment**: Docker, Docker Compose
 
 ---
 
 ## Documentation
 
+- [`GETTING-STARTED.md`](GETTING-STARTED.md) - One-page tour for newcomers and operators: run it, then use it
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - System architecture and design
 - [`CAPABILITY-DISCOVERY.md`](CAPABILITY-DISCOVERY.md) - Backend capability system
+- [`KNOWN-ISSUES.md`](KNOWN-ISSUES.md) - Maintained list of fixed bugs, known gaps, and upstream LightHouse/OIDFed issues
 - [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml) - API specification
 
 ---
