@@ -95,6 +95,91 @@ def test_pagination(client, admin_headers):
     assert data["page_size"] == 2
 
 
+# ── Redaction ──────────────────────────────────────────────────────────────
+
+def test_redact_masks_denylisted_keys():
+    result = audit_utils.redact({
+        "id": 5,
+        "entity_id": "https://rp.example.org",
+        "password": "hunter2",
+        "client_secret": "abc123",
+    })
+    assert result["id"] == 5
+    assert result["entity_id"] == "https://rp.example.org"
+    assert result["password"] == "[REDACTED]"
+    assert result["client_secret"] == "[REDACTED]"
+
+
+def test_redact_matches_key_name_variants_case_insensitively():
+    result = audit_utils.redact({
+        "PRIVATE_KEY": "x",
+        "clientSecret": "y",
+        "delegation_jwt": "eyJ...",
+        "Authorization": "Bearer abc",
+        "adminAuth": "z",
+    })
+    assert all(v == "[REDACTED]" for v in result.values())
+
+
+def test_redact_recurses_into_nested_dicts_and_lists():
+    result = audit_utils.redact({
+        "nested": {"api_key": "abc", "safe": "ok"},
+        "items": [{"refresh_token": "xyz"}, {"safe": "ok"}],
+    })
+    assert result["nested"]["api_key"] == "[REDACTED]"
+    assert result["nested"]["safe"] == "ok"
+    assert result["items"][0]["refresh_token"] == "[REDACTED]"
+    assert result["items"][1]["safe"] == "ok"
+
+
+def test_redact_leaves_non_dict_values_untouched():
+    assert audit_utils.redact("plain string") == "plain string"
+    assert audit_utils.redact(42) == 42
+    assert audit_utils.redact(None) is None
+
+
+# ── details storage — truncation ────────────────────────────────────────────
+
+def test_record_truncates_oversized_details(db):
+    big_value = "x" * 20000
+    entry = audit_utils.record(
+        db,
+        user_id="user-1",
+        user_email="admin@oidfed.org",
+        action="update",
+        resource_type="subordinate",
+        resource_id="sub-big",
+        details={"blob": big_value},
+    )
+    assert len(entry.details) <= audit_utils._MAX_DETAILS_CHARS
+    assert entry.details.endswith(audit_utils._TRUNCATION_SUFFIX)
+
+
+def test_record_stores_small_details_verbatim(db):
+    entry = audit_utils.record(
+        db,
+        user_id="user-1",
+        user_email="admin@oidfed.org",
+        action="update",
+        resource_type="subordinate",
+        resource_id="sub-small",
+        details={"entity_id": "https://rp.example.org"},
+    )
+    assert entry.details == '{"entity_id": "https://rp.example.org"}'
+
+
+def test_record_details_none_when_not_provided(db):
+    entry = audit_utils.record(
+        db,
+        user_id="user-1",
+        user_email="admin@oidfed.org",
+        action="update",
+        resource_type="subordinate",
+        resource_id="sub-none",
+    )
+    assert entry.details is None
+
+
 def test_classify_proxy_request():
     # Subordinate register
     assert audit_utils.classify_proxy_request("POST", "api/v1/admin/subordinates") == ("register", "subordinate")

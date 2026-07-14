@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { ScrollText, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ScrollText, ChevronLeft, ChevronRight, Loader2, FileJson } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useAuditLogs, type AuditLogEntry } from '@/hooks/useAuditLogs';
+import JsonView from '@uiw/react-json-view';
 
 const ACTION_COLORS: Record<string, string> = {
   register:           'bg-success/10 text-success border-success/20',
@@ -41,7 +46,59 @@ function formatDate(iso: string) {
   });
 }
 
+/**
+ * `details` holds the redacted upstream response body (see backend/app/utils/audit.py).
+ * It can be:
+ *   - absent (older entries, or actions where the response wasn't JSON)
+ *   - valid JSON
+ *   - JSON truncated mid-structure (payload exceeded the storage cap) — falls
+ *     back to raw text display rather than failing to parse.
+ */
+function AuditDetailsDialog({ entry, open, onClose }: { entry: AuditLogEntry; open: boolean; onClose: () => void }) {
+  let parsed: unknown = null;
+  let parseFailed = false;
+  if (entry.details) {
+    try {
+      parsed = JSON.parse(entry.details);
+    } catch {
+      parseFailed = true;
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Action Details</DialogTitle>
+          <DialogDescription>
+            <ActionBadge action={entry.action} />{' '}
+            <span className="ml-1">{entry.resource_type.replace(/_/g, ' ')}</span>
+            {entry.resource_id && <span className="font-mono text-xs ml-1">· {entry.resource_id}</span>}
+            {' — '}the resulting server state, as returned by the admin API. Sensitive fields
+            (keys, tokens, credentials) are redacted before storage.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[400px] rounded-md border bg-muted/30 p-3">
+          {parseFailed ? (
+            <pre className="text-xs whitespace-pre-wrap break-all font-mono">
+              {entry.details}
+              <span className="text-muted-foreground italic block mt-2">
+                (payload was truncated before storage — not valid JSON)
+              </span>
+            </pre>
+          ) : parsed !== null ? (
+            <JsonView value={parsed as object} collapsed={2} style={{ fontSize: 12 }} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No details recorded for this action.</p>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function LogRow({ entry }: { entry: AuditLogEntry }) {
+  const [showDetails, setShowDetails] = useState(false);
   return (
     <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
       <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{formatDate(entry.created_at)}</td>
@@ -49,6 +106,19 @@ function LogRow({ entry }: { entry: AuditLogEntry }) {
       <td className="py-3 px-4 text-sm">{entry.resource_type.replace(/_/g, ' ')}</td>
       <td className="py-3 px-4 text-xs text-muted-foreground font-mono max-w-[200px] truncate">{entry.resource_id ?? '—'}</td>
       <td className="py-3 px-4 text-xs text-muted-foreground">{entry.user_email ?? entry.user_id}</td>
+      <td className="py-3 px-4">
+        {entry.details ? (
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setShowDetails(true)}>
+            <FileJson className="w-3.5 h-3.5" />
+            View
+          </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        )}
+        {showDetails && (
+          <AuditDetailsDialog entry={entry} open={showDetails} onClose={() => setShowDetails(false)} />
+        )}
+      </td>
     </tr>
   );
 }
@@ -171,6 +241,7 @@ export default function AuditLogPage() {
                     <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">Resource</th>
                     <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">ID</th>
                     <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">User</th>
+                    <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground">Details</th>
                   </tr>
                 </thead>
                 <tbody>

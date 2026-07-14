@@ -233,8 +233,27 @@ async def proxy(
         classification = audit_utils.classify_proxy_request(request.method, path)
         if classification is not None:
             action, resource_type = classification
-            # Best-effort: extract resource_id from the last path segment
+
+            # Response body becomes the audit `details` — it reflects the
+            # actual resulting state (server-assigned IDs, computed
+            # defaults), not just what the client asked for. Redacted
+            # before storage since we don't control what a given LightHouse
+            # version might echo back. Best-effort: a body that isn't JSON
+            # (e.g. 204 No Content) simply yields no details.
+            details = None
+            try:
+                response_json = json.loads(upstream_response.content)
+                details = audit_utils.redact(response_json)
+            except (ValueError, UnicodeDecodeError):
+                response_json = None
+
+            # Best-effort resource_id: prefer the response body's own `id`
+            # (correct for creates, where the path only names the
+            # collection) and fall back to the last path segment.
             resource_id = path.rstrip("/").rsplit("/", 1)[-1] if "/" in path else None
+            if isinstance(response_json, dict) and response_json.get("id") is not None:
+                resource_id = str(response_json["id"])
+
             try:
                 audit_utils.record(
                     db,
@@ -244,6 +263,7 @@ async def proxy(
                     resource_type=resource_type,
                     resource_id=resource_id,
                     tenant_id=instance_id,
+                    details=details,
                 )
             except Exception:
                 logger.warning("Failed to write audit log entry", exc_info=True)

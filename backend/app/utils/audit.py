@@ -56,6 +56,42 @@ def classify_proxy_request(method: str, path: str) -> tuple[str, str] | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Redaction — applied to response bodies before they're stored as `details`.
+#
+# Pattern-based rather than an exact-name denylist so it also catches naming
+# variants (client_secret, clientSecret, ADMIN_AUTH, ...) without needing to
+# track every field LightHouse (or a future backend) might ever echo back.
+# Nothing in the audited endpoints' schemas currently exposes private key
+# material (JWKS responses are public-key-only), but this stays defensive
+# for delegation JWTs and anything credential-shaped.
+# ---------------------------------------------------------------------------
+_REDACT_KEY_PATTERN = re.compile(
+    r"(password|secret|private.?key|api.?key|access.?token|refresh.?token|"
+    r"delegation.?jwt|credential|authoriz|admin.?auth)",
+    re.IGNORECASE,
+)
+_REDACTED_PLACEHOLDER = "[REDACTED]"
+
+# Caps the serialized size of a `details` payload — JWKS blobs and metadata
+# policy documents can be large; without a cap the audit table's storage
+# grows unbounded from a handful of high-churn resource types.
+_MAX_DETAILS_CHARS = 8000
+_TRUNCATION_SUFFIX = '..."[TRUNCATED]'
+
+
+def redact(value: Any) -> Any:
+    """Recursively replace denylisted dict keys' values with a placeholder."""
+    if isinstance(value, dict):
+        return {
+            key: (_REDACTED_PLACEHOLDER if _REDACT_KEY_PATTERN.search(key) else redact(val))
+            for key, val in value.items()
+        }
+    if isinstance(value, list):
+        return [redact(item) for item in value]
+    return value
+
+
 def record(
     db: Session,
     *,
@@ -67,6 +103,12 @@ def record(
     tenant_id: Optional[str] = None,
     details: Optional[Any] = None,
 ) -> AuditLog:
+    serialized_details = None
+    if details is not None:
+        serialized_details = json.dumps(details)
+        if len(serialized_details) > _MAX_DETAILS_CHARS:
+            serialized_details = serialized_details[: _MAX_DETAILS_CHARS - len(_TRUNCATION_SUFFIX)] + _TRUNCATION_SUFFIX
+
     entry = AuditLog(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
@@ -75,7 +117,7 @@ def record(
         action=action,
         resource_type=resource_type,
         resource_id=resource_id,
-        details=json.dumps(details) if details is not None else None,
+        details=serialized_details,
     )
     db.add(entry)
     db.commit()

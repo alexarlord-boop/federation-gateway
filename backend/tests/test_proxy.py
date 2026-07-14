@@ -1,6 +1,10 @@
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+
+from app.db.database import SessionLocal
+from app.models.audit_log import AuditLog
 
 
 def _fake_response(status_code: int = 200, body: bytes = b"[]"):
@@ -185,3 +189,83 @@ def test_proxy_uses_registry_admin_endpoint(client, admin_headers):
     assert resp.status_code == 200
     assert called["url"] == "http://lighthouse:8080/api/v1/admin/subordinates"
     assert called["headers"].get("Authorization", "").startswith("Basic ")
+
+
+# ── Audit details (response body capture + redaction) ──────────────────────
+
+def _latest_audit_entry(resource_id: str) -> AuditLog:
+    session = SessionLocal()
+    try:
+        return (
+            session.query(AuditLog)
+            .filter(AuditLog.resource_id == resource_id)
+            .order_by(AuditLog.created_at.desc())
+            .first()
+        )
+    finally:
+        session.close()
+
+
+def test_audit_details_captures_response_body(client, admin_headers):
+    mc = _mock_client(_fake_response(201, json.dumps({"id": "audit-detail-1", "entity_id": "https://rp.example.org"}).encode()))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.post(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            json={"entity_id": "https://rp.example.org"},
+            headers=admin_headers,
+        )
+    assert resp.status_code == 201
+
+    entry = _latest_audit_entry("audit-detail-1")
+    assert entry is not None
+    details = json.loads(entry.details)
+    assert details == {"id": "audit-detail-1", "entity_id": "https://rp.example.org"}
+
+
+def test_audit_details_redacts_sensitive_fields_in_response(client, admin_headers):
+    body = json.dumps({"id": "audit-detail-2", "delegation_jwt": "eyJhbGciOiJI...", "trust_mark_type": "https://x.example.org"}).encode()
+    mc = _mock_client(_fake_response(201, body))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.post(
+            "/api/v1/proxy/ta-1/api/v1/admin/trust-marks/issuance-spec",
+            json={"trust_mark_type": "https://x.example.org"},
+            headers=admin_headers,
+        )
+    assert resp.status_code == 201
+
+    entry = _latest_audit_entry("audit-detail-2")
+    assert entry is not None
+    details = json.loads(entry.details)
+    assert details["delegation_jwt"] == "[REDACTED]"
+    assert details["trust_mark_type"] == "https://x.example.org"
+
+
+def test_audit_resource_id_prefers_response_body_id_over_path_segment(client, admin_headers):
+    """A POST to the collection path has no ID in the URL — the real ID only
+    exists in the response body, so that must win over the path-segment
+    fallback (which would otherwise record resource_id="subordinates")."""
+    mc = _mock_client(_fake_response(201, json.dumps({"id": "server-assigned-77"}).encode()))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.post(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            json={"entity_id": "https://rp2.example.org"},
+            headers=admin_headers,
+        )
+    assert resp.status_code == 201
+    assert _latest_audit_entry("server-assigned-77") is not None
+
+
+def test_audit_details_none_for_non_json_response(client, admin_headers):
+    """A 204 No Content (or any non-JSON body) must not crash audit recording
+    — it should simply result in no `details`, not an error swallowed silently
+    into a 500."""
+    mc = _mock_client(_fake_response(204, b""))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.delete(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates/no-body-del-1",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 204
+    entry = _latest_audit_entry("no-body-del-1")
+    assert entry is not None
+    assert entry.details is None
