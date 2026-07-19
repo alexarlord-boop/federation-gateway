@@ -274,12 +274,27 @@ Hot-module reload works; changes are instant without rebuilding Docker images.
 
 ### Local backend development (without Docker)
 
+Requires Python 3.11 (pinned in `backend/.python-version` and `backend/Dockerfile`
+— older versions, e.g. the 3.9 that ships with some macOS/Linux systems, fail
+to build the pinned `bcrypt` wheel).
+
 ```sh
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8765
 ```
+
+If `python3.11` isn't installed and you don't want to install it system-wide,
+run it in a throwaway container instead:
+
+```sh
+docker run --rm -it -v "$(pwd)/..:/repo" -w /repo/backend -p 8765:8765 \
+  python:3.11-slim bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8765"
+```
+
+The same pattern works for running the test suite: swap the last command for
+`pytest`.
 
 The backend stores state in `backend.db` (SQLite, root of repo).
 
