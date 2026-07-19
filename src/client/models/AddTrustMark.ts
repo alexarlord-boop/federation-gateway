@@ -4,10 +4,7 @@
 /* eslint-disable */
 import type { SelfIssuedTrustMarkSpec } from './SelfIssuedTrustMarkSpec';
 /**
- * Data to create a trust mark entry. Provide either:
- * (1) trust_mark_type and trust_mark_issuer to configure external trust mark fetching,
- * (2) trust_mark (JWT) directly, or
- * (3) self_issuance_spec for self-issued trust marks.
+ * Data to create a trust mark entry. Provide either: (1) `trust_mark_type` and `trust_mark_issuer` to configure external trust mark fetching, (2) `trust_mark` (JWT) directly, or (3) `self_issuance_spec` for self-issued trust marks. Self-issued trust marks always refresh automatically based on the configured lifetime.
  */
 export type AddTrustMark = {
     /**
@@ -39,7 +36,7 @@ export type AddTrustMark = {
      */
     refresh_rate_limit?: number;
     /**
-     * Specification for self-issued trust marks.
+     * Specification for self-issued trust marks. If set, the entity issues this trust mark to itself.
      */
     self_issuance_spec?: SelfIssuedTrustMarkSpec;
 };

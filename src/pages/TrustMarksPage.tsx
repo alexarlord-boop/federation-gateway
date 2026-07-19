@@ -39,7 +39,7 @@ import { IssuersTab } from '@/components/trust-marks/IssuersTab';
 import { AdditionalClaimsTableEditor } from '@/components/trust-marks/AdditionalClaimsTableEditor';
 import { TrustMarkTypeSelect } from '@/components/trust-marks/TrustMarkTypeSelect';
 import { IssueTrustMarkDialog } from '@/components/trust-marks/IssueTrustMarkDialog';
-import type { TrustMarkSpecAdditionalClaims } from '@/client/models/TrustMarkSpecAdditionalClaims';
+import type { TrustMarkSpecAdditionalClaims } from '@/types/api-shims';
 
 // ── Trust Mark Types Tab ────────────────────────────────
 

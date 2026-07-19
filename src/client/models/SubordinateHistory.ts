@@ -2,11 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Pagination } from './Pagination';
 import type { SubordinateEvent } from './SubordinateEvent';
 /**
- * History of events related to a subordinate.
+ * History of events related to a subordinate with pagination information.
  */
 export type SubordinateHistory = {
-    events?: Array<SubordinateEvent>;
+    events: Array<SubordinateEvent>;
+    pagination: Pagination;
 };
 

@@ -41,7 +41,7 @@ export type TrustMark = {
      */
     refresh_rate_limit?: number;
     /**
-     * Specification for self-issued trust marks.
+     * Specification for self-issued trust marks. If set, the entity issues this trust mark to itself.
      */
     self_issuance_spec?: SelfIssuedTrustMarkSpec;
 };

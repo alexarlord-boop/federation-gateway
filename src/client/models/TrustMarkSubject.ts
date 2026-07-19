@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AdditionalClaims } from './AdditionalClaims';
 import type { EntityID } from './EntityID';
 import type { InternalID } from './InternalID';
 /**
@@ -26,8 +25,10 @@ export type TrustMarkSubject = {
      */
     description?: string;
     /**
-     * Additional custom claims to include for this subject's trust mark.
+     * Per-subject additional claims (simple key-value map) that override general claims.
+     * Example: {"level": "premium"} would override a general {"level": "standard"}
+     *
      */
-    additional_claims?: AdditionalClaims;
+    additional_claims?: Record<string, any>;
 };
 

@@ -6,4 +6,4 @@ import type { InternalID } from './InternalID';
 /**
  * The ID of the additional claim.
  */
-export type AdditionalClaimID = InternalID;
+export type AdditionalClaimsID = InternalID;

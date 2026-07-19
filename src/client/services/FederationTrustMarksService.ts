@@ -361,7 +361,7 @@ export class FederationTrustMarksService {
                 'ownerID': ownerId,
             },
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
         });
     }
     /**
@@ -526,7 +526,7 @@ export class FederationTrustMarksService {
                 'issuerID': issuerId,
             },
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
         });
     }
     /**

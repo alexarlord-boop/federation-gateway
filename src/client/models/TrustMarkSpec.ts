@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { TrustMarkSpecAdditionalClaims } from './TrustMarkSpecAdditionalClaims';
+import type { EligibilityConfig } from './EligibilityConfig';
 import type { InternalID } from './InternalID';
 /**
  * Specification describing a trust mark type that can be issued.
@@ -37,8 +37,28 @@ export type TrustMarkSpec = {
      */
     delegation_jwt?: string;
     /**
-     * Additional custom claims to include in the trust mark.
+     * General additional claims (simple key-value map) included in all trust marks of this type.
+     * Example: {"org_name": "Federation", "level": "standard"}
+     *
      */
-    additional_claims?: TrustMarkSpecAdditionalClaims;
+    additional_claims?: Record<string, any>;
+    /**
+     * Configuration for determining trust mark eligibility.
+     */
+    eligibility_config?: EligibilityConfig;
+    /**
+     * How long to cache issued trust marks for this type, in seconds.
+     * When a trust mark is requested, if a cached version exists and has not expired,
+     * it will be returned instead of issuing a new one. This reduces signing operations
+     * and database writes for repeated requests.
+     *
+     * The actual cache duration is the minimum of this value and the time until the
+     * trust mark expires (based on the `lifetime` field).
+     *
+     * Set to 0 (default) to disable caching - a new trust mark JWT will be issued
+     * and persisted for each request.
+     *
+     */
+    cache_ttl?: number;
 };
 

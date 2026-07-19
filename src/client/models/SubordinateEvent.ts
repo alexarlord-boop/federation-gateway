@@ -11,15 +11,15 @@ export type SubordinateEvent = {
      */
     timestamp: number;
     /**
-     * The type/category of the event (e.g., created, deleted, jwk_added).
+     * The type/category of the event.
      */
-    type: string;
+    type: SubordinateEvent.type;
     /**
      * Subordinate status at the time of the event, if applicable.
      */
     status?: string | null;
     /**
-     * Optional descriptive message.
+     * Optional descriptive message providing context for the event.
      */
     message?: string | null;
     /**
@@ -27,4 +27,26 @@ export type SubordinateEvent = {
      */
     actor?: string | null;
 };
+export namespace SubordinateEvent {
+    /**
+     * The type/category of the event.
+     */
+    export enum type {
+        CREATED = 'created',
+        DELETED = 'deleted',
+        STATUS_UPDATED = 'status_updated',
+        UPDATED = 'updated',
+        JWK_ADDED = 'jwk_added',
+        JWK_REMOVED = 'jwk_removed',
+        JWKS_REPLACED = 'jwks_replaced',
+        METADATA_UPDATED = 'metadata_updated',
+        METADATA_DELETED = 'metadata_deleted',
+        POLICY_UPDATED = 'policy_updated',
+        POLICY_DELETED = 'policy_deleted',
+        CONSTRAINTS_UPDATED = 'constraints_updated',
+        CONSTRAINTS_DELETED = 'constraints_deleted',
+        CLAIMS_UPDATED = 'claims_updated',
+        CLAIM_DELETED = 'claim_deleted',
+    }
+}
 

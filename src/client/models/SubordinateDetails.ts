@@ -30,6 +30,10 @@ export type SubordinateDetails = {
      */
     registered_entity_types?: Array<string>;
     /**
+     * Optional human-readable description of the subordinate.
+     */
+    description?: string;
+    /**
      * The subordinate's JWKS.
      */
     jwks: Jwks;
@@ -40,7 +44,7 @@ export type SubordinateDetails = {
     /**
      * Subordinate-specific metadata policies.
      */
-    metadata_policies?: MetadataPolicy;
+    metadata_policy?: MetadataPolicy;
     /**
      * Subordinate-specific constraints.
      */

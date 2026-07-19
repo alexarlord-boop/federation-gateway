@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { TrustMarkSpecAdditionalClaims } from './TrustMarkSpecAdditionalClaims';
+import type { EligibilityConfig } from './EligibilityConfig';
 /**
  * Partial fields to update on a TrustMarkSpec.
  */
@@ -11,6 +11,10 @@ export type PatchTrustMarkSpec = {
      * The trust mark type identifier.
      */
     trust_mark_type?: string;
+    /**
+     * Optional human-readable description for this TrustMarkSpec.
+     */
+    description?: string;
     /**
      * Lifetime of the trust mark, in seconds.
      */
@@ -28,8 +32,18 @@ export type PatchTrustMarkSpec = {
      */
     delegation_jwt?: string;
     /**
-     * Additional custom claims to include in the trust mark.
+     * General additional claims (simple key-value map).
      */
-    additional_claims?: TrustMarkSpecAdditionalClaims;
+    additional_claims?: Record<string, any>;
+    /**
+     * Configuration for determining trust mark eligibility.
+     */
+    eligibility_config?: EligibilityConfig;
+    /**
+     * How long to cache issued trust marks for this type, in seconds.
+     * Set to 0 to disable caching.
+     *
+     */
+    cache_ttl?: number;
 };
 

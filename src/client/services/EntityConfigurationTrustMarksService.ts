@@ -12,7 +12,7 @@ import { request as __request } from '../core/request';
 export class EntityConfigurationTrustMarksService {
     /**
      * List trust marks in the entity configuration
-     * @returns TrustMark Successful response - returns an array of trust marks. Each entry includes id, trust_mark_type, trust_mark_issuer, trust_mark.
+     * @returns TrustMark Successful response - returns an array of trust marks with their configuration.
      * @throws ApiError
      */
     public static listEntityConfigurationTrustMarks(): CancelablePromise<Array<TrustMark>> {
@@ -26,7 +26,7 @@ export class EntityConfigurationTrustMarksService {
     }
     /**
      * Create a trust mark in the entity configuration
-     * @param requestBody Create a trust mark. Provide either `trust_mark_type` and `trust_mark_issuer`, or `trust_mark` (JWT).
+     * @param requestBody Create a trust mark. Provide one of: (1) `trust_mark_type` and `trust_mark_issuer` for external fetching, (2) `trust_mark` (JWT) directly, or (3) `self_issuance_spec` for self-issued trust marks.
      * @returns TrustMark Successful response - returns the created trust mark.
      * @throws ApiError
      */
@@ -66,13 +66,13 @@ export class EntityConfigurationTrustMarksService {
         });
     }
     /**
-     * Replace a trust mark (full replace)
+     * Replace a trust mark
      * @param trustMarkId A unique identifier for a Trust Mark
-     * @param requestBody Replace a trust mark configuration entirely.
+     * @param requestBody Replace a trust mark configuration entirely. All fields should be provided; omitted fields will be reset to defaults or cleared.
      * @returns TrustMark Successful response - returns the replaced trust mark.
      * @throws ApiError
      */
-    public static updateEntityConfigurationTrustMark(
+    public static replaceEntityConfigurationTrustMark(
         trustMarkId: InternalID,
         requestBody: AddTrustMark,
     ): CancelablePromise<TrustMark> {

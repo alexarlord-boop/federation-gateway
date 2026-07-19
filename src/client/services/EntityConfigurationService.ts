@@ -83,18 +83,18 @@ export class EntityConfigurationService {
     }
     /**
      * Get an additional claim row
-     * @param additionalClaimId The ID of the additional claim.
+     * @param additionalClaimsId The ID of the additional claim.
      * @returns AdditionalClaim Successful response returning the additional claim row.
      * @throws ApiError
      */
     public static getAdditionalClaim(
-        additionalClaimId: InternalID,
+        additionalClaimsId: InternalID,
     ): CancelablePromise<AdditionalClaim> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/admin/entity-configuration/additional-claims/{additionalClaimsID}',
             path: {
-                'additionalClaimID': additionalClaimId,
+                'additionalClaimsID': additionalClaimsId,
             },
             errors: {
                 404: `The requested resource was not found`,
@@ -104,20 +104,20 @@ export class EntityConfigurationService {
     }
     /**
      * Update an additional claim row
-     * @param additionalClaimId The ID of the additional claim.
+     * @param additionalClaimsId The ID of the additional claim.
      * @param requestBody
      * @returns AdditionalClaim Successfully updated the additional claim row.
      * @throws ApiError
      */
     public static updateAdditionalClaim(
-        additionalClaimId: InternalID,
+        additionalClaimsId: InternalID,
         requestBody: AddAdditionalClaim,
     ): CancelablePromise<AdditionalClaim> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/admin/entity-configuration/additional-claims/{additionalClaimsID}',
             path: {
-                'additionalClaimID': additionalClaimId,
+                'additionalClaimsID': additionalClaimsId,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -130,18 +130,18 @@ export class EntityConfigurationService {
     }
     /**
      * Delete an additional claim
-     * @param additionalClaimId The ID of the additional claim.
+     * @param additionalClaimsId The ID of the additional claim.
      * @returns void
      * @throws ApiError
      */
     public static deleteAdditionalClaim(
-        additionalClaimId: InternalID,
+        additionalClaimsId: InternalID,
     ): CancelablePromise<void> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/admin/entity-configuration/additional-claims/{additionalClaimsID}',
             path: {
-                'additionalClaimID': additionalClaimId,
+                'additionalClaimsID': additionalClaimsId,
             },
             errors: {
                 404: `The requested resource was not found`,
@@ -176,7 +176,7 @@ export class EntityConfigurationService {
             method: 'PUT',
             url: '/api/v1/admin/entity-configuration/lifetime',
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
             errors: {
                 400: `Invalid request parameters`,
                 500: `Internal server error`,

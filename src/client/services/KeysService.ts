@@ -174,7 +174,7 @@ export class KeysService {
             method: 'PUT',
             url: '/api/v1/admin/kms/alg',
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
             errors: {
                 400: `Invalid request parameters`,
                 500: `Internal server error`,
@@ -195,7 +195,7 @@ export class KeysService {
             method: 'PUT',
             url: '/api/v1/admin/kms/rsa-key-len',
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
             errors: {
                 400: `Invalid request parameters`,
                 500: `Internal server error`,

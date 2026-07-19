@@ -2,16 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { AddAdditionalClaim } from '../models/AddAdditionalClaim';
-import type { AdditionalClaim } from '../models/AdditionalClaim';
-import type { AdditionalClaims } from '../models/AdditionalClaims';
 import type { AddTrustMarkSpec } from '../models/AddTrustMarkSpec';
 import type { AddTrustMarkSubject } from '../models/AddTrustMarkSubject';
 import type { InternalID } from '../models/InternalID';
 import type { PatchTrustMarkSpec } from '../models/PatchTrustMarkSpec';
 import type { TrustMarkSpec } from '../models/TrustMarkSpec';
 import type { TrustMarkSubject } from '../models/TrustMarkSubject';
-import type { TrustMarkSubjectStatus } from '../models/TrustMarkSubjectStatus';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -284,6 +280,9 @@ export class TrustMarkIssuanceService {
     }
     /**
      * Change TrustMarkSubject status
+     * Change the status of a TrustMarkSubject.
+     * The request body should be a plain text status value (one of: active, blocked, pending, inactive).
+     *
      * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
      * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
      * @param requestBody
@@ -293,7 +292,7 @@ export class TrustMarkIssuanceService {
     public static changeTrustMarkSubjectStatus(
         trustMarkSpecId: InternalID,
         trustMarkSubjectId: InternalID,
-        requestBody: TrustMarkSubjectStatus,
+        requestBody: 'active' | 'blocked' | 'pending' | 'inactive',
     ): CancelablePromise<TrustMarkSubject> {
         return __request(OpenAPI, {
             method: 'PUT',
@@ -303,7 +302,7 @@ export class TrustMarkIssuanceService {
                 'trustMarkSubjectID': trustMarkSubjectId,
             },
             body: requestBody,
-            mediaType: 'application/json',
+            mediaType: 'text/plain',
             errors: {
                 400: `Invalid request parameters`,
                 404: `The requested resource was not found`,
@@ -312,16 +311,16 @@ export class TrustMarkIssuanceService {
         });
     }
     /**
-     * List subject-specific additional claims
+     * Get subject additional claims
      * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
      * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
-     * @returns AdditionalClaims Successful response returning all subject-specific additional claims.
+     * @returns any Successful response returning the subject's additional claims map.
      * @throws ApiError
      */
     public static getTrustMarkSubjectAdditionalClaims(
         trustMarkSpecId: InternalID,
         trustMarkSubjectId: InternalID,
-    ): CancelablePromise<AdditionalClaims> {
+    ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims',
@@ -336,18 +335,18 @@ export class TrustMarkIssuanceService {
         });
     }
     /**
-     * Update subject-specific additional claims
+     * Replace subject additional claims
      * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
      * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
      * @param requestBody
-     * @returns AdditionalClaims Successfully updated the complete subject-specific additional claims object.
+     * @returns any Successfully replaced the subject's additional claims.
      * @throws ApiError
      */
     public static updateTrustMarkSubjectAdditionalClaims(
         trustMarkSpecId: InternalID,
         trustMarkSubjectId: InternalID,
-        requestBody: AdditionalClaims,
-    ): CancelablePromise<AdditionalClaims> {
+        requestBody: Record<string, any>,
+    ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims',
@@ -365,84 +364,31 @@ export class TrustMarkIssuanceService {
         });
     }
     /**
-     * Get a subject additional claim row
+     * Copy general claims from spec to subject
+     * Merges the additional claims from the TrustMarkSpec into the subject's existing claims.
+     * The spec's claims are used as a base, and the subject's existing claims are overlaid on top.
+     * This means existing subject claims take precedence on conflict.
+     *
+     * Example:
+     * - Spec claims: {"org_name": "Default", "level": "standard"}
+     * - Subject claims: {"level": "premium", "custom": "value"}
+     * - Result: {"org_name": "Default", "level": "premium", "custom": "value"}
+     *
      * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
      * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
-     * @param additionalClaimsId The ID of the subject-specific additional claim row.
-     * @returns AdditionalClaim Successful response returning the claim row.
+     * @returns any Successfully merged the spec's general claims into the subject's claims.
      * @throws ApiError
      */
-    public static getTrustMarkSubjectAdditionalClaim(
+    public static copyTrustMarkSubjectAdditionalClaims(
         trustMarkSpecId: InternalID,
         trustMarkSubjectId: InternalID,
-        additionalClaimsId: number,
-    ): CancelablePromise<AdditionalClaim> {
+    ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims/{additionalClaimsID}',
+            method: 'POST',
+            url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims',
             path: {
                 'trustMarkSpecID': trustMarkSpecId,
                 'trustMarkSubjectID': trustMarkSubjectId,
-                'additionalClaimsID': additionalClaimsId,
-            },
-            errors: {
-                404: `The requested resource was not found`,
-                500: `Internal server error`,
-            },
-        });
-    }
-    /**
-     * Update a subject additional claim row
-     * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
-     * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
-     * @param additionalClaimsId The ID of the subject-specific additional claim row.
-     * @param requestBody
-     * @returns AdditionalClaim Successfully updated the claim row.
-     * @throws ApiError
-     */
-    public static updateTrustMarkSubjectAdditionalClaim(
-        trustMarkSpecId: InternalID,
-        trustMarkSubjectId: InternalID,
-        additionalClaimsId: number,
-        requestBody: AddAdditionalClaim,
-    ): CancelablePromise<AdditionalClaim> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims/{additionalClaimsID}',
-            path: {
-                'trustMarkSpecID': trustMarkSpecId,
-                'trustMarkSubjectID': trustMarkSubjectId,
-                'additionalClaimsID': additionalClaimsId,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                400: `Invalid request parameters`,
-                404: `The requested resource was not found`,
-                500: `Internal server error`,
-            },
-        });
-    }
-    /**
-     * Delete a subject additional claim
-     * @param trustMarkSpecId A unique identifier for a TrustMarkSpec
-     * @param trustMarkSubjectId A unique identifier for a TrustMarkSubject
-     * @param additionalClaimsId The ID of the subject-specific additional claim row.
-     * @returns void
-     * @throws ApiError
-     */
-    public static deleteTrustMarkSubjectAdditionalClaim(
-        trustMarkSpecId: InternalID,
-        trustMarkSubjectId: InternalID,
-        additionalClaimsId: number,
-    ): CancelablePromise<void> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/admin/trust-marks/issuance-spec/{trustMarkSpecID}/subjects/{trustMarkSubjectID}/additional-claims/{additionalClaimsID}',
-            path: {
-                'trustMarkSpecID': trustMarkSpecId,
-                'trustMarkSubjectID': trustMarkSubjectId,
-                'additionalClaimsID': additionalClaimsId,
             },
             errors: {
                 404: `The requested resource was not found`,

@@ -4,7 +4,7 @@
 /* eslint-disable */
 import type { SelfIssuedTrustMarkSpec } from './SelfIssuedTrustMarkSpec';
 /**
- * Data to partially update a trust mark.
+ * Data to update a trust mark.
  */
 export type UpdateTrustMark = {
     /**
@@ -32,7 +32,7 @@ export type UpdateTrustMark = {
      */
     refresh_rate_limit?: number;
     /**
-     * Specification for self-issued trust marks.
+     * Specification for self-issued trust marks. If set, the entity issues this trust mark to itself.
      */
     self_issuance_spec?: SelfIssuedTrustMarkSpec;
 };

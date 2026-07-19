@@ -20,6 +20,7 @@ export class GeneralConstraintsService {
             method: 'GET',
             url: '/api/v1/admin/subordinates/constraints',
             errors: {
+                404: `The requested resource was not found`,
                 500: `Internal server error`,
             },
         });
@@ -50,11 +51,12 @@ export class GeneralConstraintsService {
      * @returns number Successful response returning max_path_length.
      * @throws ApiError
      */
-    public static getGeneralMaxPathLength(): CancelablePromise<number | null> {
+    public static getGeneralMaxPathLength(): CancelablePromise<number> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/admin/subordinates/constraints/max-path-length',
             errors: {
+                404: `The requested resource was not found`,
                 500: `Internal server error`,
             },
         });
@@ -103,6 +105,7 @@ export class GeneralConstraintsService {
             method: 'GET',
             url: '/api/v1/admin/subordinates/constraints/naming-constraints',
             errors: {
+                404: `The requested resource was not found`,
                 500: `Internal server error`,
             },
         });
@@ -151,6 +154,7 @@ export class GeneralConstraintsService {
             method: 'GET',
             url: '/api/v1/admin/subordinates/constraints/allowed-entity-types',
             errors: {
+                404: `The requested resource was not found`,
                 500: `Internal server error`,
             },
         });

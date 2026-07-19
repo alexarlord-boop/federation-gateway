@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import type { TrustMarkSpecAdditionalClaims } from '@/client/models/TrustMarkSpecAdditionalClaims';
+import type { TrustMarkSpecAdditionalClaims } from '@/types/api-shims';
 
 // ── Internal row type ─────────────────────────────────────
 
