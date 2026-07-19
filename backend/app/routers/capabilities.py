@@ -11,13 +11,13 @@ This enables:
 - Flexible backend implementations
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.models.rbac import Role, FeatureConfig
+from app.models.rbac import Role, FeatureConfig, InstanceCapability
 
 router = APIRouter()
 
@@ -35,6 +35,13 @@ class FeatureCapability(BaseModel):
     operations: Optional[List[str]] = None
     endpoints: Optional[List[str]] = None
     reason: Optional[str] = None
+    # Live per-instance discovery result (None when no instance_id was
+    # requested, or this feature has no safe endpoint to probe). Distinct
+    # from `enabled`/`reason`, which reflect deployment-wide admin policy —
+    # a feature can be policy-enabled but instance_supported=False if the
+    # connected backend doesn't actually implement it.
+    instance_supported: Optional[bool] = None
+    instance_probed_at: Optional[str] = None
 
 
 class RoleDefinition(BaseModel):
@@ -63,26 +70,44 @@ class CapabilityManifest(BaseModel):
 
 
 @router.get("/api/v1/capabilities", response_model=CapabilityManifest, tags=["System"])
-async def get_capabilities(db: Session = Depends(get_db)):
+async def get_capabilities(
+    db: Session = Depends(get_db),
+    instance_id: Optional[str] = Query(
+        None,
+        description=(
+            "When given, merges in live per-instance discovery results "
+            "(app.utils.capability_probe) for that connected backend — "
+            "a feature can be policy-enabled deployment-wide but still "
+            "come back unsupported for this specific instance."
+        ),
+    ),
+):
     """
     Get backend capability manifest.
-    
+
     Returns information about which features and endpoints are supported
     by this backend implementation. The UI uses this to:
     - Enable/disable features dynamically
     - Show/hide navigation items
     - Generate RBAC permission lists
     - Display backend information to operators
-    
+
     This allows the same UI to work with different backend implementations
     that may support different subsets of the full OpenAPI specification.
-    
+
     Now reads from database for dynamic feature configuration and RBAC.
     """
-    
+
     # Get feature configurations from database
     feature_configs = db.query(FeatureConfig).all()
-    
+
+    instance_probes: dict[str, InstanceCapability] = {}
+    if instance_id:
+        instance_probes = {
+            probe.feature_name: probe
+            for probe in db.query(InstanceCapability).filter_by(instance_id=instance_id).all()
+        }
+
     # Build features dict
     features = {}
     for config in feature_configs:
@@ -108,11 +133,27 @@ async def get_capabilities(db: Session = Depends(get_db)):
                     if op in operation_to_endpoint:
                         endpoints.append(operation_to_endpoint[op])
             
+            probe = instance_probes.get(config.feature_name)
+            instance_supported = probe.supported if probe else None
+            instance_probed_at = probe.last_probed_at if probe else None
+
+            # `instance_supported` is informational only — it does NOT
+            # override `enabled`. A feature groups several endpoints (e.g.
+            # general_constraints has both a combined GET and several
+            # narrower sub-resource endpoints); probing catches only one
+            # representative GET, so a single 404 there doesn't prove the
+            # whole feature is unusable — it proved that the moment this
+            # auto-hid a Settings tab whose other endpoints still worked
+            # fine. Surfacing it lets an admin decide whether to disable
+            # the feature via the policy toggle, rather than the probe
+            # silently making that call.
             features[config.feature_name] = FeatureCapability(
                 enabled=True,
                 operations=config.operations or [],
                 endpoints=endpoints,
-                reason=None
+                reason=None,
+                instance_supported=instance_supported,
+                instance_probed_at=instance_probed_at,
             )
         else:
             features[config.feature_name] = FeatureCapability(
@@ -121,7 +162,7 @@ async def get_capabilities(db: Session = Depends(get_db)):
                 endpoints=[],
                 reason=config.reason
             )
-    
+
     # Get roles from database
     roles_from_db = db.query(Role).all()
     roles = []

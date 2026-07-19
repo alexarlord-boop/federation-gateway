@@ -16,12 +16,13 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Shield, Users, Lock, Settings, Plus, Trash2, Loader2, Pencil, Navigation, PanelTop, Columns3 } from 'lucide-react';
+import { Shield, Users, Lock, Settings, Plus, Trash2, Loader2, Pencil, Navigation, PanelTop, Columns3, RefreshCw } from 'lucide-react';
 import { useCapabilities } from '@/contexts/CapabilityContext';
-import { useRBACFeatures } from '@/hooks/useRBACFeatures';
+import { useRBACFeatures, useRefreshInstanceCapabilities } from '@/hooks/useRBACFeatures';
 import { useRBACRoles, type RBACRole } from '@/hooks/useRBACRoles';
 import { useRBACPermissions } from '@/hooks/useRBACPermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 // ---------------------------------------------------------------------------
 // Feature → UI mapping: describes which sidebar items, pages, and tabs each
@@ -114,7 +115,19 @@ export default function RBACManagementPage() {
   const { features: featureConfigs, toggleFeature } = useRBACFeatures();
   const { roles, isLoading: isRolesLoading, createRole, updateRole, deleteRole, assignPermission, removePermission } = useRBACRoles();
   const { permissions: allPermissions, isLoading: isPermsLoading } = useRBACPermissions();
+  const { activeTrustAnchor } = useTrustAnchor();
+  const refreshInstanceCapabilities = useRefreshInstanceCapabilities();
   const { toast } = useToast();
+
+  const handleRefreshCapabilities = async () => {
+    if (!activeTrustAnchor) return;
+    try {
+      await refreshInstanceCapabilities.mutateAsync(activeTrustAnchor.id);
+      toast({ title: 'Capabilities refreshed', description: `Re-probed ${activeTrustAnchor.name}'s live endpoints.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to refresh capabilities' });
+    }
+  };
 
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isSavingFeature, setIsSavingFeature] = useState<string | null>(null);
@@ -502,12 +515,30 @@ export default function RBACManagementPage() {
         {/* ═══════════ FEATURES TAB ═══════════ */}
         <TabsContent value="features" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Feature Management</CardTitle>
-              <CardDescription>
-                Enable or disable features for this backend instance. Disabled features hide the corresponding
-                UI sections for all users regardless of their role.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>Feature Management</CardTitle>
+                <CardDescription>
+                  Enable or disable features for this backend instance. Disabled features hide the corresponding
+                  UI sections for all users regardless of their role.
+                </CardDescription>
+              </div>
+              {activeTrustAnchor && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  disabled={refreshInstanceCapabilities.isPending}
+                  onClick={handleRefreshCapabilities}
+                >
+                  {refreshInstanceCapabilities.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  Refresh capabilities
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -526,6 +557,18 @@ export default function RBACManagementPage() {
                           <Badge variant={enabled ? 'default' : 'secondary'}>
                             {enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
+                          {capabilityFeature.instance_supported === false && (
+                            <Badge
+                              variant="outline"
+                              className="text-warning border-warning/30"
+                              title="A representative endpoint for this feature returned 404/405 when probed against the connected instance. Some of the feature's other endpoints may still work — this is a signal to investigate, not a guarantee the whole feature is broken."
+                            >
+                              Probe found a gap — investigate
+                            </Badge>
+                          )}
+                          {capabilityFeature.instance_supported === true && (
+                            <Badge variant="outline" className="text-success border-success/30">Live-verified</Badge>
+                          )}
                         </div>
 
                         {/* Description */}

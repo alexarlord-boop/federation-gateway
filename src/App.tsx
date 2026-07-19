@@ -89,7 +89,9 @@ function AppRoutes() {
       <Route element={
         <ProtectedRoute>
           <TrustAnchorProvider>
-            <AppLayout />
+            <CapabilityProvider>
+              <AppLayout />
+            </CapabilityProvider>
           </TrustAnchorProvider>
         </ProtectedRoute>
       }>
@@ -157,9 +159,7 @@ const App = () => (
       <BrowserRouter>
         <BackendProvider>
           <AuthProvider>
-            <CapabilityProvider>
-              <AppRoutes />
-            </CapabilityProvider>
+            <AppRoutes />
           </AuthProvider>
         </BackendProvider>
       </BrowserRouter>

@@ -29,6 +29,12 @@ export interface FeatureCapability {
   operations?: string[];
   endpoints?: string[];
   reason?: string;
+  /** Live per-instance discovery result — only present when the manifest was
+   * fetched with an instance_id. null/undefined means "not probed" or "no
+   * safe endpoint existed to probe", not "unsupported". Distinct from
+   * `enabled`, which reflects deployment-wide admin policy. */
+  instance_supported?: boolean | null;
+  instance_probed_at?: string | null;
 }
 
 export interface RoleDefinition {

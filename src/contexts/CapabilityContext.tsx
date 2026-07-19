@@ -15,13 +15,14 @@ import { createContext, useContext, useCallback, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CapabilityManifest, FeatureCapability } from '@/services/capabilities';
 import { useBackend } from '@/contexts/BackendContext';
+import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 
 // ---------------------------------------------------------------------------
 // Query keys — exported so useRBACFeatures (and anything else) can invalidate
 // ---------------------------------------------------------------------------
 export const capabilityKeys = {
   all: ['capabilities'] as const,
-  manifest: (baseUrl: string) => ['capabilities', baseUrl] as const,
+  manifest: (baseUrl: string, instanceId: string | null) => ['capabilities', baseUrl, instanceId] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,8 +54,11 @@ const FALLBACK_MANIFEST: CapabilityManifest = {
 // ---------------------------------------------------------------------------
 // Fetcher
 // ---------------------------------------------------------------------------
-async function fetchManifest(baseUrl: string): Promise<CapabilityManifest> {
-  const res = await fetch(`${baseUrl}/api/v1/capabilities`);
+async function fetchManifest(baseUrl: string, instanceId: string | null): Promise<CapabilityManifest> {
+  const url = instanceId
+    ? `${baseUrl}/api/v1/capabilities?instance_id=${encodeURIComponent(instanceId)}`
+    : `${baseUrl}/api/v1/capabilities`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch capabilities: ${res.statusText}`);
   return res.json();
 }
@@ -83,11 +87,13 @@ interface CapabilityProviderProps {
 
 export function CapabilityProvider({ children }: CapabilityProviderProps) {
   const { selectedBackend } = useBackend();
+  const { activeTrustAnchor } = useTrustAnchor();
+  const instanceId = activeTrustAnchor?.id ?? null;
   const queryClient = useQueryClient();
 
   const { data: manifest, isLoading, error: rawError } = useQuery<CapabilityManifest>({
-    queryKey: capabilityKeys.manifest(selectedBackend.baseUrl),
-    queryFn: () => fetchManifest(selectedBackend.baseUrl),
+    queryKey: capabilityKeys.manifest(selectedBackend.baseUrl, instanceId),
+    queryFn: () => fetchManifest(selectedBackend.baseUrl, instanceId),
     staleTime: 5 * 60_000, // 5 min — re-fetched on invalidation anyway
     retry: 1,
     // On error React Query keeps data undefined; we supply fallback below

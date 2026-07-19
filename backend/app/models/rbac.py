@@ -60,7 +60,11 @@ class Permission(Base):
 
 
 class FeatureConfig(Base):
-    """Configuration for which features are enabled"""
+    """Deployment-wide feature policy: is this feature allowed at all,
+    regardless of which backend instance is connected. An admin toggling
+    this off is a policy decision ("we don't want trust mark issuance
+    enabled here"), independent of whether any given backend actually
+    supports it — see InstanceCapability for that."""
     __tablename__ = 'feature_config'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -69,3 +73,28 @@ class FeatureConfig(Base):
     reason = Column(String, nullable=True)  # Reason if disabled
     operations = Column(JSON, nullable=True)  # List of enabled operations
     config_metadata = Column(JSON, nullable=True)  # Additional config
+
+
+class InstanceCapability(Base):
+    """Per-instance, live-probed capability discovery result.
+
+    Populated by app.utils.capability_probe against the real connected
+    backend (LightHouse or otherwise) — distinct from FeatureConfig, which
+    is a deployment-wide admin policy toggle. A feature can be
+    policy-enabled (FeatureConfig.enabled=True) but still come back
+    unsupported here because the specific connected instance doesn't
+    implement it; the manifest endpoint combines both.
+    """
+    __tablename__ = 'instance_capability'
+
+    id = Column(Integer, primary_key=True, index=True)
+    instance_id = Column(String, nullable=False, index=True)
+    feature_name = Column(String, nullable=False, index=True)
+    # None = not yet probed, or no safe (read-only) endpoint existed to probe
+    supported = Column(Boolean, nullable=True)
+    detail = Column(String, nullable=True)
+    last_probed_at = Column(String, nullable=True)  # ISO 8601 UTC timestamp
+
+    __table_args__ = (
+        UniqueConstraint('instance_id', 'feature_name', name='uq_instance_capability_instance_feature'),
+    )

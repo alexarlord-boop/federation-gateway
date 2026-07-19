@@ -1,3 +1,7 @@
+import asyncio
+import base64
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
@@ -91,6 +95,41 @@ app.include_router(proxy.router)
 # Instance registry — lists deployment-managed instances
 app.include_router(instances.router)
 app.include_router(audit.router)
+
+
+async def _probe_all_instances() -> None:
+    from app.utils.capability_probe import probe_instance_capabilities
+
+    logger = logging.getLogger(__name__)
+    session = SessionLocal()
+    try:
+        for item in deployment_config.instances:
+            basic_credentials = None
+            if item.admin_auth is not None:
+                raw = f"{item.admin_auth.username}:{item.admin_auth.password}".encode()
+                basic_credentials = base64.b64encode(raw).decode()
+            try:
+                await probe_instance_capabilities(
+                    session, item.id, str(item.admin_base_url), basic_credentials,
+                )
+            except Exception:
+                logger.warning("Startup capability probe failed for instance %s", item.id, exc_info=True)
+    finally:
+        session.close()
+
+
+@app.on_event("startup")
+async def _probe_instances_on_startup() -> None:
+    """Best-effort live capability discovery for every configured instance,
+    so the first UI load already reflects reality instead of only the
+    bundled spec's assumptions. Scheduled as a background task rather than
+    awaited here — probing ~15 features sequentially against a possibly
+    slow or not-yet-ready instance must not delay the app from starting to
+    serve /health, or the container's own healthcheck would time out on
+    every startup. An admin can also trigger
+    POST /api/v1/admin/instances/{id}/capabilities/refresh manually.
+    """
+    asyncio.create_task(_probe_all_instances())
 
 
 @app.get("/health")

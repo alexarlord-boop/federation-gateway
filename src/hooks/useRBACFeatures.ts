@@ -77,3 +77,25 @@ export function useRBACFeatures() {
     toggleFeature,
   };
 }
+
+interface RefreshCapabilitiesResult {
+  instance_id: string;
+  probed: Record<string, boolean | null>;
+}
+
+/** Live-probes the given instance's safe (read-only) endpoints and
+ * invalidates the capability manifest so the UI picks up the result. */
+export function useRefreshInstanceCapabilities() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (instanceId: string) =>
+      gatewayFetch<RefreshCapabilitiesResult>({
+        path: `/api/v1/admin/instances/${encodeURIComponent(instanceId)}/capabilities/refresh`,
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: capabilityKeys.all });
+    },
+  });
+}
