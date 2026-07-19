@@ -25,6 +25,10 @@ backend/data/*.db
 backend/.venv/
 backend/test_bff.db
 __pycache__/
+
+# Secrets — never commit real env files, only .env.example
+.env
+backend/.env
 *.pyc
 .worktrees/
 
