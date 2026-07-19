@@ -1,4 +1,4 @@
-name: E2E Tests
+name: CI
 
 on:
   push:
@@ -6,6 +6,32 @@ on:
   pull_request:
 
 jobs:
+  backend-tests:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend deps
+        run: cd backend && pip install -r requirements.txt
+      - name: Run pytest
+        run: cd backend && pytest
+
+  client-freshness:
+    name: Generated API client is up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run verify:client
+
   e2e-bff:
     name: BFF-only E2E
     runs-on: ubuntu-latest
@@ -20,16 +46,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
           restore-keys: playwright-chromium-
-      - name: Start full stack
-        run: docker compose up -d
-      - name: Wait for stack to be ready
-        run: |
-          echo "Waiting for UI at :8080..."
-          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
-            http://localhost:8080
-          echo "Waiting for BFF at :8765..."
-          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
-            http://localhost:8765/health || true
+      - name: Start full stack and wait for healthchecks
+        run: docker compose up -d --wait --wait-timeout 120
       - name: Install e2e deps
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run BFF tests
@@ -57,16 +75,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
           restore-keys: playwright-chromium-
-      - name: Start full stack
-        run: docker compose up -d
-      - name: Wait for stack to be ready
-        run: |
-          echo "Waiting for UI at :8080..."
-          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
-            http://localhost:8080
-          echo "Waiting for BFF at :8765..."
-          curl --retry 20 --retry-delay 3 --retry-connrefused --silent --output /dev/null \
-            http://localhost:8765/health || true
+      - name: Start full stack and wait for healthchecks
+        run: docker compose up -d --wait --wait-timeout 120
       - name: Install e2e deps
         run: cd e2e && npm ci && npx playwright install --with-deps chromium
       - name: Run proxy tests
