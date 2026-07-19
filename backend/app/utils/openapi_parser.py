@@ -174,6 +174,44 @@ class OpenAPIParser:
         
         return base
     
+    def get_endpoint_operations(self) -> List[dict]:
+        """
+        Flat list of every (method, path, feature, operation) tuple in the
+        spec — the reverse of get_features()'s per-feature endpoint lists.
+
+        Used to map a real incoming request (method + concrete path) back to
+        the feature/operation pair it represents, e.g. for RBAC enforcement
+        on the proxy. Kept separate from get_features() because that method
+        aggregates by feature and loses the per-path operation type.
+
+        Returns:
+            [{"method": "PUT", "path": "/api/v1/admin/subordinates/{subordinateID}/status",
+              "feature": "subordinates", "operation": "update"}, ...]
+        """
+        results = []
+        for path, path_item in self.spec.get('paths', {}).items():
+            for method, operation in path_item.items():
+                if method.upper() not in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']:
+                    continue
+
+                tags = operation.get('tags', [])
+                if not tags:
+                    continue
+
+                primary_tag = tags[0]
+                feature_name = primary_tag.lower().replace(' ', '_').replace('-', '_')
+                if feature_name in ['system', 'auth', 'authentication', 'health']:
+                    continue
+
+                operation_type = self._determine_operation_type(method.upper(), path, operation)
+                results.append({
+                    "method": method.upper(),
+                    "path": path,
+                    "feature": feature_name,
+                    "operation": operation_type,
+                })
+        return results
+
     def get_all_operations(self) -> Set[str]:
         """
         Get all unique operation types across the entire spec.

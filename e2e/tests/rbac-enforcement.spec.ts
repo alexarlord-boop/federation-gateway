@@ -89,4 +89,19 @@ test.describe('RBAC access control @proxy', () => {
     // Should return 403 for non-admin
     expect(response.status()).toBe(403);
   });
+
+  test('non-admin user cannot bypass RBAC by calling the proxy directly', async ({ page }) => {
+    // tech@example.org is seeded as a "tech_contact" role — read access plus
+    // create/update only for subordinates/keys/entity-configuration. It has
+    // no create permission on federation_trust_marks. The UI already hides
+    // the button for this; this test calls the proxy endpoint directly,
+    // bypassing the UI entirely, to prove the gateway itself enforces RBAC
+    // rather than trusting the client to have hidden the control.
+    await loginAs(page, USER_EMAIL, USER_PASSWORD);
+    await selectInstance(page);
+    const response = await page.request.post(`${APP_URL}/api/v1/proxy/ta-1/api/v1/admin/trust-marks/types`, {
+      data: { trust_mark_id: 'https://rbac-bypass-e2e.example.org/should-be-blocked' },
+    });
+    expect(response.status()).toBe(403);
+  });
 });

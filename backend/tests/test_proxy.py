@@ -269,3 +269,60 @@ def test_audit_details_none_for_non_json_response(client, admin_headers):
     entry = _latest_audit_entry("no-body-del-1")
     assert entry is not None
     assert entry.details is None
+
+
+# ── RBAC enforcement ─────────────────────────────────────────────────────
+# Previously the proxy forwarded every authenticated request regardless of
+# role — RBAC was enforced only by the UI hiding buttons. A viewer-role
+# user with a valid token could call the proxy directly and mutate data.
+
+def test_proxy_denies_mutation_without_permission(client, viewer_headers):
+    mc = _mock_client(_fake_response(201, b'{"id":1}'))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.post(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            json={"entity_id": "https://viewer-should-not-create.example.org"},
+            headers=viewer_headers,
+        )
+    assert resp.status_code == 403
+    mc.request.assert_not_called()
+
+
+def test_proxy_allows_read_within_permission(client, viewer_headers):
+    mc = _mock_client(_fake_response())
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.get(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            headers=viewer_headers,
+        )
+    assert resp.status_code == 200
+    mc.request.assert_called_once()
+
+
+def test_proxy_allows_mutation_with_permission(client, admin_headers):
+    """Sanity check that the new RBAC gate doesn't block a role that legitimately
+    has the permission — admin_headers is super_admin, which has every
+    permission, so this must still reach the upstream call."""
+    mc = _mock_client(_fake_response(201, b'{"id":1}'))
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.post(
+            "/api/v1/proxy/ta-1/api/v1/admin/subordinates",
+            json={"entity_id": "https://admin-can-create.example.org"},
+            headers=admin_headers,
+        )
+    assert resp.status_code == 201
+    mc.request.assert_called_once()
+
+
+def test_proxy_fails_open_for_unmatched_path(client, viewer_headers):
+    """A path that doesn't match any known (feature, operation) — e.g. not
+    yet described in the OpenAPI spec — isn't blocked by RBAC, since the
+    permission model has no opinion on it. It's still forwarded upstream."""
+    mc = _mock_client(_fake_response())
+    with patch("app.routers.proxy._get_client", return_value=mc):
+        resp = client.get(
+            "/api/v1/proxy/ta-1/some/undocumented/route",
+            headers=viewer_headers,
+        )
+    assert resp.status_code == 200
+    mc.request.assert_called_once()

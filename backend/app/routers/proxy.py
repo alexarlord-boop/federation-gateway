@@ -27,11 +27,12 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, user_has_permission
 from app.db.database import get_db
 from app.models.trust_anchor import TrustAnchor
 from app.models.user import User
 from app.utils import audit as audit_utils
+from app.utils.permission_matching import match_feature_operation
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,32 @@ async def proxy(
 ):
     # 1. Resolve instance
     instance = _resolve_instance(instance_id, request, db)
+
+    # 1b. RBAC enforcement — the proxy used to forward every authenticated
+    # request regardless of the caller's role, trusting the UI to have
+    # hidden the button. A viewer-role user could call this endpoint
+    # directly and perform any admin mutation LightHouse allows. Match the
+    # concrete path against the OpenAPI spec (same source that seeds
+    # Permission rows) to find its (feature, operation), and deny if the
+    # caller's role doesn't grant it. An unmatched path — not yet in the
+    # spec, or a genuinely undocumented route — fails open (logged, not
+    # blocked) rather than breaking functionality the RBAC model doesn't
+    # know about yet.
+    feature_operation = match_feature_operation(request.method, path)
+    if feature_operation is not None:
+        feature, operation = feature_operation
+        if not user_has_permission(user, feature, operation):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing permission: {feature}:{operation}",
+            )
+    else:
+        logger.warning(
+            "Proxy request %s %s did not match any known (feature, operation) — "
+            "RBAC not enforced for this path",
+            request.method,
+            path,
+        )
 
     # 2. Build upstream URL
     upstream_url = f"{instance['base_url']}/{path.lstrip('/')}"
