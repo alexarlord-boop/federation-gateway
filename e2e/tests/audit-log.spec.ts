@@ -47,15 +47,37 @@ test.describe('Audit log page @proxy', () => {
 
   test('View button opens the response body captured for a real action', async ({ instancePage: page }) => {
     // Issue a trust mark — a real, audited mutating action — so there's a
-    // fresh row to inspect. Requires at least one issuance spec to exist.
+    // fresh row to inspect. Create our own type + issuance spec rather than
+    // assuming one already exists: on a long-lived dev environment there's
+    // always leftover data from prior manual testing, but a fresh CI
+    // container starts with none, and this test runs (alphabetically)
+    // before trust-marks-crud.spec.ts would ever create one. Previously
+    // this test's "Issue to Entity" combobox stayed disabled (empty spec
+    // list) and .click() hung for the full 30s timeout on a clean stack.
+    const typeId = `https://audit-view-e2e-${Date.now()}.example.org`;
+
+    await page.goto(`${APP_URL}/trust-marks?tab=federation`);
+    await page.getByRole('button', { name: /add type/i }).click();
+    await page.getByLabel(/trust mark type identifier/i).fill(typeId);
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/trust-marks/types') && r.request().method() === 'POST'),
+      page.getByRole('button', { name: /^create$/i }).click(),
+    ]);
+
     await page.goto(`${APP_URL}/trust-marks?tab=issuance`);
+    await page.getByRole('button', { name: /add spec/i }).click();
+    await page.getByRole('combobox').first().click();
+    const typeOption = page.getByRole('option', { name: typeId, exact: true });
+    await typeOption.scrollIntoViewIfNeeded({ timeout: 15_000 });
+    await typeOption.click();
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/trust-marks/issuance-spec') && r.request().method() === 'POST'),
+      page.getByRole('button', { name: /^create$/i }).click(),
+    ]);
+
     await page.getByRole('button', { name: /issue to entity/i }).click();
     await page.getByRole('combobox').first().click();
-    const firstSpec = page.getByRole('option').first();
-    if ((await firstSpec.count()) === 0) {
-      test.skip(true, 'no issuance spec exists to issue against');
-    }
-    await firstSpec.click();
+    await page.getByRole('option', { name: typeId, exact: true }).click();
     const entityId = `https://audit-e2e-${Date.now()}.example.org`;
     await page.getByLabel(/entity id/i).fill(entityId);
     await page.getByRole('button', { name: /^issue$/i }).click();
