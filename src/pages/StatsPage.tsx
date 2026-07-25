@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   BarChart3, Activity, Clock, Users, AlertCircle, Loader2, Download,
   Monitor, Network, SlidersHorizontal, Globe, ChevronDown,
@@ -292,9 +292,50 @@ function rollUpDaily(rows: DailyStatsRow[]): DailyTotal[] {
   return Array.from(byDate.values()).sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Per-endpoint/status breakdown shown inline when a day is expanded —
+ * the raw daily rows, sorted by request volume, with each row's error
+ * count highlighted the same way the parent table does. */
+function DayDetailRows({ rows }: { rows: DailyStatsRow[] }) {
+  const sorted = [...rows].sort((a, b) => b.request_count - a.request_count);
+  return (
+    <tr className="bg-muted/20">
+      <td colSpan={4} className="p-0">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="py-1.5 pl-10 pr-4 text-left font-medium text-muted-foreground">Endpoint</th>
+              <th className="py-1.5 px-4 text-left font-medium text-muted-foreground">Status</th>
+              <th className="py-1.5 px-4 text-right font-medium text-muted-foreground">Requests</th>
+              <th className="py-1.5 px-4 text-right font-medium text-muted-foreground">Avg Latency</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, i) => (
+              <tr key={i} className="border-b border-border/40 last:border-0">
+                <td className="py-1.5 pl-10 pr-4 font-mono text-muted-foreground">{row.endpoint}</td>
+                <td className="py-1.5 px-4">
+                  <span className={`font-mono ${row.error_count > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                    {row.status_code}
+                  </span>
+                </td>
+                <td className="py-1.5 px-4 text-right tabular-nums">{fmt(row.request_count)}</td>
+                <td className="py-1.5 px-4 text-right tabular-nums text-muted-foreground">
+                  {fmt(row.duration_avg_ms, 1)} ms
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  );
+}
+
 function DailyBreakdownTable({ instanceId, range }: { instanceId: string | undefined; range: TimeRange }) {
   const daily = useStatsDaily(instanceId, range);
-  const totals = rollUpDaily(daily.data?.daily ?? []);
+  const rawRows = daily.data?.daily ?? [];
+  const totals = rollUpDaily(rawRows);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   return (
     <Card>
@@ -321,20 +362,44 @@ function DailyBreakdownTable({ instanceId, range }: { instanceId: string | undef
               </tr>
             </thead>
             <tbody>
-              {totals.map((day) => (
-                <tr key={day.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="py-2.5 px-4">
-                    {new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </td>
-                  <td className="py-2.5 px-4 text-right tabular-nums">{fmt(day.requests)}</td>
-                  <td className="py-2.5 px-4 text-right tabular-nums">
-                    <span className={day.errors > 0 ? 'text-destructive' : 'text-muted-foreground'}>
-                      {fmt(day.errors)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-4 font-mono text-xs text-muted-foreground">{day.topEndpoint || '—'}</td>
-                </tr>
-              ))}
+              {totals.map((day) => {
+                const isExpanded = expandedDate === day.date;
+                return (
+                  <Fragment key={day.date}>
+                    <tr
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedDate(isExpanded ? null : day.date)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedDate(isExpanded ? null : day.date);
+                        }
+                      }}
+                      className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                    >
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+                          />
+                          {new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-right tabular-nums">{fmt(day.requests)}</td>
+                      <td className="py-2.5 px-4 text-right tabular-nums">
+                        <span className={day.errors > 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                          {fmt(day.errors)}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 font-mono text-xs text-muted-foreground">{day.topEndpoint || '—'}</td>
+                    </tr>
+                    {isExpanded && (
+                      <DayDetailRows rows={rawRows.filter((r) => r.date === day.date)} />
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
