@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   BarChart3, Activity, Clock, Users, AlertCircle, Loader2, Download,
-  Monitor, Network, SlidersHorizontal, Globe, TriangleAlert, ChevronDown,
+  Monitor, Network, SlidersHorizontal, Globe, ChevronDown,
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -541,16 +541,6 @@ export default function StatsPage() {
           emptyLabel="No geographic data — GeoIP is not configured on this instance."
           valueClassName="text-xs"
         />
-      </div>
-
-      {/* Known-unavailable views */}
-      <div className="flex items-start gap-1.5">
-        <TriangleAlert className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">
-          Daily aggregates (<code className="bg-muted px-1 rounded">stats/daily</code>) are
-          unavailable — LightHouse returns an empty result even with real traffic in range.
-          Reported upstream; not something this gateway can fix.
-        </p>
       </div>
     </div>
   );
