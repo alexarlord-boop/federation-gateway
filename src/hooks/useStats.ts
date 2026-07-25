@@ -68,6 +68,26 @@ export interface StatsLatencyResponse {
   latency: StatsLatency;
 }
 
+/** One row per (date, endpoint, status_code) — daily is far more granular
+ * than timeseries, which only aggregates totals per bucket. */
+export interface DailyStatsRow {
+  date: string;
+  endpoint: string;
+  status_code: number;
+  request_count: number;
+  error_count: number;
+  duration_avg_ms: number;
+  duration_p50_ms: number;
+  duration_p95_ms: number;
+  duration_p99_ms: number;
+}
+
+export interface StatsDailyResponse {
+  from: string;
+  to: string;
+  daily: DailyStatsRow[];
+}
+
 export type TimeRange = '1h' | '24h' | '7d' | '30d';
 
 function rangeToFrom(range: TimeRange): string {
@@ -142,6 +162,21 @@ export function useStatsTimeseries(instanceId: string | undefined, range: TimeRa
     // Keep the previous chart on screen (at reduced opacity in the UI) while a
     // new range loads, instead of flashing to a loading state.
     placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
+export function useStatsDaily(instanceId: string | undefined, range: TimeRange) {
+  const from = rangeToFrom(range);
+  return useQuery({
+    queryKey: ['stats', 'daily', instanceId, range],
+    queryFn: () =>
+      gatewayFetch<StatsDailyResponse>({
+        path: `${proxyPath(instanceId!, 'daily')}?from=${encodeURIComponent(from)}`,
+        softFail: [404, 500, 501],
+      }),
+    enabled: !!instanceId,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });

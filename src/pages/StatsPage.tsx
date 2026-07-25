@@ -23,9 +23,11 @@ import {
   useStatsTopParams,
   useStatsLatency,
   useStatsTimeseries,
+  useStatsDaily,
   downloadStatsExport,
   type TimeRange,
   type TopItem,
+  type DailyStatsRow,
 } from '@/hooks/useStats';
 
 const RANGES: { label: string; value: TimeRange }[] = [
@@ -257,6 +259,90 @@ function RequestsTimeseriesChart({ instanceId, range }: { instanceId: string | u
   );
 }
 
+interface DailyTotal {
+  date: string;
+  requests: number;
+  errors: number;
+  topEndpoint: string;
+  topEndpointCount: number;
+}
+
+/** `daily` is rows per (date, endpoint, status_code) — far more granular than
+ * timeseries. Rolled up here into one row per date (summed requests/errors,
+ * plus whichever endpoint had the most traffic that day) since a raw
+ * per-endpoint-per-status table would be dozens of rows for a single day on
+ * a busy instance. Only ever shows *completed* days — LightHouse rolls
+ * daily stats up once a day is over, unlike timeseries' live aggregation,
+ * so "today" typically won't appear here yet. */
+function rollUpDaily(rows: DailyStatsRow[]): DailyTotal[] {
+  const byDate = new Map<string, DailyTotal>();
+  for (const row of rows) {
+    let entry = byDate.get(row.date);
+    if (!entry) {
+      entry = { date: row.date, requests: 0, errors: 0, topEndpoint: '', topEndpointCount: 0 };
+      byDate.set(row.date, entry);
+    }
+    entry.requests += row.request_count;
+    entry.errors += row.error_count;
+    if (row.request_count > entry.topEndpointCount) {
+      entry.topEndpoint = row.endpoint;
+      entry.topEndpointCount = row.request_count;
+    }
+  }
+  return Array.from(byDate.values()).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function DailyBreakdownTable({ instanceId, range }: { instanceId: string | undefined; range: TimeRange }) {
+  const daily = useStatsDaily(instanceId, range);
+  const totals = rollUpDaily(daily.data?.daily ?? []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Daily Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {daily.isLoading ? (
+          <div className="flex items-center justify-center h-16">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : totals.length === 0 ? (
+          <p className="text-sm text-muted-foreground p-6">
+            No completed days in this range yet — daily rolls up once a calendar day is over.
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="py-2 px-4 text-left text-xs font-medium text-muted-foreground">Date</th>
+                <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Requests</th>
+                <th className="py-2 px-4 text-right text-xs font-medium text-muted-foreground">Errors</th>
+                <th className="py-2 px-4 text-left text-xs font-medium text-muted-foreground">Top Endpoint</th>
+              </tr>
+            </thead>
+            <tbody>
+              {totals.map((day) => (
+                <tr key={day.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="py-2.5 px-4">
+                    {new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                  <td className="py-2.5 px-4 text-right tabular-nums">{fmt(day.requests)}</td>
+                  <td className="py-2.5 px-4 text-right tabular-nums">
+                    <span className={day.errors > 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                      {fmt(day.errors)}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-xs text-muted-foreground">{day.topEndpoint || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function StatsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const instanceId = activeTrustAnchor?.id;
@@ -394,6 +480,9 @@ export default function StatsPage() {
 
       {/* Requests over time */}
       <RequestsTimeseriesChart instanceId={instanceId} range={range} />
+
+      {/* Daily breakdown */}
+      <DailyBreakdownTable instanceId={instanceId} range={range} />
 
       {/* Latency percentiles */}
       <Card>
