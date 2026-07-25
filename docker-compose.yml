@@ -40,7 +40,7 @@ services:
       retries: 10
       start_period: 5s
   lighthouse:
-    image: oidfed/lighthouse@sha256:689b12198669e8f714b112c86875086a70385522c86c8c3617250282a47ba923
+    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -64,7 +64,7 @@ services:
 
   # Second LightHouse instance — serves as a second federation Trust Anchor on port 8082.
   lighthouse2:
-    image: oidfed/lighthouse@sha256:689b12198669e8f714b112c86875086a70385522c86c8c3617250282a47ba923
+    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
     restart: unless-stopped
     entrypoint:
       - /bin/sh
