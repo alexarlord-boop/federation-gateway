@@ -57,9 +57,9 @@ services:
     # HTTP-capable tool available inside the container.
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
-      retries: 20
+      retries: 3
       start_period: 10s
 
   # Second LightHouse instance — serves as a second federation Trust Anchor on port 8082.
@@ -79,7 +79,7 @@ services:
       LH_CONFIG_FILE: "/config/config.yaml"
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
-      retries: 20
+      retries: 3
       start_period: 10s
