@@ -5,20 +5,28 @@ GET /api/v1/admin/resolve?entity_id=<url>
     payload, and returns plain JSON — used both by the registration wizard
     (pre-fill) and the Chain Inspector's direct entity lookup.
 
-GET /api/v1/admin/trust-mark-status?status_endpoint=<url>&sub=<url>&trust_mark_id=<url>&trust_mark_jwt=<jwt>
+GET /api/v1/admin/trust-mark-status?status_endpoint=<url>&trust_mark_jwt=<jwt>&sub=<url>&trust_mark_id=<url>
     Calls a trust mark issuer's own `federation_trust_mark_status_endpoint`
     (as advertised in that issuer's entity configuration) to check whether a
     specific mark is still active. This is the spec-defined verification
-    mechanism (OIDF §8.3) — no local signature verification needed.
+    mechanism (OIDF §8.4) — no local signature verification needed.
 
-    Real implementations disagree on the wire contract, confirmed by hand
-    against both a live testbed and a real LightHouse instance:
-      - GET with `sub` + `trust_mark_id` query params, plain JSON
-        `{"active": bool}` response (seen on testbed.oidf.lab.surf.nl).
-      - POST with `{"trust_mark": "<jwt>"}` body, response is itself a
-        *signed* JWT whose payload has a `status: "active"|"revoked"` claim
-        (seen on LightHouse 0.21.0).
-    We try GET first and fall back to POST if it fails.
+    Per the OpenID Federation 1.0 spec (Section 8.4.1/8.4.2, verified against
+    the normative text): the request MUST be POST, application/x-www-form-
+    urlencoded, with a single required `trust_mark` parameter (the raw JWT).
+    A successful response MUST be HTTP 200 with content type
+    application/trust-mark-status-response+jwt — a signed JWT whose claims
+    include `status` (one of active/expired/revoked/invalid).
+
+    LightHouse implements this correctly. The real eduGAIN testbed root
+    (testbed.oidf.lab.surf.nl) does not: it only accepts GET with `sub` +
+    `trust_mark_id` query params and returns plain JSON `{"active": bool}` —
+    a contract from an earlier, non-final draft of the spec, confirmed by
+    reading the current normative text directly rather than assuming "both
+    are valid, implementations disagree." POST is tried first as the
+    primary, spec-compliant path; GET is a documented fallback kept only for
+    compatibility with issuers like eduGAIN's testbed that haven't caught up
+    to the finalized 1.0 contract.
 
 Security
 --------
@@ -150,13 +158,18 @@ async def resolve_entity_configuration(
     return JSONResponse({"payload": payload, "raw_jwt": raw_jwt})
 
 
+_SPEC_STATUS_VALUES = ("active", "expired", "revoked", "invalid")
+
+
 def _extract_active_from_jwt_response(response_text: str) -> bool:
-    """LightHouse's POST status contract returns a signed JWT (not verified
-    here — same trust model as the rest of this viewer) whose payload has a
-    `status: "active" | "revoked"` claim."""
+    """Per OIDF §8.4.2, the response is a signed JWT (not verified here —
+    same trust model as the rest of this viewer) whose Claims Set has a
+    `status` claim. The spec defines four values; only "active" means the
+    mark is currently valid — the rest (including any future extension
+    values not in the spec's base set) all mean "not active"."""
     payload = _decode_jwt_payload(response_text.strip())
     status_value = payload.get("status")
-    if status_value not in ("active", "revoked"):
+    if status_value not in _SPEC_STATUS_VALUES:
         raise ValueError(f"Unrecognized status value in JWT response: {status_value!r}")
     return status_value == "active"
 
@@ -164,13 +177,13 @@ def _extract_active_from_jwt_response(response_text: str) -> bool:
 @router.get("/trust-mark-status")
 async def check_trust_mark_status(
     status_endpoint: str = Query(..., description="The issuer's federation_trust_mark_status_endpoint URL"),
-    sub: str = Query(..., description="The subject entity_id the mark was issued to"),
-    trust_mark_id: str = Query(..., description="The trust mark type identifier (trust_mark_id / trust_mark_type / id claim)"),
-    trust_mark_jwt: str = Query(None, description="The raw trust mark JWT, required for issuers using the POST+JWT-body contract"),
+    trust_mark_jwt: str = Query(..., description="The raw trust mark JWT — the spec's sole required request parameter"),
+    sub: str = Query(None, description="Subject entity_id — only used by the non-compliant GET fallback"),
+    trust_mark_id: str = Query(None, description="Trust mark type identifier — only used by the non-compliant GET fallback"),
     _user=Depends(get_current_user),
 ):
     """
-    Call a trust mark issuer's own status endpoint (OIDF §8.3) to check whether
+    Call a trust mark issuer's own status endpoint (OIDF §8.4) to check whether
     a specific mark is still active — the spec-defined verification mechanism,
     server-side, no local signature check required.
 
@@ -181,7 +194,46 @@ async def check_trust_mark_status(
     _assert_safe_https_url(status_endpoint, param_name="status_endpoint")
 
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-        # 1. Try the GET + query-param contract first.
+        # 1. POST + application/x-www-form-urlencoded + `trust_mark` — the
+        # spec's sole normative request format (§8.4.1). LightHouse implements
+        # this correctly; this is the primary path, not a fallback.
+        try:
+            post_response = await client.post(
+                status_endpoint,
+                data={"trust_mark": trust_mark_jwt},
+                headers={"Accept": "application/trust-mark-status-response+jwt"},
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Timed out checking trust mark status")
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=502, detail=f"Failed to reach trust mark status endpoint: {exc}")
+
+        if 200 <= post_response.status_code < 300:
+            # Spec response is a signed JWT; tolerate an issuer that just
+            # returns plain JSON on POST too.
+            try:
+                return JSONResponse(post_response.json())
+            except Exception:
+                pass
+            try:
+                active = _extract_active_from_jwt_response(post_response.text)
+                return JSONResponse({"active": active})
+            except Exception:
+                pass  # fall through to the GET fallback below
+
+        # 2. Fall back to GET + `sub`/`trust_mark_id` query params, plain JSON
+        # response — not part of the current spec, but real issuers like the
+        # eduGAIN testbed root (testbed.oidf.lab.surf.nl) only implement this
+        # older, non-final draft contract.
+        if not sub or not trust_mark_id:
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"Trust mark status endpoint returned HTTP {post_response.status_code} for the spec-compliant "
+                    "POST request, and sub/trust_mark_id weren't provided to retry with the legacy GET fallback."
+                ),
+            )
+
         try:
             get_response = await client.get(
                 status_endpoint,
@@ -189,56 +241,20 @@ async def check_trust_mark_status(
                 headers={"Accept": "application/json"},
             )
         except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Timed out checking trust mark status")
+            raise HTTPException(status_code=504, detail="Timed out checking trust mark status (GET fallback)")
         except httpx.RequestError as exc:
-            raise HTTPException(status_code=502, detail=f"Failed to reach trust mark status endpoint: {exc}")
+            raise HTTPException(status_code=502, detail=f"Failed to reach trust mark status endpoint (GET fallback): {exc}")
 
-        if 200 <= get_response.status_code < 300:
-            try:
-                return JSONResponse(get_response.json())
-            except Exception:
-                pass  # fall through to POST — GET succeeded but didn't return JSON
-
-        # 2. Fall back to the POST + JWT-body contract (LightHouse).
-        if not trust_mark_jwt:
+        if not (200 <= get_response.status_code < 300):
             raise HTTPException(
                 status_code=502,
-                detail=(
-                    f"Trust mark status endpoint returned HTTP {get_response.status_code} for GET, "
-                    "and no trust_mark_jwt was provided to retry with POST."
-                ),
+                detail=f"Trust mark status endpoint returned HTTP {get_response.status_code}: {get_response.text[:300]}",
             )
 
         try:
-            post_response = await client.post(
-                status_endpoint,
-                json={"trust_mark": trust_mark_jwt},
-                headers={"Accept": "application/json"},
-            )
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Timed out checking trust mark status (POST fallback)")
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=502, detail=f"Failed to reach trust mark status endpoint (POST fallback): {exc}")
-
-        if not (200 <= post_response.status_code < 300):
-            raise HTTPException(
-                status_code=502,
-                detail=f"Trust mark status endpoint returned HTTP {post_response.status_code}: {post_response.text[:300]}",
-            )
-
-        # LightHouse's response is itself a JWT; some issuers might just return
-        # plain JSON on POST too — handle both.
-        try:
-            return JSONResponse(post_response.json())
-        except Exception:
-            pass
-
-        try:
-            active = _extract_active_from_jwt_response(post_response.text)
+            return JSONResponse(get_response.json())
         except Exception:
             raise HTTPException(
                 status_code=502,
                 detail="Trust mark status endpoint returned a response we could not parse as JSON or a JWT",
             )
-
-        return JSONResponse({"active": active})

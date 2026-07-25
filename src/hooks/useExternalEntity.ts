@@ -31,27 +31,29 @@ export interface TrustMarkStatusResult {
 
 /**
  * Call a trust mark issuer's own `federation_trust_mark_status_endpoint`
- * (OIDF §8.3) to check whether a specific mark is still active.
+ * (OIDF §8.4) to check whether a specific mark is still active.
  *
- * `trustMarkJwt` (the raw mark) is optional but strongly recommended — real
- * issuers disagree on the wire contract (confirmed against both a live
- * testbed and LightHouse): some accept GET + `sub`/`trust_mark_id` query
- * params returning plain JSON, others only accept POST with the raw JWT in
- * the body, returning a signed status-response JWT. The backend tries GET
- * first and falls back to POST using `trustMarkJwt` if that fails.
+ * Per the spec's normative text (§8.4.1), the request MUST be POST +
+ * application/x-www-form-urlencoded with a single required `trust_mark`
+ * parameter — that's the only thing the backend sends on the primary path,
+ * and LightHouse implements it correctly. `sub`/`trustMarkId` are only used
+ * if the backend has to fall back to a non-compliant GET-based contract for
+ * issuers that haven't caught up to the finalized spec (e.g. the eduGAIN
+ * testbed root) — pass them when available so that fallback can work, but
+ * they're not part of the spec-compliant request itself.
  */
 export async function checkTrustMarkStatus(params: {
   statusEndpoint: string;
-  sub: string;
-  trustMarkId: string;
-  trustMarkJwt?: string;
+  trustMarkJwt: string;
+  sub?: string;
+  trustMarkId?: string;
 }): Promise<TrustMarkStatusResult> {
   const query = new URLSearchParams({
     status_endpoint: params.statusEndpoint,
-    sub: params.sub,
-    trust_mark_id: params.trustMarkId,
+    trust_mark_jwt: params.trustMarkJwt,
   });
-  if (params.trustMarkJwt) query.set('trust_mark_jwt', params.trustMarkJwt);
+  if (params.sub) query.set('sub', params.sub);
+  if (params.trustMarkId) query.set('trust_mark_id', params.trustMarkId);
   const result = await gatewayFetch<TrustMarkStatusResult>({
     path: `/api/v1/admin/trust-mark-status?${query.toString()}`,
   });

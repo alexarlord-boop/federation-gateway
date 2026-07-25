@@ -113,7 +113,7 @@ def test_trust_mark_status_rejects_non_https_endpoint(client, admin_headers):
     resp = client.get(
         "/api/v1/admin/trust-mark-status"
         "?status_endpoint=http://issuer.example.org/trust_mark/status"
-        "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
+        "&trust_mark_jwt=header.payload.sig",
         headers=admin_headers,
     )
     assert resp.status_code == 422
@@ -124,89 +124,48 @@ def test_trust_mark_status_blocks_private_address(client, admin_headers):
         resp = client.get(
             "/api/v1/admin/trust-mark-status"
             "?status_endpoint=https://internal.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
+            "&trust_mark_jwt=header.payload.sig",
             headers=admin_headers,
         )
     assert resp.status_code == 422
-
-
-def test_trust_mark_status_forwards_sub_and_trust_mark_id(client, admin_headers):
-    factory, instance = _mock_async_client(_fake_response(200, json_body={"active": True}))
-    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
-         patch("app.routers.resolve.httpx.AsyncClient", factory):
-        resp = client.get(
-            "/api/v1/admin/trust-mark-status"
-            "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
-            headers=admin_headers,
-        )
-    assert resp.status_code == 200
-    assert resp.json() == {"active": True}
-    call = instance.get.call_args
-    assert call.args[0] == "https://issuer.example.org/trust_mark/status"
-    assert call.kwargs["params"] == {
-        "sub": "https://holder.example.org",
-        "trust_mark_id": "https://issuer.example.org/member",
-    }
-
-
-def test_trust_mark_status_revoked_mark(client, admin_headers):
-    factory, _ = _mock_async_client(_fake_response(200, json_body={"active": False}))
-    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
-         patch("app.routers.resolve.httpx.AsyncClient", factory):
-        resp = client.get(
-            "/api/v1/admin/trust-mark-status"
-            "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
-            headers=admin_headers,
-        )
-    assert resp.status_code == 200
-    assert resp.json() == {"active": False}
-
-
-def test_trust_mark_status_upstream_error_returns_502(client, admin_headers):
-    factory, _ = _mock_async_client(_fake_response(500, text="boom"))
-    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
-         patch("app.routers.resolve.httpx.AsyncClient", factory):
-        resp = client.get(
-            "/api/v1/admin/trust-mark-status"
-            "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
-            headers=admin_headers,
-        )
-    assert resp.status_code == 502
 
 
 def test_trust_mark_status_requires_auth(client):
     resp = client.get(
         "/api/v1/admin/trust-mark-status"
         "?status_endpoint=https://issuer.example.org/trust_mark/status"
-        "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member"
+        "&trust_mark_jwt=header.payload.sig"
     )
     assert resp.status_code in (401, 403)
 
 
-# ── GET /trust-mark-status — POST+JWT fallback (LightHouse's real contract) ─
-#
-# Confirmed by hand against a running LightHouse 0.21.0 instance: its
-# trust_mark_status endpoint rejects GET with 405 Method Not Allowed and only
-# accepts POST {"trust_mark": "<jwt>"}, returning a *signed JWT* whose
-# payload carries `status: "active" | "revoked"` — not the plain
-# `{"active": bool}` JSON the real eduGAIN testbed returns on GET.
-
-def test_trust_mark_status_falls_back_to_post_when_get_rejected(client, admin_headers):
-    """GET → 405 (LightHouse's real behavior) should trigger a POST retry."""
-    status_jwt = _fake_jwt({"iss": "https://issuer.example.org", "status": "active"})
-    factory, instance = _mock_async_client(
-        _fake_response(405, text='{"error":"Method Not Allowed"}'),
-        post_response=_fake_response(200, text=status_jwt),
+def test_trust_mark_status_missing_jwt_returns_422(client, admin_headers):
+    """trust_mark_jwt is the spec's sole required parameter (§8.4.1) — omitting
+    it is a validation error, not something the endpoint should try to route
+    around."""
+    resp = client.get(
+        "/api/v1/admin/trust-mark-status?status_endpoint=https://issuer.example.org/trust_mark/status",
+        headers=admin_headers,
     )
+    assert resp.status_code == 422
+
+
+# ── GET /trust-mark-status — POST is the spec-compliant primary path ───────
+#
+# Per OIDF §8.4.1/8.4.2 (verified against the normative spec text): the
+# request MUST be POST, application/x-www-form-urlencoded, with a single
+# required `trust_mark` parameter; the response MUST be a signed JWT with a
+# `status` claim. LightHouse implements this correctly — it's the primary
+# path here, not a fallback.
+
+def test_trust_mark_status_post_sends_form_urlencoded_trust_mark(client, admin_headers):
+    status_jwt = _fake_jwt({"iss": "https://issuer.example.org", "status": "active"})
+    factory, instance = _mock_async_client(post_response=_fake_response(200, text=status_jwt))
     with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
          patch("app.routers.resolve.httpx.AsyncClient", factory):
         resp = client.get(
             "/api/v1/admin/trust-mark-status"
             "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member"
             "&trust_mark_jwt=header.payload.sig",
             headers=admin_headers,
         )
@@ -214,21 +173,21 @@ def test_trust_mark_status_falls_back_to_post_when_get_rejected(client, admin_he
     assert resp.json() == {"active": True}
     post_call = instance.post.call_args
     assert post_call.args[0] == "https://issuer.example.org/trust_mark/status"
-    assert post_call.kwargs["json"] == {"trust_mark": "header.payload.sig"}
+    # `data=`, not `json=` — application/x-www-form-urlencoded per §8.4.1,
+    # not application/json.
+    assert post_call.kwargs["data"] == {"trust_mark": "header.payload.sig"}
+    assert "json" not in post_call.kwargs
+    instance.get.assert_not_called()  # GET is a fallback, never tried when POST succeeds
 
 
-def test_trust_mark_status_post_fallback_revoked(client, admin_headers):
+def test_trust_mark_status_post_revoked_mark(client, admin_headers):
     status_jwt = _fake_jwt({"iss": "https://issuer.example.org", "status": "revoked"})
-    factory, _ = _mock_async_client(
-        _fake_response(405, text="Method Not Allowed"),
-        post_response=_fake_response(200, text=status_jwt),
-    )
+    factory, _ = _mock_async_client(post_response=_fake_response(200, text=status_jwt))
     with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
          patch("app.routers.resolve.httpx.AsyncClient", factory):
         resp = client.get(
             "/api/v1/admin/trust-mark-status"
             "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member"
             "&trust_mark_jwt=header.payload.sig",
             headers=admin_headers,
         )
@@ -236,18 +195,35 @@ def test_trust_mark_status_post_fallback_revoked(client, admin_headers):
     assert resp.json() == {"active": False}
 
 
-def test_trust_mark_status_post_fallback_plain_json(client, admin_headers):
-    """A hypothetical issuer that returns plain JSON on POST too should still work."""
-    factory, _ = _mock_async_client(
-        _fake_response(404, text="not found"),
-        post_response=_fake_response(200, json_body={"active": True}),
-    )
+@pytest.mark.parametrize("status_value", ["expired", "invalid"])
+def test_trust_mark_status_post_handles_all_spec_status_values(client, admin_headers, status_value):
+    """§8.4.2 defines four status values (active/expired/revoked/invalid) —
+    only "active" means the mark is currently valid; the other three
+    (including ones not covered by the old active/revoked-only check) must
+    all resolve to active: false, not a parse error."""
+    status_jwt = _fake_jwt({"iss": "https://issuer.example.org", "status": status_value})
+    factory, _ = _mock_async_client(post_response=_fake_response(200, text=status_jwt))
     with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
          patch("app.routers.resolve.httpx.AsyncClient", factory):
         resp = client.get(
             "/api/v1/admin/trust-mark-status"
             "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member"
+            "&trust_mark_jwt=header.payload.sig",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"active": False}
+
+
+def test_trust_mark_status_post_primary_accepts_plain_json_response(client, admin_headers):
+    """A lenient issuer that returns plain JSON on POST (instead of the
+    spec-mandated signed JWT) should still work."""
+    factory, _ = _mock_async_client(post_response=_fake_response(200, json_body={"active": True}))
+    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
+         patch("app.routers.resolve.httpx.AsyncClient", factory):
+        resp = client.get(
+            "/api/v1/admin/trust-mark-status"
+            "?status_endpoint=https://issuer.example.org/trust_mark/status"
             "&trust_mark_jwt=header.payload.sig",
             headers=admin_headers,
         )
@@ -255,33 +231,87 @@ def test_trust_mark_status_post_fallback_plain_json(client, admin_headers):
     assert resp.json() == {"active": True}
 
 
-def test_trust_mark_status_no_jwt_for_fallback_returns_502(client, admin_headers):
-    """GET fails and no trust_mark_jwt was supplied to retry with POST."""
-    factory, instance = _mock_async_client(_fake_response(405, text="Method Not Allowed"))
-    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
-         patch("app.routers.resolve.httpx.AsyncClient", factory):
-        resp = client.get(
-            "/api/v1/admin/trust-mark-status"
-            "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
-            headers=admin_headers,
-        )
-    assert resp.status_code == 502
-    instance.post.assert_not_called()
+# ── GET /trust-mark-status — GET fallback for non-compliant issuers ────────
+#
+# Confirmed by reading the current OpenID Federation 1.0 spec text directly:
+# POST is the *only* normative request method (§8.4.1) — GET isn't part of
+# the finalized spec at all. The real eduGAIN testbed root
+# (testbed.oidf.lab.surf.nl) only accepts GET + `sub`/`trust_mark_id` query
+# params, returning plain JSON `{"active": bool}` — an older, non-final
+# draft contract. This fallback exists for issuers like that one, not
+# because both forms are equally valid.
 
-
-def test_trust_mark_status_both_get_and_post_fail_returns_502(client, admin_headers):
-    factory, _ = _mock_async_client(
-        _fake_response(405, text="Method Not Allowed"),
-        post_response=_fake_response(500, text="boom"),
+def test_trust_mark_status_falls_back_to_get_when_post_rejected(client, admin_headers):
+    """POST → 405 (a non-compliant issuer like the eduGAIN testbed) should
+    trigger a GET retry using sub/trust_mark_id."""
+    factory, instance = _mock_async_client(
+        response=_fake_response(200, json_body={"active": True}),
+        post_response=_fake_response(405, text='{"error":"Method Not Allowed"}'),
     )
     with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
          patch("app.routers.resolve.httpx.AsyncClient", factory):
         resp = client.get(
             "/api/v1/admin/trust-mark-status"
             "?status_endpoint=https://issuer.example.org/trust_mark/status"
-            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member"
+            "&trust_mark_jwt=header.payload.sig"
+            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"active": True}
+    get_call = instance.get.call_args
+    assert get_call.args[0] == "https://issuer.example.org/trust_mark/status"
+    assert get_call.kwargs["params"] == {
+        "sub": "https://holder.example.org",
+        "trust_mark_id": "https://issuer.example.org/member",
+    }
+
+
+def test_trust_mark_status_get_fallback_revoked(client, admin_headers):
+    factory, _ = _mock_async_client(
+        response=_fake_response(200, json_body={"active": False}),
+        post_response=_fake_response(405, text="Method Not Allowed"),
+    )
+    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
+         patch("app.routers.resolve.httpx.AsyncClient", factory):
+        resp = client.get(
+            "/api/v1/admin/trust-mark-status"
+            "?status_endpoint=https://issuer.example.org/trust_mark/status"
+            "&trust_mark_jwt=header.payload.sig"
+            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"active": False}
+
+
+def test_trust_mark_status_no_sub_for_fallback_returns_502(client, admin_headers):
+    """POST fails and no sub/trust_mark_id was supplied to retry with GET."""
+    factory, instance = _mock_async_client(post_response=_fake_response(405, text="Method Not Allowed"))
+    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
+         patch("app.routers.resolve.httpx.AsyncClient", factory):
+        resp = client.get(
+            "/api/v1/admin/trust-mark-status"
+            "?status_endpoint=https://issuer.example.org/trust_mark/status"
             "&trust_mark_jwt=header.payload.sig",
+            headers=admin_headers,
+        )
+    assert resp.status_code == 502
+    instance.get.assert_not_called()
+
+
+def test_trust_mark_status_both_post_and_get_fail_returns_502(client, admin_headers):
+    factory, _ = _mock_async_client(
+        response=_fake_response(500, text="boom"),
+        post_response=_fake_response(405, text="Method Not Allowed"),
+    )
+    with patch("app.routers.resolve.socket.getaddrinfo", return_value=_PUBLIC_ADDRINFO), \
+         patch("app.routers.resolve.httpx.AsyncClient", factory):
+        resp = client.get(
+            "/api/v1/admin/trust-mark-status"
+            "?status_endpoint=https://issuer.example.org/trust_mark/status"
+            "&trust_mark_jwt=header.payload.sig"
+            "&sub=https://holder.example.org&trust_mark_id=https://issuer.example.org/member",
             headers=admin_headers,
         )
     assert resp.status_code == 502
