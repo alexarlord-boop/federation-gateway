@@ -137,7 +137,11 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
   const { isFeatureEnabled, hasOperation } = useCapabilities();
   const location = useLocation();
   const navigate = useNavigate();
-  const [openSections, setOpenSections] = useState<string[]>(['Subordinates']);
+  // Sections with children start collapsed so every item keeps the same
+  // per-row height at rest — an auto-expanded section grows open-mode nav
+  // taller than the icon rail (which never shows children inline), which
+  // knocks every item below it out of vertical alignment between states.
+  const [openSections, setOpenSections] = useState<string[]>([]);
 
   const isCurrentNavTarget = (href: string) => {
     const [pathname, search = ''] = href.split('?');
