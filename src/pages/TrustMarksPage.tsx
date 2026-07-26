@@ -728,7 +728,12 @@ function RoleTooltip({
   const { icon: Icon, role, description } = TRUST_MARK_ROLES[roleKey];
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      {/* A plain span, not asChild directly on the tab/link, so the tooltip's
+          own data-state doesn't land on the same node as Radix Tabs' active-
+          state attribute and clobber the data-[state=active] highlight. */}
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{children}</span>
+      </TooltipTrigger>
       <TooltipContent className="max-w-64">
         <div className="flex items-center gap-1.5 mb-1">
           <Icon className="w-3.5 h-3.5 text-accent shrink-0" />
