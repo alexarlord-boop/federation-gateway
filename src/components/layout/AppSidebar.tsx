@@ -329,42 +329,26 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
       <BackendSwitcher collapsed={!open} />
 
       {/* Navigation */}
-      <nav className={cn("flex-1 overflow-y-auto space-y-6", open ? "p-4" : "px-2 py-4")}>
+      <nav className={cn("flex-1 overflow-y-auto", open ? "p-4" : "px-2 py-4")}>
         {sidebarSections.map((section, index) => {
           const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;
 
-          if (!open) {
-            return (
-              <div key={section.label} className={cn("space-y-1", index > 0 && "pt-4 border-t border-sidebar-border")}>
-                {filteredItems.map((item) =>
-                  item.feature ? (
-                    <CapabilityGuard key={item.href} capability={item.feature}>
-                      {renderCollapsedNavItem(item)}
-                    </CapabilityGuard>
-                  ) : (
-                    renderCollapsedNavItem(item)
-                  )
-                )}
-              </div>
-            );
-          }
+          const renderItem = open ? renderNavItem : renderCollapsedNavItem;
 
           return (
             <div key={section.label}>
-              <div className="px-3 mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-                  {section.label}
-                </span>
-              </div>
+              {index > 0 && (
+                <div className={cn("border-t border-sidebar-foreground/15", open ? "mx-3 my-3" : "mx-2 my-3")} />
+              )}
               <div className="space-y-1">
                 {filteredItems.map((item) =>
                   item.feature ? (
                     <CapabilityGuard key={item.href} capability={item.feature}>
-                      {renderNavItem(item)}
+                      {renderItem(item)}
                     </CapabilityGuard>
                   ) : (
-                    renderNavItem(item)
+                    renderItem(item)
                   )
                 )}
               </div>
