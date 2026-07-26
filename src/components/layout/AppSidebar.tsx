@@ -256,12 +256,12 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
                 ? "bg-sidebar-accent text-sidebar-primary"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
             )}>
-              <div className="flex items-center gap-3">
-                <item.icon className="w-5 h-5" />
-                <span>{item.title}</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="whitespace-nowrap">{item.title}</span>
               </div>
               <ChevronDown className={cn(
-                "w-4 h-4 transition-transform",
+                "w-4 h-4 transition-transform shrink-0",
                 isOpen && "rotate-180"
               )} />
             </div>
@@ -274,7 +274,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
                   to={child.href}
                   end
                   className={() => cn(
-                    "block px-3 py-2 rounded-lg text-sm transition-colors",
+                    "block px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors",
                     isCurrentNavTarget(child.href)
                       ? "text-sidebar-primary font-medium"
                       : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
@@ -300,8 +300,8 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         )}
       >
-        <item.icon className="w-5 h-5" />
-        <span>{item.title}</span>
+        <item.icon className="w-5 h-5 shrink-0" />
+        <span className="whitespace-nowrap">{item.title}</span>
       </NavLink>
     );
   };
@@ -329,7 +329,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
       <BackendSwitcher collapsed={!open} />
 
       {/* Navigation */}
-      <nav className={cn("flex-1 overflow-y-auto", open ? "p-4" : "px-2 py-4")}>
+      <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden", open ? "p-4" : "px-2 py-4")}>
         {sidebarSections.map((section, index) => {
           const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;
@@ -381,8 +381,8 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
                 to="/settings"
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
               >
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">Settings</span>
               </NavLink>
               <button
                 onClick={logout}
@@ -435,9 +435,9 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
           onClick={onToggle}
           className="shrink-0 flex items-center gap-3 px-3 py-2.5 mx-2 mb-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
         >
-          <ChevronsLeft className="w-5 h-5" />
-          <span>Collapse</span>
-          <kbd className="ml-auto text-[10px] opacity-60">⌘B</kbd>
+          <ChevronsLeft className="w-5 h-5 shrink-0" />
+          <span className="whitespace-nowrap">Collapse</span>
+          <kbd className="ml-auto text-[10px] opacity-60 shrink-0">⌘B</kbd>
         </button>
       ) : (
         <Tooltip>
