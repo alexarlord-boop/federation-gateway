@@ -84,7 +84,7 @@ export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
 
   if (collapsed) {
     return (
-      <div className="h-14 shrink-0 flex items-center justify-center px-2">
+      <div className="h-14 shrink-0 flex items-center px-2">
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -92,7 +92,7 @@ export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
                 <button
                   type="button"
                   aria-label={`Switch instance (currently ${selectedLabel})`}
-                  className="w-9 h-9 rounded-md bg-sidebar-accent flex items-center justify-center shrink-0 hover:bg-sidebar-accent/70 transition-colors"
+                  className="w-9 h-9 ml-1 rounded-md bg-sidebar-accent flex items-center justify-center shrink-0 hover:bg-sidebar-accent/70 transition-colors"
                 >
                   <Server className="w-4 h-4 text-sidebar-primary" />
                 </button>

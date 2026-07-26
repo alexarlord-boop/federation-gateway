@@ -182,8 +182,12 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
       ? visibleChildren?.some((child) => isCurrentNavTarget(child.href)) || isCurrentNavTarget(item.href)
       : isCurrentNavTarget(item.href) || location.pathname.startsWith(item.href + '/');
 
+    // A fixed left margin (not mx-auto) keeps the icon's x-position constant
+    // while the sidebar's width is mid-transition — centering via mx-auto
+    // recomputes every animation frame against the *current* (animating)
+    // width, which made icons visibly drift sideways during collapse/expand.
     const iconButtonClass = cn(
-      "flex items-center justify-center w-10 h-10 mx-auto rounded-lg transition-colors",
+      "flex items-center justify-center w-10 h-10 ml-1 rounded-lg transition-colors",
       isActive
         ? "bg-sidebar-accent text-sidebar-primary"
         : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -329,7 +333,10 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
       <BackendSwitcher collapsed={!open} />
 
       {/* Navigation */}
-      <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden", open ? "p-4" : "px-2 py-4")}>
+      {/* Horizontal padding is constant across states (only vertical differs) —
+          changing it with `open` would itself snap-shift every icon's x-position
+          the instant the sidebar starts (or finishes) animating. */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         {sidebarSections.map((section, index) => {
           const filteredItems = section.items.filter(shouldShowNavItem);
           if (filteredItems.length === 0) return null;
@@ -446,7 +453,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
               type="button"
               onClick={onToggle}
               aria-label="Expand sidebar"
-              className="shrink-0 flex items-center justify-center w-10 h-10 mx-auto mb-2 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+              className="shrink-0 flex items-center justify-center w-10 h-10 ml-3 mb-2 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
             >
               <ChevronsRight className="w-5 h-5" />
             </button>
