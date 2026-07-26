@@ -135,7 +135,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
   const { user, isAdmin, logout } = useAuth();
-  const { isFeatureEnabled, hasOperation, capabilities } = useCapabilities();
+  const { isFeatureEnabled, hasOperation } = useCapabilities();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(['Subordinates']);
@@ -345,11 +345,6 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
       {open && (
         <div className="pt-4 px-2">
           <BackendSwitcher />
-          {capabilities && (
-            <div className="mt-2 px-2 py-1 bg-muted/50 rounded-md text-[10px] text-muted-foreground">
-              {capabilities.implementation.name} v{capabilities.implementation.version}
-            </div>
-          )}
         </div>
       )}
       {!open && (
