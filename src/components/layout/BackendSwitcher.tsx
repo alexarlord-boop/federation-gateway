@@ -84,7 +84,7 @@ export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
 
   if (collapsed) {
     return (
-      <div className="px-2 pb-2 flex justify-center">
+      <div className="h-14 shrink-0 flex items-center justify-center px-2">
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -107,7 +107,7 @@ export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
   }
 
   return (
-    <div className="px-3 pb-2">
+    <div className="h-14 shrink-0 flex items-center px-3">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full justify-start h-11 px-3 border-dashed">

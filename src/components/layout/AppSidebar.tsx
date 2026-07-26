@@ -8,9 +8,9 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
   Network,
-  PanelLeftClose,
-  PanelLeft,
   ScanSearch,
   BarChart3,
   ScrollText,
@@ -25,7 +25,6 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -314,44 +313,20 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
         open ? 'w-64' : 'w-16',
       )}
     >
-      {/* Logo + collapse button */}
-      <div className={cn(
-        "border-b border-sidebar-border flex items-center",
-        open ? "justify-between p-6" : "flex-col justify-center gap-2 py-4"
-      )}>
-        <div className={cn("flex items-center gap-3", !open && "flex-col gap-0")}>
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-            <Network className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
-          {open && (
-            <div>
-              <h1 className="font-bold text-sidebar-foreground">OIDFed</h1>
-              <p className="text-xs text-sidebar-foreground/60">Registry</p>
-            </div>
-          )}
+      {/* Logo — fixed height and position so nothing below it shifts when toggling */}
+      <div className="h-16 shrink-0 border-b border-sidebar-border flex items-center px-3 gap-3">
+        <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
+          <Network className="w-6 h-6 text-sidebar-primary-foreground" />
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 shrink-0">
-              {open ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            {open ? 'Hide' : 'Show'} sidebar <kbd className="ml-1 text-[10px] opacity-60">⌘B</kbd>
-          </TooltipContent>
-        </Tooltip>
+        {open && (
+          <div className="overflow-hidden">
+            <h1 className="font-bold text-sidebar-foreground whitespace-nowrap">OIDFed</h1>
+            <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">Registry</p>
+          </div>
+        )}
       </div>
 
-      {open && (
-        <div className="pt-4 px-2">
-          <BackendSwitcher />
-        </div>
-      )}
-      {!open && (
-        <div className="pt-4">
-          <BackendSwitcher collapsed />
-        </div>
-      )}
+      <BackendSwitcher collapsed={!open} />
 
       {/* Navigation */}
       <nav className={cn("flex-1 overflow-y-auto space-y-6", open ? "p-4" : "px-2 py-4")}>
@@ -468,6 +443,35 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
           </div>
         )}
       </div>
+
+      {/* Collapse toggle — always the last element, full width, consistent in both states */}
+      {open ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="shrink-0 flex items-center gap-3 px-3 py-2.5 mx-2 mb-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+        >
+          <ChevronsLeft className="w-5 h-5" />
+          <span>Collapse</span>
+          <kbd className="ml-auto text-[10px] opacity-60">⌘B</kbd>
+        </button>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label="Expand sidebar"
+              className="shrink-0 flex items-center justify-center w-10 h-10 mx-auto mb-2 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+            >
+              <ChevronsRight className="w-5 h-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Expand sidebar <kbd className="ml-1 text-[10px] opacity-60">⌘B</kbd>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </aside>
   );
 }
