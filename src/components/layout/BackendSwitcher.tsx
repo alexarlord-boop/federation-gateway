@@ -9,12 +9,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useBackend } from '@/contexts/BackendContext';
 import { useTrustAnchors } from '@/hooks/useTrustAnchors';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { GATEWAY_BASE } from '@/lib/api-config';
 
-export function BackendSwitcher() {
+interface BackendSwitcherProps {
+  collapsed?: boolean;
+}
+
+export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
   const { backends, selectedBackend, setSelectedBackend, registerBackends } = useBackend();
   const { trustAnchors, isLoading } = useTrustAnchors();
   const { activeTrustAnchor, setActiveTrustAnchor, setTrustAnchors } = useTrustAnchor();
@@ -46,6 +51,61 @@ export function BackendSwitcher() {
 
   const selectedLabel = activeTrustAnchor?.name ?? 'Select instance';
 
+  const menu = (
+    <DropdownMenuContent className="w-[15rem]" align="start" side={collapsed ? 'right' : 'bottom'}>
+      <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {taBackends.length === 0 && (
+        <DropdownMenuItem disabled>
+          <span className="text-xs text-muted-foreground">No instances configured</span>
+        </DropdownMenuItem>
+      )}
+      {taBackends.map((backend) => (
+        <DropdownMenuItem
+          key={backend.id}
+          className="cursor-pointer"
+          onClick={() => {
+            setSelectedBackend(backend.id);
+            const match = trustAnchors.find((ta) => `ta:${ta.id}` === backend.id) ?? null;
+            setActiveTrustAnchor(match);
+          }}
+        >
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{backend.name}</span>
+            <span className="text-xs text-muted-foreground">{backend.baseUrl || '/ (same-origin proxy)'}</span>
+          </div>
+          {backend.id === selectedBackend.id && (
+            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+          )}
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  );
+
+  if (collapsed) {
+    return (
+      <div className="px-2 pb-2 flex justify-center">
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Switch instance (currently ${selectedLabel})`}
+                  className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0 hover:bg-primary/20 transition-colors"
+                >
+                  <Server className="w-4 h-4 text-primary" />
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">{selectedLabel}</TooltipContent>
+          </Tooltip>
+          {menu}
+        </DropdownMenu>
+      </div>
+    );
+  }
+
   return (
     <div className="px-3 pb-2">
       <DropdownMenu>
@@ -62,34 +122,7 @@ export function BackendSwitcher() {
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[15rem]" align="start">
-          <DropdownMenuLabel>Switch Instance</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {taBackends.length === 0 && (
-            <DropdownMenuItem disabled>
-              <span className="text-xs text-muted-foreground">No instances configured</span>
-            </DropdownMenuItem>
-          )}
-          {taBackends.map((backend) => (
-            <DropdownMenuItem
-              key={backend.id}
-              className="cursor-pointer"
-              onClick={() => {
-                setSelectedBackend(backend.id);
-                const match = trustAnchors.find((ta) => `ta:${ta.id}` === backend.id) ?? null;
-                setActiveTrustAnchor(match);
-              }}
-            >
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{backend.name}</span>
-                <span className="text-xs text-muted-foreground">{backend.baseUrl || '/ (same-origin proxy)'}</span>
-              </div>
-              {backend.id === selectedBackend.id && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
+        {menu}
       </DropdownMenu>
     </div>
   );
