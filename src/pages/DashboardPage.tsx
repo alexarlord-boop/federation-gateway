@@ -24,7 +24,7 @@ function StatCard({
 }) {
   const content = (
     <Card className="stat-card group cursor-pointer h-full">
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>

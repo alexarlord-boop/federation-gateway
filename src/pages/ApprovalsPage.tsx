@@ -91,7 +91,7 @@ export default function ApprovalsPage() {
 
     return (
     <Card data-testid="request-card" className="hover:shadow-md transition-shadow mb-4">
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
