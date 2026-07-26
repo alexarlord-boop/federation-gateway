@@ -9,14 +9,24 @@ test.describe('Trust Marks page @proxy', () => {
     await expect(page.getByRole('heading', { level: 1, name: /trust marks/i })).toBeVisible();
   });
 
-  test('shows role legend explaining Owner/Issuer/Subject/Relying Party mapping', async ({ instancePage: page }) => {
+  test('tab tooltips explain the Owner/Issuer/Subject/Relying Party role mapping', async ({ instancePage: page }) => {
     await page.goto(`${APP_URL}/trust-marks`);
-    // Role legend cards should be visible, mapping each OIDFed role to its tab
-    await expect(page.getByText('Owner', { exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('Issuer', { exact: true })).toBeVisible();
-    await expect(page.getByText('Subject', { exact: true })).toBeVisible();
-    await expect(page.getByText('Relying Party', { exact: true })).toBeVisible();
-    await expect(page.getByText(/my trust marks/i).first()).toBeVisible();
+    await expect(page.getByText(/my trust marks/i).first()).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole('tab', { name: /federation trust marks/i }).hover();
+    await expect(page.getByRole('tooltip').getByText('Owner', { exact: true })).toBeVisible();
+
+    await page.mouse.move(0, 0, { steps: 10 });
+    await page.getByRole('tab', { name: /^issuance/i }).hover();
+    await expect(page.getByRole('tooltip').getByText('Issuer', { exact: true })).toBeVisible();
+
+    await page.mouse.move(0, 0, { steps: 10 });
+    await page.getByRole('tab', { name: /my trust marks/i }).hover();
+    await expect(page.getByRole('tooltip').getByText('Subject', { exact: true })).toBeVisible();
+
+    await page.mouse.move(0, 0, { steps: 10 });
+    await page.getByRole('link', { name: /relying party/i }).hover();
+    await expect(page.getByRole('tooltip').getByText('Relying Party', { exact: true })).toBeVisible();
   });
 
   test('shows Federation Trust Marks tab', async ({ instancePage: page }) => {

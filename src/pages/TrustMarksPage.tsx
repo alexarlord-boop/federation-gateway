@@ -21,6 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
 import { useTrustMarkSpecs, useTrustMarkSubjects } from '@/hooks/useTrustMarkIssuance';
@@ -687,62 +688,55 @@ function FederationTrustMarksTab() {
 
 // ── Main Page ───────────────────────────────────────────
 
-// ── Role legend ──────────────────────────────────────────
+// ── Role tooltips ────────────────────────────────────────
 //
 // OIDFed trust marks involve four distinct roles. Your instance can play
 // more than one at once (e.g. Owner + Issuer for marks you define, Subject
 // for marks you hold), which is what makes the flat tab list confusing —
-// this legend makes explicit which tab corresponds to which role.
+// these tooltips make explicit which tab corresponds to which role.
 
-function RoleLegend() {
-  const roles = [
-    {
-      icon: BookMarked,
-      role: 'Owner',
-      tab: 'Federation Trust Marks',
-      description: 'Defines what a mark type means and who is allowed to issue it.',
-    },
-    {
-      icon: Send,
-      role: 'Issuer',
-      tab: 'Issuance',
-      description: 'Signs and hands marks to subject entities.',
-    },
-    {
-      icon: ScrollText,
-      role: 'Subject',
-      tab: 'My Trust Marks',
-      description: "Holds a mark and publishes it in this entity's own configuration.",
-    },
-    {
-      icon: ShieldCheck,
-      role: 'Relying Party',
-      tab: 'Chain Inspector →',
-      description: 'Checks any mark is genuine and still active with the issuer, live.',
-      link: '/chain-inspector',
-    },
-  ];
+const TRUST_MARK_ROLES = {
+  owner: {
+    icon: BookMarked,
+    role: 'Owner',
+    description: 'Defines what a mark type means and who is allowed to issue it.',
+  },
+  issuer: {
+    icon: Send,
+    role: 'Issuer',
+    description: 'Signs and hands marks to subject entities.',
+  },
+  subject: {
+    icon: ScrollText,
+    role: 'Subject',
+    description: "Holds a mark and publishes it in this entity's own configuration.",
+  },
+  relyingParty: {
+    icon: ShieldCheck,
+    role: 'Relying Party',
+    description: 'Checks any mark is genuine and still active with the issuer, live.',
+  },
+} as const;
 
+function RoleTooltip({
+  roleKey,
+  children,
+}: {
+  roleKey: keyof typeof TRUST_MARK_ROLES;
+  children: React.ReactNode;
+}) {
+  const { icon: Icon, role, description } = TRUST_MARK_ROLES[roleKey];
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-      {roles.map(({ icon: Icon, role, tab, description, link }) => {
-        const content = (
-          <div className="h-full p-3.5 border rounded-lg bg-card hover:border-accent/50 transition-colors">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon className="w-4 h-4 text-accent shrink-0" />
-              <span className="text-sm font-semibold">{role}</span>
-            </div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">{tab}</p>
-            <p className="text-xs text-muted-foreground leading-snug">{description}</p>
-          </div>
-        );
-        return link ? (
-          <Link key={role} to={link}>{content}</Link>
-        ) : (
-          <div key={role}>{content}</div>
-        );
-      })}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Icon className="w-3.5 h-3.5 text-accent shrink-0" />
+          <span className="font-semibold">{role}</span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-snug">{description}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -782,19 +776,39 @@ export default function TrustMarksPage() {
         </div>
       </div>
 
-      <RoleLegend />
-
       {capabilities ? (
         <Tabs
           value={activeTab}
           onValueChange={(v) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('tab', v); return next; })}
           className="space-y-6"
         >
-          <TabsList>
-            {showFederation && <TabsTrigger value="federation">Federation Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Owner</span></TabsTrigger>}
-            {showIssuance && <TabsTrigger value="issuance">Issuance <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Issuer</span></TabsTrigger>}
-            {showSelf && <TabsTrigger value="self">My Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Subject</span></TabsTrigger>}
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              {showFederation && (
+                <RoleTooltip roleKey="owner">
+                  <TabsTrigger value="federation">Federation Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Owner</span></TabsTrigger>
+                </RoleTooltip>
+              )}
+              {showIssuance && (
+                <RoleTooltip roleKey="issuer">
+                  <TabsTrigger value="issuance">Issuance <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Issuer</span></TabsTrigger>
+                </RoleTooltip>
+              )}
+              {showSelf && (
+                <RoleTooltip roleKey="subject">
+                  <TabsTrigger value="self">My Trust Marks <span className="text-muted-foreground ml-1.5 hidden sm:inline">· Subject</span></TabsTrigger>
+                </RoleTooltip>
+              )}
+            </TabsList>
+            <RoleTooltip roleKey="relyingParty">
+              <Link
+                to="/chain-inspector"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex items-center gap-1"
+              >
+                Relying Party <ChevronRight className="w-3 h-3" />
+              </Link>
+            </RoleTooltip>
+          </div>
           {showFederation && <TabsContent value="federation"><FederationTrustMarksTab /></TabsContent>}
           {showIssuance && <TabsContent value="issuance"><IssuanceSpecsTab /></TabsContent>}
           {showSelf && <TabsContent value="self"><SelfTrustMarksTab /></TabsContent>}
