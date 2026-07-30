@@ -1,0 +1,40 @@
+# LightHouse configuration — mesh leaf OpenID Provider (subordinate of mesh-ia).
+# Acts as the trust-mark Subject: holds a mark issued by mesh-ia.
+entity_id: "http://mesh-leaf-op:8080"
+
+server:
+  port: 8080
+
+storage:
+  driver: sqlite
+  data_dir: /data
+
+signing:
+  kms: filesystem
+  auto_generate_keys: true
+  filesystem:
+    key_dir: /data/keys
+
+api:
+  admin:
+    enabled: true
+    users_enabled: false
+    actor_source: "header"
+    actor_header: "X-Gateway-User-Email"
+
+endpoints:
+  fetch:
+    path: /fetch
+  list:
+    path: /list
+  resolve:
+    path: /resolve
+  trust_mark:
+    path: /trust_mark
+  trust_mark_status:
+    path: /trust_mark/status
+  trust_mark_list:
+    path: /trust_mark/list
+
+stats:
+  enabled: true

@@ -47,6 +47,7 @@ federation-gateway/
 | **Backend** (FastAPI) | `8765` (configurable via `BACKEND_PORT`) | BFF: auth + deployment config + proxy to instances |
 | **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | Federation node, digest-pinned in `docker-compose.yml` — check there for the current digest, it moves as we pick up upstream fixes |
 | **LightHouse 2** | `8082` (configurable via `LIGHTHOUSE2_PUBLIC_PORT`) | A second federation node/trust anchor, wired up out of the box for exercising multi-instance behavior |
+| **Mesh** (`mesh-ta`/`mesh-ia`/`mesh-leaf-op`/`mesh-leaf-rp`) | `8090`–`8093` | A real multi-hop federation (TA → Intermediate → 2 leaves) for testing trust chain resolution and trust mark delegation — see "Small LightHouse mesh" below |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
@@ -335,6 +336,50 @@ give a new instance its own pair if it needs separate credentials.
          password_env: LIGHTHOUSE_ADMIN_PASSWORD
    ```
 4. Restart: `docker compose down && docker compose up --build --force-recreate`.
+
+### Small LightHouse mesh (real multi-hop federation)
+
+`ta-1`/`ta-2` above are two *independent* trust anchors with no relationship
+between them. For testing real multi-hop trust chains and trust-mark
+delegation, `docker-compose.yml` also ships a small **mesh** — four more
+LightHouse containers wired into an actual hierarchy:
+
+```
+mesh-ta (root TA, :8090)  →  mesh-ia (Intermediate, :8091)  →  mesh-leaf-op (:8092, Subject)
+                                                             →  mesh-leaf-rp (:8093, verifier)
+```
+
+Unlike `scripts/seed-demo.py` (which registers fake subordinates with
+throwaway generated keys — fine for populating list/table UIs, but not real
+enough to actually walk a chain), every mesh node is a real running
+LightHouse with its own signing key, and each `entity_id` uses the
+container's docker-network hostname (e.g. `http://mesh-ta:8080`, not
+`localhost`) so the containers can genuinely fetch each other's entity
+configurations.
+
+```bash
+docker compose up -d mesh-ta mesh-ia mesh-leaf-op mesh-leaf-rp
+python3 scripts/seed-mesh.py   # idempotent — safe to re-run
+```
+
+The script registers each child as a real subordinate of its parent (using
+the child's actual public JWKS, fetched from its own entity configuration),
+sets authority hints, and issues a trust mark owned by `mesh-ta`, issued by
+`mesh-ia`, held by `mesh-leaf-op` — printing example `curl` commands for
+verifying the resolved chain and the mark's status when it's done. `mesh-ta`
+and `mesh-ia` are also registered in `backend/config/gateway.yaml`, so you
+can drive the same scenario from the app's instance switcher instead.
+
+Notes:
+- Chain Inspector's "Any Entity" ad-hoc mode and the live trust-mark status
+  checker won't work against mesh entity_ids — see KNOWN-ISSUES.md.
+- On the "Via Trust Anchor" tab, "Resolve Trust Chain" defaults its
+  `trust_anchor` param to the selected instance's `public_base_url`
+  (`http://localhost:8090`) instead of its real `entity_id`
+  (`http://mesh-ta:8080`) — those differ for mesh nodes (they're the same
+  value for `ta-1`/`ta-2`, which is why this doesn't show up there). Expand
+  "Override trust anchor entity ID for resolve" and paste in the real
+  `entity_id` (e.g. `http://mesh-ta:8080`) to get a real resolved chain.
 
 ---
 

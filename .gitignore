@@ -20,6 +20,11 @@ lighthouse/data/*.mem
 lighthouse/data/*.sst
 lighthouse/data/keys/
 lighthouse/data/lighthouse.db
+mesh-*/data/*.vlog
+mesh-*/data/*.mem
+mesh-*/data/*.sst
+mesh-*/data/keys/
+mesh-*/data/lighthouse.db
 backend.db
 backend/data/*.db
 backend/.venv/
