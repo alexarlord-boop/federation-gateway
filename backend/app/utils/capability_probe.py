@@ -16,6 +16,8 @@ manifest falls back to trusting the spec/policy layer for those.
 """
 from __future__ import annotations
 
+import base64
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -110,3 +112,40 @@ async def probe_instance_capabilities(
 
     db.commit()
     return results
+
+
+def _decode_jwt_payload(jwt_text: str) -> dict:
+    """Decode a compact JWT's payload without verifying its signature — used
+    only to read an entity's self-asserted `sub`, never to trust the token
+    for anything security-sensitive."""
+    payload_b64 = jwt_text.split(".")[1]
+    payload_b64 += "=" * (-len(payload_b64) % 4)
+    return json.loads(base64.urlsafe_b64decode(payload_b64))
+
+
+async def probe_entity_id(base_url: str) -> Optional[str]:
+    """Fetch an instance's own entity configuration and return its real
+    entity_id (the `sub` claim) — best-effort, returns None on any failure.
+
+    Deployment config only says where an instance's admin API and public
+    endpoint *should* be (public_base_url); it says nothing about the
+    entity_id the instance actually signs its own statements with. For a
+    plain single-instance setup those happen to be the same string, which is
+    why this previously went unnoticed — but they're independent values in
+    general (e.g. this app's own local multi-hop test mesh uses
+    docker-network hostnames as entity_id, distinct from the host-published
+    public_base_url used to reach it from outside).
+    """
+    url = f"{base_url.rstrip('/')}/.well-known/openid-federation"
+    try:
+        async with httpx.AsyncClient(timeout=_PROBE_TIMEOUT) as client:
+            resp = await client.get(url)
+        if resp.status_code != 200:
+            logger.warning("entity_id probe got HTTP %s for %s", resp.status_code, url)
+            return None
+        payload = _decode_jwt_payload(resp.text)
+        sub = payload.get("sub")
+        return sub if isinstance(sub, str) and sub else None
+    except Exception as exc:
+        logger.warning("entity_id probe failed for %s: %s", base_url, exc)
+        return None

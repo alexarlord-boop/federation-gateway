@@ -370,16 +370,14 @@ verifying the resolved chain and the mark's status when it's done. `mesh-ta`
 and `mesh-ia` are also registered in `backend/config/gateway.yaml`, so you
 can drive the same scenario from the app's instance switcher instead.
 
-Notes:
-- Chain Inspector's "Any Entity" ad-hoc mode and the live trust-mark status
-  checker won't work against mesh entity_ids — see KNOWN-ISSUES.md.
-- On the "Via Trust Anchor" tab, "Resolve Trust Chain" defaults its
-  `trust_anchor` param to the selected instance's `public_base_url`
-  (`http://localhost:8090`) instead of its real `entity_id`
-  (`http://mesh-ta:8080`) — those differ for mesh nodes (they're the same
-  value for `ta-1`/`ta-2`, which is why this doesn't show up there). Expand
-  "Override trust anchor entity ID for resolve" and paste in the real
-  `entity_id` (e.g. `http://mesh-ta:8080`) to get a real resolved chain.
+Note: Chain Inspector's "Any Entity" ad-hoc mode and the live trust-mark
+status checker won't work against mesh entity_ids — see KNOWN-ISSUES.md.
+
+(A best-effort background probe on backend startup — `probe_entity_id` in
+`backend/app/utils/capability_probe.py` — fetches each instance's own entity
+configuration and corrects its stored `entity_id` if it differs from
+`public_base_url`, which is what makes "Via Trust Anchor" resolve work
+correctly out of the box for mesh nodes without any manual override.)
 
 ---
 

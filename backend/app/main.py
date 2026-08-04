@@ -98,7 +98,8 @@ app.include_router(audit.router)
 
 
 async def _probe_all_instances() -> None:
-    from app.utils.capability_probe import probe_instance_capabilities
+    from app.models.trust_anchor import TrustAnchor
+    from app.utils.capability_probe import probe_entity_id, probe_instance_capabilities
 
     logger = logging.getLogger(__name__)
     session = SessionLocal()
@@ -114,6 +115,19 @@ async def _probe_all_instances() -> None:
                 )
             except Exception:
                 logger.warning("Startup capability probe failed for instance %s", item.id, exc_info=True)
+
+            # seed_data() defaults entity_id to public_base_url, which is
+            # only correct by coincidence — correct it to what the instance
+            # actually signs its own statements with, once it's reachable.
+            try:
+                real_entity_id = await probe_entity_id(str(item.admin_base_url))
+                if real_entity_id:
+                    anchor = session.query(TrustAnchor).filter(TrustAnchor.id == item.id).first()
+                    if anchor and anchor.entity_id != real_entity_id:
+                        anchor.entity_id = real_entity_id
+                        session.commit()
+            except Exception:
+                logger.warning("Startup entity_id probe failed for instance %s", item.id, exc_info=True)
     finally:
         session.close()
 
