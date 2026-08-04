@@ -287,20 +287,14 @@ See `KNOWN-ISSUES.md` for the maintained, evidence-based list — it documents w
 
 ## Documentation
 
-- `README.md` — full developer setup, local dev without Docker, test suite, adding instances
+- `../README.md` — repository layout, services/ports, deployment config, full documentation index
 - `GETTING-STARTED.md` — one-page operator/newcomer tour of the actual UI workflows
 - `KNOWN-ISSUES.md` — maintained list of fixed/known/upstream issues
-- `Federation Admin OpenAPI.yaml` — the proxied API contract
+- `../Federation Admin OpenAPI.yaml` — the proxied API contract
 - `CAPABILITY-DISCOVERY.md` — how the capability manifest drives dynamic UI adaptation
+- `BACKEND-IMPLEMENTORS.md` — implementing the Admin API in your own language/framework
 
-## For Organizations Building Their Own Admin API
-
-If you're implementing the (proxied-side) Admin API in your preferred language/framework:
-
-1. **Start with the OpenAPI spec** — `Federation Admin OpenAPI.yaml` is the contract.
-2. **Use the reference backend as a behavioral example** — `backend/app/routers/` shows real request/response shapes; `e2e/tests/` exercises them end to end against a live stack.
-3. **Implement `/api/v1/capabilities`** so the UI can adapt navigation, buttons, and RBAC permission lists to what your backend actually supports.
-4. **Handle CORS** for the UI origin, and accept whatever bearer-token scheme you choose — the backend attaches auth server-side, the browser never needs to know your credential format.
-5. Point this UI's backend proxy at your implementation by adjusting `backend/config/gateway.yaml`'s `admin_base_url` for an instance — there's no separate "point the UI directly at a custom backend" mode; the FastAPI gateway is a required layer (it's what does RBAC, audit, and SSRF-guarding).
+For implementing your own Admin API, see `BACKEND-IMPLEMENTORS.md` rather
+than duplicating that guidance here.
 
 ---

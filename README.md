@@ -2,11 +2,13 @@
 
 **Backend-Agnostic UI** for managing OpenID Federation entities, trust anchors, subordinates, and trust marks.
 
+> New here? Start with **[`CLAUDE.md`](CLAUDE.md)** (agent/developer map of this
+> repo) or **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** (human tour:
+> run it, then use it).
+
 ---
 
-## Developer Quick Reference
-
-### Repository layout
+## Repository layout
 
 ```
 federation-gateway/
@@ -20,48 +22,47 @@ federation-gateway/
 │   └── app/
 │       ├── routers/
 │       │   ├── proxy.py          # ⚠ Transparent proxy to LightHouse Admin API
+│       │   ├── resolve.py        # SSRF-guarded ad-hoc entity/trust-mark-status lookups
 │       │   ├── auth.py           # JWT login / refresh
 │       │   └── trust_anchors.py  # Deployment-managed trust-anchor list (read-only; config-backed)
-│       ├── db/seed.py            # First-run seed: admin user
+│       ├── utils/capability_probe.py  # Live per-instance capability + entity_id discovery
+│       ├── db/seed.py            # First-run seed: admin user, deployment-managed trust anchors
 │       └── main.py               # FastAPI app entry point
 ├── e2e/                          # Playwright end-to-end tests
 │   ├── tests/
-│   │   ├── entities.spec.ts      # Entity registration + approvals workflow
-│   │   ├── settings.spec.ts      # Settings page tabs
-│   │   └── trust-marks.spec.ts   # Trust marks pages
 │   ├── fixtures/index.ts         # loginAsAdmin + instancePage fixtures
 │   └── playwright.config.ts      # Projects: bff-only (@bff), full-stack (@proxy)
-├── lighthouse/
+├── lighthouse/, lighthouse2/     # Two standalone LightHouse trust anchors
 │   ├── config.yaml               # LightHouse node config (entity_id, storage, signing)
 │   └── data/                     # SQLite DB + generated signing keys (gitignored)
+├── mesh-ta/, mesh-ia/,           # A small real multi-hop federation
+│   mesh-leaf-op/, mesh-leaf-rp/  # — see docs/FEDERATION-TOPOLOGY.md
+├── scripts/                      # seed-demo.py, seed-mesh.py, and other setup scripts
+├── docs/                         # Topic documentation — see "Documentation" below
 ├── Federation Admin OpenAPI.yaml # Canonical API contract (source of truth)
-├── docker-compose.yml            # Three services: lighthouse · backend · ui
+├── docker-compose.yml            # ui · backend · lighthouse · lighthouse2 · 4 mesh nodes
 └── Dockerfile                    # UI: Bun build → nginx:alpine
 ```
 
-### Services and ports
+## Services and ports
 
 | Service | Port | Notes |
 |---------|------|-------|
 | **UI** (nginx, SPA) | `8080` (configurable via `UI_PORT`) | Proxies `/api/*` → backend at `8765` |
 | **Backend** (FastAPI) | `8765` (configurable via `BACKEND_PORT`) | BFF: auth + deployment config + proxy to instances |
 | **LightHouse** | `8081` (configurable via `LIGHTHOUSE_PUBLIC_PORT`) | Federation node, digest-pinned in `docker-compose.yml` — check there for the current digest, it moves as we pick up upstream fixes |
-| **LightHouse 2** | `8082` (configurable via `LIGHTHOUSE2_PUBLIC_PORT`) | A second federation node/trust anchor, wired up out of the box for exercising multi-instance behavior |
-| **Mesh** (`mesh-ta`/`mesh-ia`/`mesh-leaf-op`/`mesh-leaf-rp`) | `8090`–`8093` | A real multi-hop federation (TA → Intermediate → 2 leaves) for testing trust chain resolution and trust mark delegation — see "Small LightHouse mesh" below |
+| **LightHouse 2** | `8082` (configurable via `LIGHTHOUSE2_PUBLIC_PORT`) | A second, independent federation node/trust anchor |
+| **Mesh** (`mesh-ta`/`mesh-ia`/`mesh-leaf-op`/`mesh-leaf-rp`) | `8090`–`8093` | A real multi-hop federation (TA → Intermediate → 2 leaves) — see `docs/FEDERATION-TOPOLOGY.md` |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
-> **Persistence**: `lighthouse/data/` is a bind-mounted runtime directory. The compose entrypoint ensures it is writable before LightHouse starts.
+> **Persistence**: `lighthouse/data/` (and the mesh equivalents) are bind-mounted runtime directories. The compose entrypoint ensures they're writable before LightHouse starts.
 
-### Deployment configuration
+## Deployment configuration
 
 Federation instances are declared in `backend/config/gateway.yaml`:
 
 ```yaml
-ui:
-  public_base_url: http://localhost:8080
-backend:
-  public_base_url: http://localhost:8765
 instances:
   - id: ta-1
     name: LightHouse
@@ -80,6 +81,7 @@ instances:
 - Admin credentials are read from environment variables (`LIGHTHOUSE_ADMIN_USERNAME`, `LIGHTHOUSE_ADMIN_PASSWORD`).
 - The UI does **not** auto-select the first instance. Users must explicitly choose an instance from the dropdown.
 - Proxy requests to admin endpoints are authenticated server-side; the UI never sees admin credentials.
+- A background probe on backend startup corrects each instance's stored `entity_id` if it differs from `public_base_url` (see `docs/FEDERATION-TOPOLOGY.md`).
 
 ### Default credentials (seeded on first run)
 
@@ -90,13 +92,15 @@ instances:
 
 ---
 
-### Run the full stack
+## Quick start
 
 ```sh
-docker compose up --build
+docker compose up -d --build
 ```
 
-Opens at **http://localhost:8080**.
+Opens at **http://localhost:8080**. This brings up all 8 services (ui,
+backend, lighthouse, lighthouse2, and the 4 mesh nodes). See
+`docs/GETTING-STARTED.md` for the guided first-run tour.
 
 **Environment variables** (optional):
 ```sh
@@ -105,64 +109,29 @@ BACKEND_PORT=8765 \
 LIGHTHOUSE_PUBLIC_PORT=8081 \
 LIGHTHOUSE_ADMIN_USERNAME=gateway \
 LIGHTHOUSE_ADMIN_PASSWORD=gateway \
-docker compose up --build
+docker compose up -d --build
 ```
-
-### Clean setup / live demo
-
-For a fresh demo with no stale LightHouse state:
-
-```sh
-docker compose down
-find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
-
-LIGHTHOUSE_ADMIN_USERNAME=gateway \
-LIGHTHOUSE_ADMIN_PASSWORD=gateway \
-docker compose up --build --force-recreate
-```
-
-Then open:
-
-- UI: `http://localhost:8080`
-- Backend health: `http://localhost:8765/health`
-- LightHouse public entity: `http://localhost:8081`
-
-Seeded admin login:
-
-- Email: `admin@oidfed.org`
-- Password: `admin123`
-
-Suggested live flow:
-
-1. Show `backend/config/gateway.yaml` and the configured ports / admin endpoint split.
-2. Log in and show that no instance is auto-selected.
-3. Select **LightHouse** from the instance switcher.
-4. Open **Settings** and navigate across tabs to show the selection persists.
-5. Mention that admin credentials stay server-side and requests go through the gateway proxy.
 
 ### Rebuild a single service (after source changes)
 
 ```sh
 # UI (React source or nginx config changed)
-docker compose build ui && docker compose up -d ui
+docker compose up -d --build ui
 
 # Backend (Python source changed)
-docker compose build backend && docker compose up -d backend
+docker compose up -d --build backend
 ```
 
-> The UI image uses a multi-stage Bun build — there is no volume mount; source changes always require a rebuild.
+> `restart` alone will **not** pick up source changes for `ui` or
+> `backend` — both bake source into the image at build time. See
+> `CLAUDE.md`.
 
 ### Reset everything from scratch
 
 ```sh
-# Stop containers
 docker compose down
-
-# Remove bind-mounted LightHouse runtime state
 find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
-
-# Recreate containers from a clean state
-docker compose up --build --force-recreate
+docker compose up -d --build --force-recreate
 ```
 
 To keep LightHouse data but reset only the BFF database:
@@ -170,567 +139,6 @@ To keep LightHouse data but reset only the BFF database:
 ```sh
 docker compose up -d --build --force-recreate backend
 ```
-
----
-
-### Run tests
-
-Tests live in `e2e/`. Install dependencies once:
-
-```sh
-cd e2e && npm install
-cd e2e && npx playwright install chromium
-```
-
-#### Full-stack tests (`@proxy` — requires Docker stack running)
-
-```sh
-# Start the stack first
-docker compose up --build -d
-
-cd e2e
-npm run test:full                              # all 34 full-stack tests
-npm run test:full -- --grep "pending status"   # run a subset by name
-npm run test:full -- --reporter=line           # compact output
-```
-
-#### BFF-only tests (`@bff` — no Docker needed)
-
-```sh
-cd e2e
-npm run test:bff
-```
-
-#### Open Playwright UI / trace viewer
-
-```sh
-cd e2e
-npm run test:ui              # interactive test runner
-npx playwright show-report   # HTML report from last run
-```
-
-Test results and failure screenshots land in `e2e/test-results/`.
-
-#### Clean up after tests
-
-Playwright file artifacts (screenshots, traces, HTML report):
-
-```sh
-rm -rf e2e/test-results/ e2e/playwright-report/
-```
-
-Test runs register entities in LightHouse's database. To clear them without a full reset:
-
-```sh
-docker compose stop lighthouse
-sqlite3 lighthouse/data/lighthouse.db \
-  "DELETE FROM subordinates; DELETE FROM subordinate_entity_types; DELETE FROM subordinate_additional_claims; DELETE FROM subordinate_events; DELETE FROM authority_hints WHERE entity_id LIKE '%ta-test-%';"
-docker compose start lighthouse
-```
-
-This preserves LightHouse signing keys and config. To re-seed only the BFF registration records, recreate the backend container:
-
-```sh
-docker compose up -d --build --force-recreate backend
-```
-
----
-
-### Use mise tasks (optional)
-
-The repo includes a root `mise.toml` with common workflows as named tasks. If you have [mise](https://mise.jdx.dev/) installed:
-
-```sh
-mise tasks ls                      # list all available tasks
-
-mise run dev:ui                    # start the Vite dev server (no Docker)
-mise run stack:up-detached         # docker compose up -d --build
-
-mise run test:bff                  # BFF-only Playwright tests
-mise run test:backend-proxy        # full-stack proxy tests
-
-mise run verify:frontend           # type-check + lint + build
-```
-
-Safe cleanup tasks live under `clean:*`. Destructive state-reset tasks live under `reset:*` and `demo:*` — use with care.
-
-The raw `npm`, `pytest`, and `docker compose` commands documented below remain the source of truth; mise tasks are thin wrappers around them.
-
----
-
-### Local UI development (without Docker)
-
-The UI can run against the Dockerised backend:
-
-```sh
-# Ensure backend + lighthouse are running
-docker compose up -d backend lighthouse
-
-# Install UI deps and start Vite dev server
-npm install
-npm run dev          # http://localhost:5173, proxies /api → localhost:8765
-```
-
-Hot-module reload works; changes are instant without rebuilding Docker images.
-
-### Local backend development (without Docker)
-
-Requires Python 3.11 (pinned in `backend/.python-version` and `backend/Dockerfile`
-— older versions, e.g. the 3.9 that ships with some macOS/Linux systems, fail
-to build the pinned `bcrypt` wheel).
-
-```sh
-cd backend
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8765
-```
-
-If `python3.11` isn't installed and you don't want to install it system-wide,
-run it in a throwaway container instead:
-
-```sh
-docker run --rm -it -v "$(pwd)/..:/repo" -w /repo/backend -p 8765:8765 \
-  python:3.11-slim bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8765"
-```
-
-The same pattern works for running the test suite: swap the last command for
-`pytest`.
-
-The backend stores state in `backend.db` (SQLite, root of repo).
-
----
-
-### Adding another LightHouse instance
-
-`docker-compose.yml` already ships with two instances (`ta-1` / LightHouse on
-`8081`, `ta-2` / LightHouse 2 on `8082`) — use them as the template for a
-third. Both currently reuse the same `LIGHTHOUSE_ADMIN_USERNAME` /
-`LIGHTHOUSE_ADMIN_PASSWORD` env vars (see `backend/config/gateway.yaml`);
-give a new instance its own pair if it needs separate credentials.
-
-1. Create `lighthouse3/config.yaml` (copy `lighthouse2/config.yaml` and
-   change `entity_id`) and a `lighthouse3/data/` directory with a
-   `.gitkeep` placeholder.
-2. Add a `lighthouse3` service to `docker-compose.yml`, following the
-   `lighthouse2` service as a template (same image, new port, new volume
-   paths).
-3. Add the instance to `backend/config/gateway.yaml`:
-   ```yaml
-   instances:
-     - id: ta-1
-       name: LightHouse
-       # ... existing config
-     - id: ta-2
-       name: LightHouse 2
-       # ... existing config
-     - id: ta-3
-       name: LightHouse 3
-       public_base_url: http://localhost:8083
-       admin_base_url: http://lighthouse3:8080
-       public_port: 8083
-       admin_port: 8080
-       admin_auth:
-         type: basic
-         username_env: LIGHTHOUSE_ADMIN_USERNAME
-         password_env: LIGHTHOUSE_ADMIN_PASSWORD
-   ```
-4. Restart: `docker compose down && docker compose up --build --force-recreate`.
-
-### Small LightHouse mesh (real multi-hop federation)
-
-`ta-1`/`ta-2` above are two *independent* trust anchors with no relationship
-between them. For testing real multi-hop trust chains and trust-mark
-delegation, `docker-compose.yml` also ships a small **mesh** — four more
-LightHouse containers wired into an actual hierarchy:
-
-```
-mesh-ta (root TA, :8090)  →  mesh-ia (Intermediate, :8091)  →  mesh-leaf-op (:8092, Subject)
-                                                             →  mesh-leaf-rp (:8093, verifier)
-```
-
-Unlike `scripts/seed-demo.py` (which registers fake subordinates with
-throwaway generated keys — fine for populating list/table UIs, but not real
-enough to actually walk a chain), every mesh node is a real running
-LightHouse with its own signing key, and each `entity_id` uses the
-container's docker-network hostname (e.g. `http://mesh-ta:8080`, not
-`localhost`) so the containers can genuinely fetch each other's entity
-configurations.
-
-```bash
-docker compose up -d mesh-ta mesh-ia mesh-leaf-op mesh-leaf-rp
-python3 scripts/seed-mesh.py   # idempotent — safe to re-run
-```
-
-The script registers each child as a real subordinate of its parent (using
-the child's actual public JWKS, fetched from its own entity configuration),
-sets authority hints, and issues a trust mark owned by `mesh-ta`, issued by
-`mesh-ia`, held by `mesh-leaf-op` — printing example `curl` commands for
-verifying the resolved chain and the mark's status when it's done. `mesh-ta`
-and `mesh-ia` are also registered in `backend/config/gateway.yaml`, so you
-can drive the same scenario from the app's instance switcher instead.
-
-Note: Chain Inspector's "Any Entity" ad-hoc mode and the live trust-mark
-status checker won't work against mesh entity_ids — see KNOWN-ISSUES.md.
-
-(A best-effort background probe on backend startup — `probe_entity_id` in
-`backend/app/utils/capability_probe.py` — fetches each instance's own entity
-configuration and corrects its stored `entity_id` if it differs from
-`public_base_url`, which is what makes "Via Trust Anchor" resolve work
-correctly out of the box for mesh nodes without any manual override.)
-
----
-
-### Trust Anchors page model
-
-The **Trust Anchors** page presents a read-only view of the deployment topology — there is no runtime trust-anchor creation or deletion through the UI.
-
-| Section | Behaviour |
-|---------|-----------|
-| **My Instances** | Shows instances mirrored from `backend/config/gateway.yaml`. Read-only; no Add/Edit/Delete actions. |
-| **Authority Hints** | Fully managed in the UI (add / remove). |
-| **Registered Intermediates** | Managed through the Subordinates flow; no direct creation from this page. |
-
-`docker-compose.yml` defines runtime service topology (ports, networks). It does **not** create product-visible instances — those are declared exclusively in `backend/config/gateway.yaml`.
-
----
-
-## Key Features
-
-- ✅ **Backend-Agnostic Design** - Works with any Admin API implementing the OpenAPI spec
-- ✅ **Capability Discovery** - UI adapts dynamically to backend features
-- ✅ **Multiple Backend Support** - Python (FastAPI), Go, Java, .NET implementations
-- ✅ **Production Ready** - Docker deployment with environment configuration
-
----
-
-## Architecture
-
-### Core Components
-
-1. **UI (React + TypeScript)** - Universal frontend for OIDFed management
-2. **OpenAPI Specification** - The contract all backends must implement
-3. **Reference Backend (FastAPI)** - Example implementation (proxies to a real LightHouse federation node)
-
-### Backend Flexibility
-
-The UI can connect to **any backend** that implements [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml):
-
-- **Reference**: Python FastAPI (included in this repo)
-- **Community**: Go, Java, .NET, Node.js implementations (coming soon)
-- **Custom**: Your organization's own implementation
-
----
-
-## Quick Start
-
-### Option 1: Full Stack (UI + Reference Backend)
-
-```sh
-# Clone the repository
-git clone <repo-url>
-cd federation-gateway
-
-# Start everything with Docker Compose
-docker-compose up --build
-```
-
-Access:
-- UI: http://localhost:8080
-- Backend API: http://localhost:8765
-- API Docs: http://localhost:8765/docs
-
-### Option 2: UI Only (Point to Your Backend)
-
-```sh
-# Install dependencies
-npm install
-
-# Configure your backend URL
-cp .env.example .env.local
-# Edit .env.local and set VITE_API_BASE_URL=https://your-backend.example.org
-
-# Run development server
-npm run dev
-```
-
-### Option 3: Reference Backend Only
-
-```sh
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-fastapi run app/main.py --host 0.0.0.0 --port 8765
-```
-
----
-
-## Configuration
-
-### Environment Variables
-
-Create `.env.local` from the example:
-
-```sh
-cp .env.example .env.local
-```
-
-**Key Configuration**:
-
-```bash
-# Point to your backend implementation
-VITE_API_BASE_URL=http://localhost:8765
-```
-
-**Deployment Examples**:
-
-```bash
-# Development (local FastAPI)
-VITE_API_BASE_URL=http://localhost:8765
-
-# Production (organization's backend)
-VITE_API_BASE_URL=https://api.federation.example.org
-
-# Kubernetes cluster
-VITE_API_BASE_URL=https://oidfed-backend.cluster.local/v1
-
-# Cloud deployment
-VITE_API_BASE_URL=https://federation-api.cloud.edu
-```
-
-### Backend Requirements
-
-Your backend must:
-
-1. **Implement `/api/v1/capabilities`** - Capability discovery endpoint
-2. **Return valid responses** matching [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)
-3. **Handle CORS** - Allow requests from the UI origin
-4. **Support authentication** - JWT, OAuth2, API keys, or custom
-
----
-
-> Local UI/backend development without Docker is covered above under
-> "Local UI development (without Docker)" and "Local backend development
-> (without Docker)".
-
-## Production Deployment
-
-### Docker (UI Only)
-
-Build and run the UI container pointing to your backend:
-
-```sh
-docker build -t federation-gateway-ui .
-docker run -p 8080:80 \
-  -e VITE_API_BASE_URL=https://your-backend.example.org \
-  federation-gateway-ui
-```
-
-### Kubernetes
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: federation-ui
-spec:
-  template:
-    spec:
-      containers:
-      - name: ui
-        image: federation-gateway-ui:latest
-        env:
-        - name: VITE_API_BASE_URL
-          value: "https://backend-service.namespace.svc.cluster.local:8765"
-        ports:
-        - containerPort: 80
-```
-
-### Static Hosting (S3, Netlify, Vercel)
-
-```sh
-# Build for production
-npm run build
-
-# Set API URL via build-time env var
-VITE_API_BASE_URL=https://api.example.org npm run build
-
-# Upload ./dist to your hosting service
-```
-
----
-
-## Backend Implementations
-
-### Reference Implementation (FastAPI - This Repo)
-
-**Status**: ✅ Partial (core features implemented)
-
-**Features**:
-- Subordinate management (CRUD)
-- Deployment-managed trust anchor instances (read-only)
-- JWT authentication
-- Capability discovery
-
-**Run**: See "Quick Start" above
-
-### Community Implementations
-
-| Language | Framework | Status | Repository |
-|----------|-----------|--------|------------|
-| Go | Gin/Echo | 📋 Planned | Coming soon |
-| Java | Spring Boot | 📋 Planned | Coming soon |
-| .NET | ASP.NET Core | 📋 Planned | Coming soon |
-| Node.js | Express/NestJS | 📋 Planned | Coming soon |
-
----
-
-## How It Works
-
-### 1. Capability Discovery
-
-On startup, the UI fetches `/api/v1/capabilities` from the backend:
-
-```json
-{
-  "version": "1.0.0",
-  "implementation": {
-    "name": "FastAPI Reference Implementation",
-    "version": "0.2.0"
-  },
-  "features": {
-    "subordinates": {
-      "enabled": true,
-      "operations": ["list", "create", "read", "update", "delete"]
-    },
-    "trust_marks": {
-      "enabled": false,
-      "reason": "Coming in Q2 2026"
-    }
-  }
-}
-```
-
-### 2. Dynamic UI Adaptation
-
-Based on capabilities:
-- **Navigation** shows only available features
-- **Buttons** appear/disappear based on operations
-- **RBAC permissions** are generated from enabled features
-- **Instance info** (real LightHouse version, signing algorithm, live protocol endpoints — pulled from the connected instance's own entity configuration, not this manifest) is shown on the Dashboard
-
-### 3. Backend Flexibility
-
-The same UI works with different backends:
-
-```bash
-# Switch backends by changing environment variable
-VITE_API_BASE_URL=https://python-backend.org npm start    # FastAPI
-VITE_API_BASE_URL=https://go-backend.org npm start        # Go implementation
-VITE_API_BASE_URL=https://java-backend.org npm start      # Java implementation
-```
-
----
-
-## For Backend Implementers
-
-Want to implement the Admin API in your preferred language?
-
-### 1. Start with the OpenAPI Spec
-
-File: [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)
-
-This is your contract - implement all endpoints or a subset.
-
-### 2. Reference the FastAPI Backend
-
-Directory: [`backend/app/routers/`](backend/app/routers/)
-
-The closest thing to a living behavior reference — `proxy.py` shows how
-mutating requests get audited, `resolve.py` shows the SSRF-guarded pattern
-for fetching arbitrary external entity data, and the e2e suite in `e2e/tests/`
-exercises real request/response shapes end to end.
-
-### 3. Implement Capability Discovery
-
-**Required**: `/api/v1/capabilities` endpoint
-
-This tells the UI what your backend supports.
-
-### 4. Test with the UI
-
-```bash
-# Clone this repo
-git clone <repo-url>
-
-# Point UI to your backend
-VITE_API_BASE_URL=https://your-backend.example.org npm run dev
-```
-
-### 5. CORS Configuration
-
-Your backend must allow requests from the UI:
-
-```
-Access-Control-Allow-Origin: https://your-ui-domain.org
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
-Access-Control-Allow-Headers: Content-Type, Authorization
-Access-Control-Allow-Credentials: true
-```
-
----
-
-## Project Structure
-
-```
-federation-gateway/
-├── src/                          # UI source code
-│   ├── client/                   # Auto-generated API client
-│   ├── components/               # React components
-│   ├── contexts/                 # React contexts (Auth, Capability, etc.)
-│   ├── hooks/                    # Custom React hooks
-│   ├── pages/                    # Page components
-│   ├── services/                 # Service layer (capabilities, etc.)
-│   └── App.tsx                   # Main app component
-├── backend/                      # Reference FastAPI backend (optional)
-│   └── app/
-│       ├── routers/              # API endpoints
-│       ├── models/               # Database models
-│       └── main.py               # FastAPI app
-├── Federation Admin OpenAPI.yaml # API specification (THE CONTRACT)
-├── docker-compose.yml            # Full stack deployment
-├── Dockerfile                    # UI container
-└── README.md                     # This file
-```
-
----
-
-## Scripts
-
-```sh
-npm run dev         # Start development server with HMR
-npm run build       # Build for production
-npm run preview     # Preview production build
-npm run lint        # Run ESLint
-```
-
----
-
-## Authentication
-
-### Current (Demo/Development)
-
-- Seeded local users (see "Default credentials" above), stored in the backend's own database
-- JWT tokens issued by the reference backend
-- Credentials: `admin@oidfed.org` / `admin123`
-
-### Production (Planned)
-
-- Separate Auth Gateway service
-- OIDC/SAML federation support
-- Identity mapping to local users
-- Flexible authentication methods (JWT, OAuth2, API keys)
 
 ---
 
@@ -742,15 +150,30 @@ npm run lint        # Run ESLint
 - **E2E Testing**: Playwright, against the real Docker-composed stack
 - **Deployment**: Docker, Docker Compose
 
+## Architecture
+
+The UI is a **backend-agnostic** frontend: any Admin API implementing
+`Federation Admin OpenAPI.yaml` can plug in. The FastAPI backend in this
+repo is a reference implementation and gateway (BFF), not a mock — it
+proxies to a real federation node (LightHouse) and owns its own concerns
+(auth, RBAC, audit, instance registry). Full details in
+`docs/ARCHITECTURE.md`.
+
 ---
 
 ## Documentation
 
-- [`GETTING-STARTED.md`](GETTING-STARTED.md) - One-page tour for newcomers and operators: run it, then use it
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) - System architecture and design
-- [`CAPABILITY-DISCOVERY.md`](CAPABILITY-DISCOVERY.md) - Backend capability system
-- [`KNOWN-ISSUES.md`](KNOWN-ISSUES.md) - Maintained list of fixed bugs, known gaps, and upstream LightHouse/OIDFed issues
-- [`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml) - API specification
+- **[`CLAUDE.md`](CLAUDE.md)** — map of this repo for agents/new developers: constraints, verification commands, session checklist
+- **[`PROGRESS.md`](PROGRESS.md)** — current state, recent work, known blockers
+- **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** — one-page tour for newcomers and operators: run it, then use it
+- **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — system architecture and design
+- **[`docs/CAPABILITY-DISCOVERY.md`](docs/CAPABILITY-DISCOVERY.md)** — backend capability system
+- **[`docs/KNOWN-ISSUES.md`](docs/KNOWN-ISSUES.md)** — maintained list of fixed bugs, known gaps, and upstream LightHouse/OIDFed issues
+- **[`docs/TESTING.md`](docs/TESTING.md)** — running the Playwright and backend test suites
+- **[`docs/LOCAL-DEVELOPMENT.md`](docs/LOCAL-DEVELOPMENT.md)** — running the UI/backend outside Docker
+- **[`docs/FEDERATION-TOPOLOGY.md`](docs/FEDERATION-TOPOLOGY.md)** — adding instances, the LightHouse mesh, the Trust Anchors page model
+- **[`docs/BACKEND-IMPLEMENTORS.md`](docs/BACKEND-IMPLEMENTORS.md)** — implementing the Admin API in your own language/framework
+- **[`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)** — API specification (the contract)
 
 ---
 
@@ -763,19 +186,14 @@ Contributions welcome! Especially:
 - Documentation enhancements
 - Test coverage
 
----
-
 ## License
 
 MIT License - see LICENSE file for details
-
----
 
 ## Support
 
 - **Issues**: GitHub Issues
 - **Discussions**: GitHub Discussions
-- **Documentation**: See `/docs` folder
 
 ---
 

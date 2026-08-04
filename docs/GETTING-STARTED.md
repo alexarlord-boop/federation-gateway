@@ -12,10 +12,12 @@ for the first time. Two parts: **run it**, then **use it**.
 docker compose up --build
 ```
 
-This starts four containers: the **UI** (nginx, port `8080`), the **backend**
-gateway/BFF (FastAPI, port `8765`), and two **LightHouse** federation nodes
+This starts the **UI** (nginx, port `8080`), the **backend** gateway/BFF
+(FastAPI, port `8765`), two standalone **LightHouse** federation nodes
 (`8081`, `8082`) pre-wired as separate trust anchors so you have something
-real to explore multi-instance behavior with.
+real to explore multi-instance behavior with, and a small **mesh** of four
+more LightHouse nodes wired into an actual multi-hop hierarchy — see
+`docs/FEDERATION-TOPOLOGY.md` if you want to explore that instead.
 
 Open **http://localhost:8080** and log in:
 
@@ -33,8 +35,7 @@ defaulting to an instance is how people edit the wrong federation.
 Instances themselves aren't created in the UI — they're declared in
 `backend/config/gateway.yaml` and loaded at backend startup. To point this
 tool at a different (or additional) real Admin API, add an entry there; see
-the `README.md` "Adding a second LightHouse instance" section for the
-full steps.
+`FEDERATION-TOPOLOGY.md` for the full steps.
 
 ---
 
@@ -152,10 +153,15 @@ per-instance) — who can do what across this whole deployment.
   fixed, what's a known gap in our own code, and what needs upstream
   LightHouse/OIDFed collaboration. Read this before assuming something
   broken is a new bug — it might already be documented.
-- **`README.md`** — full developer setup: local (non-Docker) dev servers,
-  running the test suite, adding a second instance, resetting local state.
-- **`Federation Admin OpenAPI.yaml`** — the API contract this UI is built
-  against; the source of truth for what any backend needs to implement.
+- **`../README.md`** — repository layout, services/ports, deployment
+  config, and a full documentation index.
+- **`LOCAL-DEVELOPMENT.md`** — running the UI/backend outside Docker.
+- **`TESTING.md`** — running the Playwright suite.
+- **`FEDERATION-TOPOLOGY.md`** — adding another instance, the mesh, how
+  the Trust Anchors page relates to `gateway.yaml`.
+- **`../Federation Admin OpenAPI.yaml`** — the API contract this UI is
+  built against; the source of truth for what any backend needs to
+  implement.
 - **[testbed.oidf.lab.surf.nl](https://testbed.oidf.lab.surf.nl)** — a live
   directory of real eduGAIN OIDFed federations, useful for testing Chain
   Inspector and trust mark verification against genuine external data
