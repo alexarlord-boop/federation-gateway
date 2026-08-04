@@ -21,6 +21,7 @@ receives pre-authenticated requests from the gateway.
 import base64
 import json
 import logging
+import urllib.parse
 from typing import Optional
 
 import httpx
@@ -301,9 +302,11 @@ async def proxy(
         if key.lower() not in _RESPONSE_STRIP:
             response_headers[key] = value
 
-    # Add tracing header so the UI knows which instance answered
+    # Add tracing header so the UI knows which instance answered.
+    # HTTP header values must be latin-1 — percent-encode so a display name
+    # with e.g. an accent or em-dash can't crash the response entirely.
     response_headers["X-Proxied-To"] = instance["base_url"]
-    response_headers["X-Instance-Name"] = instance["name"]
+    response_headers["X-Instance-Name"] = urllib.parse.quote(instance["name"])
 
     return Response(
         content=upstream_response.content,
