@@ -48,10 +48,13 @@ instances:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
       password_env: LIGHTHOUSE_ADMIN_PASSWORD
-  # mesh2 — a second, fully independent hierarchy (no shared root with the
-  # mesh above) for interfederation testing. Same registration pattern:
-  # only mesh2-ta/mesh2-ia manage subordinates, so only those two are
-  # registered here.
+  # mesh2 — a second, fully independent hierarchy (no shared root, and no
+  # shared docker network — see docker-compose.yml's mesh2net) for
+  # interfederation testing. Same registration pattern: only mesh2-ta/
+  # mesh2-ia manage subordinates, so only those two are registered here.
+  # Distinct admin credentials (LIGHTHOUSE2_*) from the rest of the
+  # deployment, matching how a real separate federation would be run —
+  # `backend` is on both networks so it can still reach mesh2-ta directly.
   - id: mesh2-ta
     name: Mesh2 - Trust Anchor
     public_base_url: http://localhost:8094
@@ -60,8 +63,8 @@ instances:
     admin_port: 8080
     admin_auth:
       type: basic
-      username_env: LIGHTHOUSE_ADMIN_USERNAME
-      password_env: LIGHTHOUSE_ADMIN_PASSWORD
+      username_env: LIGHTHOUSE2_ADMIN_USERNAME
+      password_env: LIGHTHOUSE2_ADMIN_PASSWORD
   - id: mesh2-ia
     name: Mesh2 - Intermediate
     public_base_url: http://localhost:8095
@@ -70,5 +73,5 @@ instances:
     admin_port: 8080
     admin_auth:
       type: basic
-      username_env: LIGHTHOUSE_ADMIN_USERNAME
-      password_env: LIGHTHOUSE_ADMIN_PASSWORD
+      username_env: LIGHTHOUSE2_ADMIN_USERNAME
+      password_env: LIGHTHOUSE2_ADMIN_PASSWORD

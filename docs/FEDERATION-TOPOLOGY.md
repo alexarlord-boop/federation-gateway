@@ -114,8 +114,18 @@ mesh2-ta (root TA, :8094)  →  mesh2-ia (Intermediate, :8095)  →  mesh2-leaf-
 ```
 
 `mesh2-leaf-op` has no authority_hint path to `mesh-ta`/`mesh-ia`, no
-shared root — nothing. That's the point: it's used to exercise the one
-real distinction the OIDF spec draws for cross-federation trust:
+shared root, and — unlike the first mesh's own leaves — no shared **docker
+network** either. `mesh2-*` only join a separate `mesh2net` network and use
+distinct admin credentials (`LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD`, not
+the shared `LIGHTHOUSE_ADMIN_*`); `mesh-*` cannot resolve `mesh2-*` by
+hostname at all. The only path between the two federations is the same
+kind of path two genuinely separate, independently-operated deployments
+would use: a host-published URL (`host.docker.internal:PORT` from inside a
+container). `backend` is the one deliberate exception, joining both
+networks — this app administers both federations from one place, but
+their own infrastructure doesn't need to see each other. That's the point:
+it's used to exercise the one real distinction the OIDF spec draws for
+cross-federation trust:
 
 - **Trust marks are issuer-authoritative** — an issuer can mark any
   subject entity_id, regardless of which (if any) hierarchy it belongs
@@ -124,7 +134,20 @@ real distinction the OIDF spec draws for cross-federation trust:
 - **Chain resolution is not** — there's no spec mechanism that makes
   `/resolve` cross an unrelated root. The same script confirms resolving
   `mesh2-leaf-op`'s chain through `mesh-ta` as anchor correctly fails
-  (`404 invalid_trust_chain`).
+  (`404 invalid_trust_chain`, `"no valid trust path between sub and anchor
+  found"`). LightHouse determines this from its own local subordinate
+  graph rooted at the anchor; it never needs to reach the subject over the
+  network to know no path exists — confirmed by the fact that this result
+  is identical whether or not `mesh-ia` can actually reach `mesh2-ta` at
+  the network level (see below).
+
+Both results are confirmed live with the network separation genuinely in
+place, not just asserted: `mesh-ia` cannot resolve `mesh2-ta` by hostname
+at all (`Name or service not known`), yet the trust-mark status check
+above still returns `200`, unchanged. That's the real demonstration: a
+trust mark is a portable, self-contained signed assertion, not something
+requiring live connectivity between the issuer's and subject's
+infrastructure.
 
 ```bash
 docker compose up -d mesh2-ta mesh2-ia mesh2-leaf-op

@@ -10,6 +10,8 @@ import os
 os.environ["DATABASE_URL"] = "sqlite:///./test_bff.db"
 os.environ.setdefault("LIGHTHOUSE_ADMIN_USERNAME", "test-admin")
 os.environ.setdefault("LIGHTHOUSE_ADMIN_PASSWORD", "test-password")
+os.environ.setdefault("LIGHTHOUSE2_ADMIN_USERNAME", "test-admin2")
+os.environ.setdefault("LIGHTHOUSE2_ADMIN_PASSWORD", "test-password2")
 
 import pytest
 from fastapi.testclient import TestClient

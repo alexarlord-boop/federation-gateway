@@ -7,6 +7,13 @@ services:
       GATEWAY_CONFIG_FILE: /config/gateway.yaml
       LIGHTHOUSE_ADMIN_USERNAME: ${LIGHTHOUSE_ADMIN_USERNAME:-gateway}
       LIGHTHOUSE_ADMIN_PASSWORD: ${LIGHTHOUSE_ADMIN_PASSWORD:-gateway}
+      # Distinct credentials for mesh2 — a real separate federation would
+      # never share admin credentials with this one, even though LightHouse
+      # itself doesn't enforce them yet (api.admin.users_enabled: false in
+      # every config.yaml here). Only the backend reads these; LightHouse
+      # containers never receive them as env vars.
+      LIGHTHOUSE2_ADMIN_USERNAME: ${LIGHTHOUSE2_ADMIN_USERNAME:-gateway2}
+      LIGHTHOUSE2_ADMIN_PASSWORD: ${LIGHTHOUSE2_ADMIN_PASSWORD:-gateway2}
       # Without this, backend.db lives in the container's writable layer and
       # is silently wiped on every rebuild — users, RBAC roles, and the audit
       # log all reset with no warning.
@@ -16,6 +23,9 @@ services:
       - ./backend/data:/data
     ports:
       - "${BACKEND_PORT:-8765}:8765"
+    networks:
+      - default
+      - mesh2net
     depends_on:
       lighthouse:
         condition: service_healthy
@@ -180,11 +190,19 @@ services:
       start_period: 10s
 
   # ── mesh2: a second, fully independent hierarchy — no shared root, no
-  # authority_hint path to the mesh above. Exists to test interfederation
-  # scenarios: mesh-ia (the *other* mesh's issuer) marking a mesh2 entity,
-  # and confirming trust-chain resolution correctly fails across the two
-  # roots (trust marks are issuer-authoritative and don't need a chain;
-  # /resolve does). See scripts/seed-mesh2.py and docs/FEDERATION-TOPOLOGY.md.
+  # authority_hint path to the mesh above, and (unlike mesh1) no shared
+  # docker network either: mesh2-* only join mesh2net, so the only way
+  # mesh-* and mesh2-* can reach each other at all is via host-published
+  # ports (host.docker.internal), the same kind of path two genuinely
+  # separate, independently-operated federations would use. `backend` is
+  # the one deliberate exception — it joins both networks, since this app
+  # administers both federations from one place.
+  #
+  # Exists to test interfederation scenarios: mesh-ia (the *other* mesh's
+  # issuer) marking a mesh2 entity, and confirming trust-chain resolution
+  # correctly fails across the two roots (trust marks are issuer-authoritative
+  # and don't need a chain; /resolve does). See scripts/seed-mesh2.py and
+  # docs/FEDERATION-TOPOLOGY.md.
   mesh2-ta:
     image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
     restart: unless-stopped
@@ -199,6 +217,8 @@ services:
       - ./mesh2-ta/data:/data
     environment:
       LH_CONFIG_FILE: "/config/config.yaml"
+    networks:
+      - mesh2net
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
       interval: 30s
@@ -220,6 +240,8 @@ services:
       - ./mesh2-ia/data:/data
     environment:
       LH_CONFIG_FILE: "/config/config.yaml"
+    networks:
+      - mesh2net
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
       interval: 30s
@@ -241,9 +263,20 @@ services:
       - ./mesh2-leaf-op/data:/data
     environment:
       LH_CONFIG_FILE: "/config/config.yaml"
+    networks:
+      - mesh2net
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 10s
+
+networks:
+  default: {}
+  # Isolated from `default` — mesh2-* only join this network. `backend`
+  # joins both (see comment above the mesh2 services). This is what makes
+  # the interfederation simulation real: mesh-* and mesh2-* have no shared
+  # docker network, only host-published ports connect them, same as two
+  # genuinely independent deployments.
+  mesh2net: {}
