@@ -1,7 +1,7 @@
 # Federation Topology
 
-How instances are declared, how to add one, and the two multi-instance
-setups this repo ships out of the box.
+How instances are declared, how to add one, and the multi-instance setups
+this repo ships out of the box.
 
 ## Trust Anchors page model
 
@@ -102,3 +102,44 @@ status checker won't work against mesh entity_ids — see `KNOWN-ISSUES.md`.
 configuration and corrects its stored `entity_id` if it differs from
 `public_base_url`, which is what makes "Via Trust Anchor" resolve work
 correctly out of the box for mesh nodes without any manual override.)
+
+## mesh2: a second, independent mesh (interfederation testing)
+
+The mesh above is one hierarchy. To test genuine **interfederation**
+scenarios — trust between two federations that share no root — there's a
+second, fully independent mesh:
+
+```
+mesh2-ta (root TA, :8094)  →  mesh2-ia (Intermediate, :8095)  →  mesh2-leaf-op (:8096, Subject)
+```
+
+`mesh2-leaf-op` has no authority_hint path to `mesh-ta`/`mesh-ia`, no
+shared root — nothing. That's the point: it's used to exercise the one
+real distinction the OIDF spec draws for cross-federation trust:
+
+- **Trust marks are issuer-authoritative** — an issuer can mark any
+  subject entity_id, regardless of which (if any) hierarchy it belongs
+  to. `scripts/seed-mesh2.py` has `mesh-ia` (the *other* mesh's issuer)
+  mark `mesh2-leaf-op` directly, and confirms the status check succeeds.
+- **Chain resolution is not** — there's no spec mechanism that makes
+  `/resolve` cross an unrelated root. The same script confirms resolving
+  `mesh2-leaf-op`'s chain through `mesh-ta` as anchor correctly fails
+  (`404 invalid_trust_chain`).
+
+```bash
+docker compose up -d mesh2-ta mesh2-ia mesh2-leaf-op
+python3 scripts/seed-mesh.py    # if you haven't already — mesh2's seed script reads its issuer
+python3 scripts/seed-mesh2.py   # idempotent — safe to re-run
+```
+
+`mesh2-ta` and `mesh2-ia` are registered in `backend/config/gateway.yaml`
+the same way as the first mesh's. In the app: switch to "Mesh - Intermediate"
+and open Trust Marks → Issuance to see `mesh2-leaf-op` listed as a subject
+right alongside `mesh-leaf-op`, on the same issuance spec.
+
+This still doesn't cover *every* OIDFed workflow — there's no spec
+mechanism for automatic trust propagation across independent roots (that's
+inherent to the spec, not a gap here), and both meshes stay on plain HTTP /
+docker-network hostnames, so real HTTPS/public-DNS resolution is still only
+validated by the real `testbed.oidf.lab.surf.nl` round-trip (see
+`KNOWN-ISSUES.md`).

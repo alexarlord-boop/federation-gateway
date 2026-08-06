@@ -15,8 +15,9 @@ docker compose up --build
 This starts the **UI** (nginx, port `8080`), the **backend** gateway/BFF
 (FastAPI, port `8765`), two standalone **LightHouse** federation nodes
 (`8081`, `8082`) pre-wired as separate trust anchors so you have something
-real to explore multi-instance behavior with, and a small **mesh** of four
-more LightHouse nodes wired into an actual multi-hop hierarchy — see
+real to explore multi-instance behavior with, and two small **meshes** of
+LightHouse nodes each wired into an actual multi-hop hierarchy — one on its
+own, one to demonstrate interfederation with the first — see
 `docs/FEDERATION-TOPOLOGY.md` if you want to explore that instead.
 
 Open **http://localhost:8080** and log in:

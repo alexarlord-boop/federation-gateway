@@ -30,6 +30,11 @@ mesh-*/data/*.mem
 mesh-*/data/*.sst
 mesh-*/data/keys/
 mesh-*/data/lighthouse.db
+mesh2-*/data/*.vlog
+mesh2-*/data/*.mem
+mesh2-*/data/*.sst
+mesh2-*/data/keys/
+mesh2-*/data/lighthouse.db
 backend.db
 backend/data/*.db
 backend/.venv/

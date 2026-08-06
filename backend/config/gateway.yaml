@@ -48,3 +48,27 @@ instances:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
       password_env: LIGHTHOUSE_ADMIN_PASSWORD
+  # mesh2 — a second, fully independent hierarchy (no shared root with the
+  # mesh above) for interfederation testing. Same registration pattern:
+  # only mesh2-ta/mesh2-ia manage subordinates, so only those two are
+  # registered here.
+  - id: mesh2-ta
+    name: Mesh2 - Trust Anchor
+    public_base_url: http://localhost:8094
+    admin_base_url: http://mesh2-ta:8080
+    public_port: 8094
+    admin_port: 8080
+    admin_auth:
+      type: basic
+      username_env: LIGHTHOUSE_ADMIN_USERNAME
+      password_env: LIGHTHOUSE_ADMIN_PASSWORD
+  - id: mesh2-ia
+    name: Mesh2 - Intermediate
+    public_base_url: http://localhost:8095
+    admin_base_url: http://mesh2-ia:8080
+    public_port: 8095
+    admin_port: 8080
+    admin_auth:
+      type: basic
+      username_env: LIGHTHOUSE_ADMIN_USERNAME
+      password_env: LIGHTHOUSE_ADMIN_PASSWORD

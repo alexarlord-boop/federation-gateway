@@ -5,19 +5,28 @@ the start of a session; update it before a substantial one ends.
 
 ## Current state
 
-All 8 compose services (`ui`, `backend`, `lighthouse`, `lighthouse2`,
-`mesh-ta`, `mesh-ia`, `mesh-leaf-op`, `mesh-leaf-rp`) are up and healthy.
-Full e2e suite (90 passing tests + 8 pre-existing, testbed-dependent
-skips) and full backend pytest suite (105 tests) both green as of the last
-verification pass.
+All 11 compose services (`ui`, `backend`, `lighthouse`, `lighthouse2`,
+`mesh-ta`, `mesh-ia`, `mesh-leaf-op`, `mesh-leaf-rp`, `mesh2-ta`,
+`mesh2-ia`, `mesh2-leaf-op`) are up and healthy. Full e2e suite (90 passing
++ 8 pre-existing, testbed-dependent skips) and full backend pytest suite
+(105 tests) both green as of the last verification pass.
 
 ## Recently completed
 
-- **Harness engineering cleanup** (this session): added this file and
-  `CLAUDE.md`, moved `ARCHITECTURE.md`/`CAPABILITY-DISCOVERY.md`/
-  `KNOWN-ISSUES.md`/`GETTING-STARTED.md` into `docs/`, split the
-  782-line `README.md` into a ~200-line entry point plus 4 new focused
-  docs (`TESTING.md`, `LOCAL-DEVELOPMENT.md`, `FEDERATION-TOPOLOGY.md`,
+- **mesh2 + interfederation testing**: a second, fully independent
+  LightHouse mesh (`mesh2-ta` → `mesh2-ia` → `mesh2-leaf-op`, no shared
+  root with the first mesh) plus `scripts/seed-mesh2.py`. Confirmed live
+  the one real distinction OIDFed draws for cross-federation trust: an
+  issuer from mesh 1 (`mesh-ia`) can mark a mesh 2 entity directly (trust
+  marks are issuer-authoritative, no chain needed — status check returns
+  200), while resolving a trust *chain* from that same entity through
+  mesh 1's anchor correctly fails (`404 invalid_trust_chain` — no spec
+  mechanism crosses an unrelated root).
+- **Harness engineering cleanup**: added this file and `CLAUDE.md`, moved
+  `ARCHITECTURE.md`/`CAPABILITY-DISCOVERY.md`/`KNOWN-ISSUES.md`/
+  `GETTING-STARTED.md` into `docs/`, split the 782-line `README.md` into a
+  ~200-line entry point plus 4 new focused docs (`TESTING.md`,
+  `LOCAL-DEVELOPMENT.md`, `FEDERATION-TOPOLOGY.md`,
   `BACKEND-IMPLEMENTORS.md`).
 - **Small LightHouse mesh**: a real 2-hop multi-instance federation
   (`mesh-ta` → `mesh-ia` → `mesh-leaf-op`/`mesh-leaf-rp`) for testing

@@ -1,0 +1,41 @@
+# LightHouse configuration — mesh2 leaf OpenID Provider (subordinate of mesh2-ia).
+# Holds mesh2's own trust mark, and is also the target of the cross-federation
+# scenario: mesh-ia (the *other* mesh's issuer) marks this entity too.
+entity_id: "http://mesh2-leaf-op:8080"
+
+server:
+  port: 8080
+
+storage:
+  driver: sqlite
+  data_dir: /data
+
+signing:
+  kms: filesystem
+  auto_generate_keys: true
+  filesystem:
+    key_dir: /data/keys
+
+api:
+  admin:
+    enabled: true
+    users_enabled: false
+    actor_source: "header"
+    actor_header: "X-Gateway-User-Email"
+
+endpoints:
+  fetch:
+    path: /fetch
+  list:
+    path: /list
+  resolve:
+    path: /resolve
+  trust_mark:
+    path: /trust_mark
+  trust_mark_status:
+    path: /trust_mark/status
+  trust_mark_list:
+    path: /trust_mark/list
+
+stats:
+  enabled: true
