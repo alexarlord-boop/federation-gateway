@@ -7,7 +7,7 @@ def pending_reg(client, user_headers):
     resp = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "https://rp.fixture.reg.test",
             "display_name": "Fixture RP",
             "registered_entity_types": ["openid_relying_party"],
@@ -22,7 +22,7 @@ def test_submit_registration(client, user_headers):
     resp = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "https://rp.submit.reg.test",
             "display_name": "Submit RP",
             "registered_entity_types": ["openid_relying_party"],
@@ -33,7 +33,7 @@ def test_submit_registration(client, user_headers):
     data = resp.json()
     assert data["status"] == "pending"
     assert data["entity_id"] == "https://rp.submit.reg.test"
-    assert data["tenant_id"] == "tenant-1"
+    assert data["tenant_id"] == "tenant-ta-1"
 
 
 def test_submit_unknown_tenant_returns_404(client, user_headers):
@@ -79,7 +79,7 @@ def test_approve_registration(client, admin_headers, user_headers):
     reg = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "https://rp.approve.reg.test",
             "display_name": "Approve Me",
             "registered_entity_types": ["openid_relying_party"],
@@ -102,7 +102,7 @@ def test_reject_registration(client, admin_headers, user_headers):
     reg = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "https://rp.reject.reg.test",
             "display_name": "Reject Me",
             "registered_entity_types": ["openid_relying_party"],
@@ -123,7 +123,7 @@ def test_double_review_returns_409(client, admin_headers, user_headers):
     reg = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "https://rp.double.reg.test",
             "display_name": "Double Review",
             "registered_entity_types": ["openid_relying_party"],

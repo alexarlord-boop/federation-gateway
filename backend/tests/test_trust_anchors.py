@@ -1,16 +1,16 @@
 def test_subordinate_count_reflects_tenant_registrations(client, admin_headers):
-    """ta-1 subordinate_count must increase by 1 after adding a registration for tenant-1."""
+    """ta-1 subordinate_count must increase by 1 after adding a registration for tenant-ta-1."""
     # Baseline count before adding a registration
     before = client.get("/api/v1/admin/trust-anchors", headers=admin_headers).json()
     ta_before = next((t for t in before if t["id"] == "ta-1"), None)
     assert ta_before is not None, "Seeded ta-1 not found"
     count_before = ta_before["subordinate_count"]
 
-    # Create one registration for tenant-1
+    # Create one registration for tenant-ta-1
     reg_resp = client.post(
         "/api/v1/registrations",
         json={
-            "tenant_id": "tenant-1",
+            "tenant_id": "tenant-ta-1",
             "entity_id": "http://sub-count-test.example.org",
             "registered_entity_types": ["openid_provider"],
             "display_name": "Sub Entity Count Test",

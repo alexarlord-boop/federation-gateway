@@ -24,7 +24,7 @@ def seed_audit_entries(db):
         action="update_status",
         resource_type="subordinate",
         resource_id="sub-abc",
-        tenant_id="tenant-1",
+        tenant_id="tenant-ta-1",
     )
     audit_utils.record(
         db,
@@ -33,7 +33,7 @@ def seed_audit_entries(db):
         action="create",
         resource_type="trust_mark_spec",
         resource_id="spec-xyz",
-        tenant_id="tenant-1",
+        tenant_id="tenant-ta-1",
     )
     audit_utils.record(
         db,
@@ -42,7 +42,7 @@ def seed_audit_entries(db):
         action="register",
         resource_type="subordinate",
         resource_id="sub-def",
-        tenant_id="tenant-2",
+        tenant_id="tenant-ta-2",
     )
 
 
@@ -63,10 +63,10 @@ def test_list_audit_logs_returns_page(client, admin_headers):
 
 
 def test_filter_by_tenant(client, admin_headers):
-    resp = client.get("/api/v1/audit-logs?tenant_id=tenant-1", headers=admin_headers)
+    resp = client.get("/api/v1/audit-logs?tenant_id=tenant-ta-1", headers=admin_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert all(item["tenant_id"] == "tenant-1" for item in data["items"])
+    assert all(item["tenant_id"] == "tenant-ta-1" for item in data["items"])
     assert data["total"] >= 2
 
 

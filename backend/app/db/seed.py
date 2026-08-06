@@ -70,12 +70,18 @@ def seed_data(instance_config: Optional[DeploymentConfig] = None):
                 anchor.entity_id = str(item.public_base_url)
                 anchor.config_json = payload
 
-            # Sync tenants (mirror of trust_anchors for new data model)
-            tenant = db.query(Tenant).filter(Tenant.id == f"tenant-{item.id.split('-')[-1]}").first()
+            # Sync tenants (mirror of trust_anchors for new data model).
+            # Use the full instance id, not just its last hyphen segment —
+            # truncating collided the moment two instance ids shared a
+            # suffix (mesh-ta/mesh2-ta, mesh-ia/mesh2-ia both derived
+            # "tenant-ta"/"tenant-ia"), silently overwriting one tenant's
+            # entity_id/admin_api_base_url with the other's on every
+            # startup — whichever config entry seeded last "won".
+            tenant = db.query(Tenant).filter(Tenant.id == f"tenant-{item.id}").first()
             if tenant is None:
                 db.add(
                     Tenant(
-                        id=f"tenant-{item.id.split('-')[-1]}",
+                        id=f"tenant-{item.id}",
                         entity_id=str(item.public_base_url),
                         name=item.name,
                         status="active",
