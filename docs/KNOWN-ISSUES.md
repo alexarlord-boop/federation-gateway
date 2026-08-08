@@ -109,6 +109,53 @@ Items originally thought to need external collaboration turned out to be self-fi
 
 ---
 
+## 🚀 Production deployment gaps
+
+Unlike the sections above, these weren't found by gap-finding e2e tests —
+they're known, deliberate simplifications that make sense for local
+dev/demo but need addressing before any real deployment. None are
+blocking further feature/mesh work; parked here so they don't get
+rediscovered as a surprise later.
+
+- [ ] **No real user login — only local JWT accounts**  
+  Auth is JWT against accounts seeded directly in the backend's own
+  `users` table (`admin@oidfed.org` / `admin123`, `tech@example.org` /
+  `user123` — see `README.md`). An `OIDCProvider` model already exists as
+  scaffolding (`backend/app/models/oidc_provider.py`) but isn't wired to
+  a live login flow. Real external IdP federation (OIDC/SAML) is a real
+  gap, not a nice-to-have — authorization (RBAC) itself is fully
+  implemented and not affected by this (see `ARCHITECTURE.md`'s
+  Authentication & Authorization section).
+
+- [ ] **No TLS anywhere**  
+  Every service in `docker-compose.yml` — `ui`, `backend`, every
+  LightHouse node — speaks plain HTTP, including between containers.
+  Fine for a local/demo docker network, not for a real deployment on a
+  real network. No cert termination (reverse proxy, sidecar, or
+  otherwise) is configured anywhere in this repo.
+
+- [ ] **Admin credentials are plain env vars with weak hardcoded defaults**  
+  `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD` and `LIGHTHOUSE2_ADMIN_USERNAME`/
+  `PASSWORD` default to `gateway`/`gateway` and `gateway2`/`gateway2`
+  (`docker-compose.yml`) with no secrets-manager integration — anyone who
+  can read the compose file or process environment has them. Needs a real
+  secrets story (Vault, cloud secrets manager, or at minimum enforced
+  non-default values with no fallback) before real deployment.
+
+- [ ] **Every LightHouse node has its own admin API auth turned off**  
+  `api.admin.users_enabled: false` in every `config.yaml` in this repo
+  (`lighthouse`, `lighthouse2`, `mesh-*`, `mesh2-*`) — LightHouse itself
+  doesn't check the admin credentials above at all today; the only thing
+  protecting those admin APIs is that they're not publicly reachable,
+  which is a docker-network accident (see `docs/FEDERATION-TOPOLOGY.md`'s
+  network-separation notes), not a real security boundary. Turning this
+  on for a real deployment needs its own design pass — `backend/app/routers/proxy.py`
+  already attaches Basic Auth on every request, so LightHouse-side
+  enforcement should be additive, but this hasn't been tested with
+  `users_enabled: true` at all.
+
+---
+
 ## ✅ Confirmed working (from e2e tests)
 
 - RBAC: non-admin users are correctly blocked from `/approvals`, `/users`, `/trust-anchors`, `/rbac`
