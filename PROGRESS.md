@@ -80,9 +80,14 @@ tests) both green as of the last verification pass.
   Not yet fixed; unrelated to any in-progress feature work.
 - Everything else open is tracked in `docs/KNOWN-ISSUES.md`, not here —
   that file is the maintained, evidence-based list of gaps and upstream
-  issues.
+  issues. Production-deployment gaps (real login, TLS, secrets, LightHouse
+  admin auth) are parked in its own section there.
 
 ## Next steps
 
-Nothing currently queued. No commits from this session have been pushed
-to `origin/main` (standing rule — see `CLAUDE.md`).
+Working through `MESH-TESTING-PROGRESS.md` — a checklist of OIDF
+spec-defined flows (metadata policy enforcement, constraints enforcement,
+trust mark delegation/listing/revocation, key rollover, multi-parent
+entities) mapped against what the `mesh-*`/`mesh2-*` setup currently
+proves versus what's still untested. No commits from this session have
+been pushed to `origin/main` (standing rule — see `CLAUDE.md`).

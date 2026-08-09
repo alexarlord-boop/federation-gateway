@@ -107,5 +107,8 @@ live check), not just a green typecheck.
 - `FEDERATION-TOPOLOGY.md` — adding an instance, the LightHouse mesh, the Trust Anchors page model
 - `BACKEND-IMPLEMENTORS.md` — implementing the Admin API in another language
 
+`MESH-TESTING-PROGRESS.md` (repo root) — checklist of OIDF spec-defined
+flows against the mesh setup, what's proven vs. still untested.
+
 `PROGRESS.md` (repo root) — current state, recent work, open blockers. Read
 it at the start of a session; update it before a substantial one ends.
