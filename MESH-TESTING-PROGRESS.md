@@ -34,9 +34,13 @@ here instead.
 
 ## B. Metadata Policy & Constraints (§6)
 
-- [ ] Metadata Policy applied by an intermediate to a subordinate's
-  metadata during resolution (§6.1) — `mesh-ia`/`mesh2-ia` have none
-  configured; never verified a policy actually mutates resolved metadata
+- [x] Metadata Policy applied by an intermediate to a subordinate's
+  metadata during resolution (§6.1) — `mesh-tests/test_metadata_policy.py`.
+  Works correctly; the one wrinkle is LightHouse caches a subordinate's
+  fetched statement (~1 day, tied to its own `exp`), so a policy change
+  doesn't show up in `/resolve` for an already-resolved subject until that
+  cache rolls over or `mesh-ia` is restarted — see the investigation notes
+  at the bottom of this file. Not a bug, just needs accounting for.
 - [ ] Constraints (`max_path_length`, naming/entity-type restrictions,
   §6.2) actually enforced — Settings "Constraints" tab exists in the UI,
   but nothing confirms a constrained intermediate is blocked from
@@ -62,9 +66,13 @@ here instead.
 - [ ] Federation Historical Keys endpoint (§8.7) — no key rollover
   exercised anywhere, so old-signature verification is untested
 - [ ] Key rollover for a TA (§11.2) or any entity (§11.1)
-- [ ] Subordinate revocation propagating correctly — status can be set
-  to `blocked`/`inactive` via the UI, but never confirmed that chain
-  resolution then actually fails for that entity
+- [ ] Subordinate revocation propagating correctly — confirmed **broken**,
+  not just untested: `mesh-tests/test_subordinate_revocation.py`. Blocking
+  a subordinate is correctly excluded from `/list` but `/resolve` still
+  returns a fully valid signed trust chain for it. Filed upstream against
+  `go-oidfed/lighthouse`, tracked in `docs/KNOWN-ISSUES.md`. The test
+  documenting this asserts today's actual (wrong) behavior so the suite
+  stays green until the upstream fix ships — see that test's docstring.
 
 ## E. Topology patterns (§17.1–17.2)
 
@@ -87,9 +95,36 @@ here instead.
 
 ## Suggested next order
 
-Metadata Policy (B) and subordinate revocation (D) carry the most real
-product risk if silently broken — both are core admin actions already
-exposed in the UI (Settings → Constraints, Metadata Policies;
-EntityDetailPage status dropdown) that nothing currently proves actually
-take effect during resolution. Trust Mark Delegation (C) is next most
-valuable — the Owners UI exists but has no live-mesh proof it works.
+~~Metadata Policy (B) and subordinate revocation (D) carry the most real
+product risk if silently broken~~ — done, see `mesh-tests/` and the
+investigation notes below. One came back clean (metadata policy, modulo a
+caching wrinkle), one came back a confirmed real bug (revocation), which
+is exactly why this pass was worth doing before assuming either worked.
+Trust Mark Delegation (C) is next most valuable — the Owners UI exists but
+has no live-mesh proof it works.
+
+## Investigation notes: `mesh-tests/` findings (2026-08-13)
+
+Both dug into before writing formal tests, to separate "our test setup is
+wrong" from "the product has a real gap" — full detail in
+`docs/KNOWN-ISSUES.md`.
+
+- **Metadata policy caching.** A policy set on `mesh-ia` (`PUT
+  /api/v1/admin/subordinates/metadata-policies/{entityType}/{claim}`)
+  shows up immediately in every subordinate statement `mesh-ia` issues via
+  `/fetch` — no caching there. But `/resolve`'s *merged* output for an
+  already-resolved subject doesn't reflect a new policy until LightHouse's
+  in-process cache for that subject's fetched statement rolls over
+  (~1 day, tied to the statement's own `exp`) — no admin purge endpoint
+  exists, so `mesh-tests/`'s tests restart `mesh-ia` to get a deterministic
+  result. Traced into `go-oidfed/lib`'s `TrustChain.Metadata()`, which does
+  correctly implement policy merging — this is a real caching
+  characteristic of the resolver, not a bug in it.
+- **Subordinate revocation.** Genuinely broken, confirmed with the caching
+  confound explicitly ruled out (restarted `mesh-ia` before testing, so
+  nothing was cached): blocking a subordinate is correctly excluded from
+  `/list`, but `/resolve` still returns a complete, validly signed trust
+  chain for it, as if it were still `active`. Traced into
+  `go-oidfed/lib`'s `trustresolver.go` — zero references to subordinate
+  `status` anywhere in the chain-walking logic. Filed upstream against
+  `go-oidfed/lighthouse`.

@@ -76,6 +76,32 @@ docker run --rm \
 (Requires the `federation-gateway-backend` image to already be built — run
 `docker compose build backend` first if it doesn't exist yet.)
 
+## Mesh integration tests
+
+`mesh-tests/` — black-box tests against the real running `mesh-*`
+LightHouse containers (see `MESH-TESTING-PROGRESS.md`, `docs/FEDERATION-TOPOLOGY.md`).
+Unlike `backend/tests/` (mocked httpx), these hit live HTTP endpoints on
+published localhost ports. Deliberately a top-level sibling of
+`backend/tests/`, not nested inside it, and run on the **host** (not the
+docker-run pattern above) — a couple of tests need `docker compose restart
+mesh-ia` to bust LightHouse's own in-process cache, which needs the host's
+docker CLI.
+
+Requires the stack up and the mesh chain wired first:
+
+```sh
+docker compose up -d --build
+python3 scripts/seed-mesh.py   # idempotent — safe to re-run
+
+backend/.venv/bin/python3 -m pytest mesh-tests -v
+```
+
+(`backend/.venv` is fine here — see constraint 3 in `../CLAUDE.md`, this
+suite never imports `app.*`, only `httpx`/`pytest`, neither of which cares
+about the 3.9-vs-3.11 gap.) If the mesh isn't reachable at
+`localhost:8090`, the whole suite skips with a clear message instead of
+hanging or erroring.
+
 ## mise tasks (optional)
 
 The repo includes a root `mise.toml` with common workflows as named tasks.
@@ -89,6 +115,7 @@ mise run stack:up-detached         # docker compose up -d --build
 
 mise run test:bff                  # BFF-only Playwright tests
 mise run test:backend-proxy        # full-stack proxy tests
+mise run test:mesh-integration     # mesh_integration pytest suite (requires Docker stack up)
 
 mise run verify:frontend           # type-check + lint + build
 ```

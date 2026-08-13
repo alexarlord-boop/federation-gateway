@@ -66,6 +66,10 @@ run = "cd e2e && npm run test:bff -- tests/trust-anchors.spec.ts"
 description = "Run the focused Trust Marks correctness slice (requires Docker stack)"
 run = "cd e2e && npx playwright test --project=full-stack tests/trust-marks-correctness.spec.ts"
 
+[tasks."test:mesh-integration"]
+description = "Run the mesh integration pytest suite against the real running mesh (requires Docker stack up + scripts/seed-mesh.py already run)"
+run = "backend/.venv/bin/python3 -m pytest mesh-tests"
+
 [tasks."clean:playwright"]
 description = "Remove Playwright HTML reports and test artifacts"
 run = "rm -rf e2e/test-results e2e/playwright-report"
