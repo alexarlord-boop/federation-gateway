@@ -89,9 +89,24 @@ here instead.
 
 ## D. Federation endpoint completeness (§8, §11)
 
-- [ ] Federation Historical Keys endpoint (§8.7) — no key rollover
-  exercised anywhere, so old-signature verification is untested
-- [ ] Key rollover for a TA (§11.2) or any entity (§11.1)
+- [x] Federation Historical Keys endpoint (§8.7) — `mesh-tests/test_key_rollover.py`.
+  Was never enabled in any `config.yaml` in this repo (a real, minor
+  completeness gap, same shape as the trust_mark endpoints one in
+  `docs/KNOWN-ISSUES.md`'s history) — enabled it on `mesh-leaf-rp`. Works
+  correctly once on: a signature made before rotation verifies against
+  the key the endpoint serves after rotation.
+- [x] Key rollover for a TA (§11.2) or any entity (§11.1) — same file,
+  against `mesh-leaf-rp` (§11.1, a non-TA entity; deliberately not
+  `mesh-ta` — every other test resolves through it, highest blast radius
+  to test against). `POST /api/v1/admin/kms/rotate` works correctly: new
+  key published immediately, old key kept valid through a configurable
+  overlap window (`PATCH /api/v1/admin/kms/rotation`, shortened from the
+  3600s default to 2s so the suite doesn't need a real hour-long wait —
+  a genuine admin knob, not a workaround), active signing key switches
+  once the overlap elapses. After rotation, the authority's stored
+  subordinate jwks goes stale and needs an explicit re-sync
+  (`PUT /subordinates/{id}/jwks`) for resolution to keep working — the
+  real admin workflow, not a bug.
 - [ ] Subordinate revocation propagating correctly — confirmed **broken**,
   not just untested: `mesh-tests/test_subordinate_revocation.py`. Blocking
   a subordinate is correctly excluded from `/list` but `/resolve` still
@@ -131,8 +146,17 @@ Entities Listing (C5)~~ — also done, works correctly, no bug.
 ~~Constraints enforcement (B2)~~ — also done; `naming_constraints`
 confirmed working, the other two sub-mechanisms are correctly implemented
 in source but need mesh topology this repo doesn't have yet to prove live
-(see notes below). **Sections B and C are now fully covered, plus D3.**
-Key rollover (D1/D2) is what's left.
+(see notes below). ~~Key rollover (D1/D2)~~ — also done, against
+`mesh-leaf-rp`; works correctly, plus enabled the historical keys
+endpoint (§8.7) which had never been turned on anywhere in this repo.
+
+**Every item in this file that a self-contained registry+LightHouse
+deployment could reasonably prove is now checked off**, except the
+explicitly-scoped-out multi-parent-entity and standalone-Resolver-role
+items under §E (both need new mesh topology this repo doesn't have —
+`mesh-ia2` and a second parent for a leaf, see the mesh test-infra
+diagram from earlier in this project) and the two constraint
+sub-mechanisms noted above (same reason).
 
 Four real product gaps found across all of this, not one — worth stating
 plainly since the *first* pass (metadata policy) initially looked clean
@@ -247,3 +271,26 @@ out caching" is not a safe assumption against this product.
   validity, not just current subject status — a mark that expired since
   it was last fetched won't reappear until a new one is issued, so the
   tests fetch a fresh mark before asserting inclusion.
+- **Key rollover + historical keys.** Works correctly overall, and didn't
+  need new mesh topology — a single entity (`mesh-leaf-rp`, chosen over
+  `mesh-ta` deliberately: every other test resolves through the TA,
+  highest blast radius) rotating its own key via `POST
+  /api/v1/admin/kms/rotate`. `federation_historical_keys_endpoint` (§8.7)
+  was never enabled in any `config.yaml` in this repo — real completeness
+  gap of the same shape KNOWN-ISSUES.md already documents for the
+  trust_mark endpoints, fixed by adding `historical_keys:` (confirmed the
+  correct config key against `go-oidfed/lighthouse` source directly — not
+  in the public config docs at all). Rotation has a configurable overlap
+  window (`KMSRotationOptions.overlap`, default 3600s, both old and new
+  key valid but old key keeps signing until it elapses) — shortened to 2s
+  via `PATCH /api/v1/admin/kms/rotation` so the suite doesn't need a real
+  hour-long wait, a genuine admin knob rather than a workaround. Confirmed
+  the actual spec-relevant claim: a signature made before rotation still
+  verifies via a key fetched from the historical keys endpoint after
+  rotation. One operational reality, not a bug: after rotation, the
+  authority's stored subordinate jwks goes stale and resolution breaks
+  until explicitly re-synced (`PUT /subordinates/{id}/jwks`) — the real
+  admin workflow a rollover requires, and confirmed `restart_mesh_ia` is
+  still needed after the re-sync for resolution to pick it up (consistent
+  with the per-subordinate statement caching found elsewhere in this
+  file).

@@ -25,6 +25,12 @@ def decode_jwt_payload(jwt_text: str) -> dict[str, Any]:
     return json.loads(base64.urlsafe_b64decode(payload_b64))
 
 
+def decode_jwt_header(jwt_text: str) -> dict[str, Any]:
+    header_b64 = jwt_text.split(".")[0]
+    header_b64 += "=" * (-len(header_b64) % 4)
+    return json.loads(base64.urlsafe_b64decode(header_b64))
+
+
 def wait_healthy(public_base: str, attempts: int = 30, delay: float = 1.0) -> None:
     url = f"{public_base}/.well-known/openid-federation"
     for _ in range(attempts):
@@ -120,6 +126,49 @@ class LightHouseAdmin:
         )
         if resp.status_code not in (204, 404):
             resp.raise_for_status()
+
+    def put_subordinate_jwks(
+        self, subordinate_id: int, jwks: dict[str, Any]
+    ) -> dict[str, Any]:
+        resp = self._client.put(
+            f"{self.admin_base}/subordinates/{subordinate_id}/jwks", json=jwks
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    # -- keys / KMS rotation --
+
+    def get_published_jwks(self) -> dict[str, Any]:
+        resp = self._client.get(f"{self.admin_base}/entity-configuration/jwks")
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_kms_rotation_options(self) -> dict[str, Any]:
+        resp = self._client.get(f"{self.admin_base}/kms/rotation")
+        resp.raise_for_status()
+        return resp.json()
+
+    def patch_kms_rotation_options(self, **fields: Any) -> dict[str, Any]:
+        resp = self._client.patch(f"{self.admin_base}/kms/rotation", json=fields)
+        resp.raise_for_status()
+        return resp.json()
+
+    def trigger_kms_rotation(self) -> None:
+        resp = self._client.post(f"{self.admin_base}/kms/rotate")
+        resp.raise_for_status()
+
+    def get_active_signing_kid(self) -> str:
+        return decode_jwt_header(self.get_entity_configuration_jwt())["kid"]
+
+    def get_entity_configuration_jwt(self) -> str:
+        resp = self._client.get(f"{self.base_url}/.well-known/openid-federation")
+        resp.raise_for_status()
+        return resp.text
+
+    def get_historical_keys(self) -> dict[str, Any]:
+        resp = self._client.get(f"{self.base_url}/historical_keys")
+        resp.raise_for_status()
+        return decode_jwt_payload(resp.text)
 
     # -- trust marks --
 
