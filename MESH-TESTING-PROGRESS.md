@@ -63,8 +63,13 @@ here instead.
   investigation notes below and `docs/KNOWN-ISSUES.md`.
 - [ ] Trust Marked Entities Listing (`federation_trust_mark_list_endpoint`,
   §8.5) — enabled in every `config.yaml`, never actually called/verified
-- [ ] Revocation/expiry transition — only ever tested `status: active`;
-  never confirmed a revoked/expired mark's status check reflects it
+- [x] Revocation/expiry transition — `mesh-tests/test_trust_mark_revocation_expiry.py`.
+  Revocation works correctly: blocking a `TrustMarkSubject` flips an
+  already-issued mark's status check to `"revoked"` and blocks fresh
+  issuance with 403. Expiry does **not**: a genuinely expired mark
+  (valid signature, only `exp` passed) is reported as `"invalid"`
+  instead of the spec-defined `"expired"` (§8.4.2) — real bug, not filed
+  upstream yet, see investigation notes below and `docs/KNOWN-ISSUES.md`.
 
 ## D. Federation endpoint completeness (§8, §11)
 
@@ -106,10 +111,11 @@ investigation notes below. One came back clean (metadata policy, modulo a
 caching wrinkle), one came back a confirmed real bug (revocation), which
 is exactly why this pass was worth doing before assuming either worked.
 ~~Trust Mark Delegation (C) is next most valuable~~ — also done, works
-correctly end-to-end. Trust Marked Entities Listing (§8.5, C5) and
-revocation/expiry transition (C6) are the remaining Trust Marks gaps;
-Constraints enforcement (B2) and key rollover (D1/D2) are the next
-highest-value areas overall.
+correctly end-to-end. ~~Revocation/expiry transition (C6)~~ — also done;
+revocation works, expiry does not (misreports as `invalid`, see
+investigation notes). Trust Marked Entities Listing (§8.5, C5) is the
+last remaining Trust Marks gap; Constraints enforcement (B2) and key
+rollover (D1/D2) are the next highest-value areas overall.
 
 ## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-15)
 
@@ -155,3 +161,16 @@ wrong" from "the product has a real gap" — full detail in
   even though every read/list endpoint shows it gone) — worked around
   with a fresh `entity_id` per test, tracked in `docs/KNOWN-ISSUES.md`,
   not filed upstream yet.
+- **Trust mark revocation/expiry.** Split result. Revocation (blocking a
+  `TrustMarkSubject` via `PUT .../subjects/{id}/status`) works correctly:
+  an already-issued mark's status check flips to `"revoked"`, and a fresh
+  issuance attempt for a blocked subject 403s. Expiry does not: confirmed
+  against the actual normative spec text (§8.4.2, not recalled) that
+  `expired` ("the Trust Mark has expired") and `invalid` ("signature
+  validation failed or another error was detected") are distinct defined
+  values — a mark issued with a 2-second `lifetime`, left to expire with
+  a valid signature and nothing else wrong, is reported as `"invalid"`
+  rather than `"expired"`. Real spec-compliance bug, tracked in
+  `docs/KNOWN-ISSUES.md`, not filed upstream yet (lower priority than the
+  `/resolve` one — a relying party would still correctly treat the mark
+  as no good, just for the wrong stated reason).

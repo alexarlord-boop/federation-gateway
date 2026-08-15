@@ -129,6 +129,34 @@ class LightHouseAdmin:
         resp.raise_for_status()
         return resp.json()
 
+    def get_issuance_subjects(self, spec_id: int) -> list[dict[str, Any]]:
+        resp = self._client.get(
+            f"{self.admin_base}/trust-marks/issuance-spec/{spec_id}/subjects"
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def find_issuance_subject(self, spec_id: int, entity_id: str) -> dict[str, Any] | None:
+        return next(
+            (
+                s
+                for s in self.get_issuance_subjects(spec_id)
+                if s["entity_id"] == entity_id
+            ),
+            None,
+        )
+
+    def set_trust_mark_subject_status(
+        self, spec_id: int, subject_id: int, status: str
+    ) -> dict[str, Any]:
+        resp = self._client.put(
+            f"{self.admin_base}/trust-marks/issuance-spec/{spec_id}/subjects/{subject_id}/status",
+            content=status,
+            headers={"Content-Type": "text/plain"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     def find_issuance_spec(self, trust_mark_type: str) -> dict[str, Any] | None:
         return next(
             (
@@ -156,6 +184,18 @@ class LightHouseAdmin:
         )
         resp.raise_for_status()
         return resp.text
+
+    def check_trust_mark_status(self, mark_jwt: str) -> dict[str, Any]:
+        """POST + application/x-www-form-urlencoded per the OIDF spec's
+        normative text (§8.4) — not GET. See docs/KNOWN-ISSUES.md for the
+        story of this being gotten backwards once already."""
+        resp = self._client.post(
+            f"{self.base_url}/trust_mark/status",
+            data={"trust_mark": mark_jwt},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        resp.raise_for_status()
+        return decode_jwt_payload(resp.text)
 
     # -- public federation endpoints --
 
