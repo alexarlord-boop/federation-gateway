@@ -18,19 +18,24 @@ tests) both green as of the last verification pass.
 - **`mesh-tests/` — mesh integration pytest suite**: a new top-level suite
   (deliberately sibling to `backend/tests/`, not nested in it — see its
   `conftest.py` docstring for why) covering `MESH-TESTING-PROGRESS.md`
-  items B1 (metadata policy applied during resolution), C4 (trust mark
+  items B1 (metadata policy), B2 (constraints enforcement), C4 (trust mark
   delegation, issuer ≠ owner), C5 (trust marked entities listing), C6
   (trust mark revocation/expiry), and D3 (subordinate revocation
-  propagating to resolution) — section C (Trust Marks) is now fully
-  covered. Runs on the host against published localhost ports, skips
-  cleanly if the stack isn't up. Found three real, confirmed LightHouse
-  bugs in the process: `/resolve` doesn't honor a subordinate's `blocked`
-  status at all (filed upstream), deleting a trust mark owner doesn't
-  release its `entity_id` for reuse, and an expired trust mark is reported
-  as `invalid` instead of the spec-defined `expired` (both not yet filed)
-  — all tracked in `docs/KNOWN-ISSUES.md` and `MESH-TESTING-PROGRESS.md`'s
-  investigation notes. `mise run test:mesh-integration` to run it (14
-  tests, all green).
+  propagating to resolution) — sections B and C are now fully covered.
+  Runs on the host against published localhost ports, skips cleanly if
+  the stack isn't up. Found four real, confirmed LightHouse bugs in the
+  process: `/resolve` doesn't honor a subordinate's `blocked` status at
+  all (filed upstream); deleting a trust mark owner doesn't release its
+  `entity_id` for reuse; an expired trust mark is reported as `invalid`
+  instead of the spec-defined `expired`; and setting per-subordinate
+  constraints silently freezes that subordinate's metadata policy against
+  future general-policy changes (the last one found — and worth flagging
+  since chasing it down corrected an earlier wrong belief that
+  `docker compose restart` clears LightHouse's caching/state, which it
+  does not — see `MESH-TESTING-PROGRESS.md`'s investigation notes for the
+  full story). All four tracked in `docs/KNOWN-ISSUES.md`, three not yet
+  filed upstream. `mise run test:mesh-integration` to run it (15 tests,
+  all green, confirmed idempotent across repeated full runs).
 - **mesh2 + interfederation testing**: a second, fully independent
   LightHouse mesh (`mesh2-ta` → `mesh2-ia` → `mesh2-leaf-op`, no shared
   root with the first mesh) plus `scripts/seed-mesh2.py`. Confirmed live
@@ -105,7 +110,10 @@ Working through `MESH-TESTING-PROGRESS.md` — a checklist of OIDF
 spec-defined flows (metadata policy enforcement, constraints enforcement,
 trust mark delegation/listing/revocation, key rollover, multi-parent
 entities) mapped against what the `mesh-*`/`mesh2-*` setup currently
-proves versus what's still untested. Section C (Trust Marks) is now fully
-covered (see `mesh-tests/`), along with B1 and D3. Constraints enforcement
-(B2) and key rollover (D1/D2) are what's left, next per the file's
-"Suggested next order".
+proves versus what's still untested. Sections B and C are now fully
+covered (see `mesh-tests/`), along with D3. Key rollover (D1/D2) is what's
+left, next per the file's "Suggested next order" — it'll likely need a
+new mesh-ia2 intermediate too (also needed to fully exercise
+`max_path_length`, currently untestable — see `MESH-TESTING-PROGRESS.md`'s
+constraints investigation notes), which is a bigger infra addition worth
+scoping with the user first rather than assuming.

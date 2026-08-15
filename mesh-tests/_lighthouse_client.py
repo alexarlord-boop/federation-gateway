@@ -90,6 +90,37 @@ class LightHouseAdmin:
         if resp.status_code not in (204, 404):
             resp.raise_for_status()
 
+    def copy_general_metadata_policies_to_subordinate(
+        self, subordinate_id: int
+    ) -> dict[str, Any]:
+        """A subordinate's own metadata_policy is a materialized snapshot,
+        not computed live from the general policy on every /fetch — see
+        docs/KNOWN-ISSUES.md. This is the real, intended sync mechanism."""
+        resp = self._client.post(
+            f"{self.admin_base}/subordinates/{subordinate_id}/metadata-policies"
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    # -- per-subordinate constraints --
+
+    def put_subordinate_constraints(
+        self, subordinate_id: int, constraints: dict[str, Any]
+    ) -> dict[str, Any]:
+        resp = self._client.put(
+            f"{self.admin_base}/subordinates/{subordinate_id}/constraints",
+            json=constraints,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def delete_subordinate_constraints(self, subordinate_id: int) -> None:
+        resp = self._client.delete(
+            f"{self.admin_base}/subordinates/{subordinate_id}/constraints"
+        )
+        if resp.status_code not in (204, 404):
+            resp.raise_for_status()
+
     # -- trust marks --
 
     def get_trust_mark_types(self) -> list[dict[str, Any]]:

@@ -36,15 +36,27 @@ here instead.
 
 - [x] Metadata Policy applied by an intermediate to a subordinate's
   metadata during resolution (§6.1) — `mesh-tests/test_metadata_policy.py`.
-  Works correctly; the one wrinkle is LightHouse caches a subordinate's
-  fetched statement (~1 day, tied to its own `exp`), so a policy change
-  doesn't show up in `/resolve` for an already-resolved subject until that
-  cache rolls over or `mesh-ia` is restarted — see the investigation notes
-  at the bottom of this file. Not a bug, just needs accounting for.
-- [ ] Constraints (`max_path_length`, naming/entity-type restrictions,
-  §6.2) actually enforced — Settings "Constraints" tab exists in the UI,
-  but nothing confirms a constrained intermediate is blocked from
-  registering something out of bounds
+  Works correctly once you use the real mechanism: each subordinate has
+  its own `metadata_policy` snapshot, explicitly synced from the general
+  policy via `POST /subordinates/{id}/metadata-policies` — not computed
+  live on every request (an earlier "just caching, restart fixes it"
+  theory was wrong; see investigation notes below). Also surfaced a real
+  bug: setting per-subordinate *constraints* has the unrelated side effect
+  of permanently freezing that subordinate's metadata policy — tracked in
+  `docs/KNOWN-ISSUES.md`, not filed upstream yet.
+- [x] Constraints (`max_path_length`, naming/entity-type restrictions,
+  §6.2) actually enforced during resolution — `mesh-tests/test_constraints_enforcement.py`.
+  `naming_constraints` confirmed working: excluding an authority's
+  hostname makes resolution through it fail with `invalid_trust_chain`.
+  `allowed_entity_types` and `max_path_length` are correctly implemented
+  in `go-oidfed/lib`'s `checkConstraints()` (confirmed in source) but
+  can't be meaningfully proven against *this* mesh's topology — no leaf
+  publishes real typed metadata (only `federation_entity`, so entity-type
+  constraints trivially pass), and the mesh is only 2 levels deep (no
+  path-length limit can bite). Not a bug, just an infra limitation — see
+  investigation notes below. Registration itself (`POST /subordinates`)
+  is not gated by constraints, by design — enforcement is a resolution-time
+  concern, not a write-time validation.
 
 ## C. Trust Marks (§7)
 
@@ -111,42 +123,89 @@ here instead.
 
 ~~Metadata Policy (B) and subordinate revocation (D) carry the most real
 product risk if silently broken~~ — done, see `mesh-tests/` and the
-investigation notes below. One came back clean (metadata policy, modulo a
-caching wrinkle), one came back a confirmed real bug (revocation), which
-is exactly why this pass was worth doing before assuming either worked.
-~~Trust Mark Delegation (C) is next most valuable~~ — also done, works
-correctly end-to-end. ~~Revocation/expiry transition (C6)~~ — also done;
-revocation works, expiry does not (misreports as `invalid`, see
-investigation notes). ~~Trust Marked Entities Listing (C5)~~ — also done,
-works correctly, no bug. **Section C (Trust Marks) is now fully covered.**
-Constraints enforcement (B2) and key rollover (D1/D2) are what's left —
-next highest-value areas overall.
+investigation notes below. ~~Trust Mark Delegation (C) is next most
+valuable~~ — also done, works correctly end-to-end. ~~Revocation/expiry
+transition (C6)~~ — also done; revocation works, expiry does not
+(misreports as `invalid`, see investigation notes). ~~Trust Marked
+Entities Listing (C5)~~ — also done, works correctly, no bug.
+~~Constraints enforcement (B2)~~ — also done; `naming_constraints`
+confirmed working, the other two sub-mechanisms are correctly implemented
+in source but need mesh topology this repo doesn't have yet to prove live
+(see notes below). **Sections B and C are now fully covered, plus D3.**
+Key rollover (D1/D2) is what's left.
+
+Four real product gaps found across all of this, not one — worth stating
+plainly since the *first* pass (metadata policy) initially looked clean
+and only turned out not to be once later tests started interacting with
+the same subordinate. See `docs/KNOWN-ISSUES.md` for full repro detail on
+each: `/resolve` ignores blocked status; trust mark owner `entity_id`
+isn't released after delete; expired trust marks report `invalid` instead
+of `expired`; and `constraints` `PUT` silently freezes a subordinate's
+metadata policy.
 
 ## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-15)
 
-Both dug into before writing formal tests, to separate "our test setup is
-wrong" from "the product has a real gap" — full detail in
-`docs/KNOWN-ISSUES.md`.
+Dug into each before or while writing formal tests, to separate "our test
+setup is wrong" from "the product has a real gap" — full detail in
+`docs/KNOWN-ISSUES.md`. The metadata-policy one below is flagged
+specifically because the *first* version of this note was itself wrong —
+worth reading if only as a reminder that "restarting the container rules
+out caching" is not a safe assumption against this product.
 
-- **Metadata policy caching.** A policy set on `mesh-ia` (`PUT
-  /api/v1/admin/subordinates/metadata-policies/{entityType}/{claim}`)
-  shows up immediately in every subordinate statement `mesh-ia` issues via
-  `/fetch` — no caching there. But `/resolve`'s *merged* output for an
-  already-resolved subject doesn't reflect a new policy until LightHouse's
-  in-process cache for that subject's fetched statement rolls over
-  (~1 day, tied to the statement's own `exp`) — no admin purge endpoint
-  exists, so `mesh-tests/`'s tests restart `mesh-ia` to get a deterministic
-  result. Traced into `go-oidfed/lib`'s `TrustChain.Metadata()`, which does
-  correctly implement policy merging — this is a real caching
-  characteristic of the resolver, not a bug in it.
-- **Subordinate revocation.** Genuinely broken, confirmed with the caching
-  confound explicitly ruled out (restarted `mesh-ia` before testing, so
-  nothing was cached): blocking a subordinate is correctly excluded from
-  `/list`, but `/resolve` still returns a complete, validly signed trust
-  chain for it, as if it were still `active`. Traced into
-  `go-oidfed/lib`'s `trustresolver.go` — zero references to subordinate
-  `status` anywhere in the chain-walking logic. Filed upstream against
+- **Metadata policy — corrected finding.** Originally concluded this was
+  "just caching, restart fixes it" (an in-process cache on `mesh-ia`,
+  tied to a statement's `exp`). That was wrong on two counts, found only
+  after the test started failing depending on which other tests had run
+  first in the same session. First: `docker compose restart mesh-ia`
+  does **not** clear whatever state this actually is — confirmed directly
+  by inspecting `mesh-ia/data/lighthouse.db` with `sqlite3`, the state
+  survives a restart byte-for-byte, because it's a persisted SQLite
+  column, not an in-process cache. Second, and the real mechanism: each
+  subordinate has its own `metadata_policy` column, independent of the
+  general policy. It starts `NULL` (in which case `/fetch` genuinely does
+  compute live from the general policy — this is what the original,
+  narrower manual tests happened to always see), but gets permanently
+  materialized to a frozen snapshot the moment `PUT
+  /subordinates/{id}/constraints` is called on that subordinate — an
+  unrelated admin action with an undocumented side effect. The real,
+  intended sync mechanism is `POST /subordinates/{id}/metadata-policies`
+  ("copy general metadata policies to subordinate"), the same explicit
+  pattern constraints itself uses (`copyGeneralConstraintsToSubordinate`).
+  `mesh-tests/test_metadata_policy.py` now calls that explicitly instead
+  of assuming propagation is automatic or restart-able. The freeze
+  side-effect itself is tracked as a real bug in `docs/KNOWN-ISSUES.md`.
+- **Subordinate revocation.** Still a confirmed real bug — but the
+  original justification ("ruled out caching by restarting first") no
+  longer holds now that restart is known not to clear anything. The
+  actual solid evidence is static, not empirical: `go-oidfed/lib`'s
+  `trustresolver.go` has zero references to subordinate `status` anywhere
+  in its chain-walking logic — a code path that never reads a field
+  cannot be affected by that field being stale. Blocking a subordinate is
+  correctly excluded from `/list`, but `/resolve` still returns a
+  complete, validly signed trust chain for it. Filed upstream against
   `go-oidfed/lighthouse`.
+- **Constraints enforcement.** `naming_constraints` confirmed genuinely
+  live, not a stale artifact: resolution through an authority *changed*
+  from succeeding to failing (`invalid_trust_chain`) the moment its
+  hostname was added to an excluded list — a real state transition,
+  which a stale cache cannot produce (it would keep returning the old
+  result, not spontaneously start returning a new error). `checkConstraints()`
+  in `go-oidfed/lib`'s `trustresolver.go` correctly implements all three
+  sub-mechanisms (`max_path_length`, `naming_constraints`,
+  `allowed_entity_types`) — confirmed in source. `allowed_entity_types`
+  couldn't be proven live against this mesh specifically: it's checked
+  against entity types *guessed from an entity's own published metadata
+  claims*, and every mesh-* leaf only ever publishes a bare
+  `federation_entity` block (none run real `openid_provider`/
+  `openid_relying_party` endpoints), and `federation_entity` is
+  unconditionally exempt from the constraint — so it trivially passes
+  regardless of configuration, on every entity in the mesh today.
+  `max_path_length` needs a 3-level hierarchy to exceed any meaningful
+  limit; the mesh is 2 levels deep. Neither is a product bug — the mesh's
+  topology just doesn't give them anything to bite on yet (mesh-ia2, in
+  the earlier test-infra diagram's "planned" set, would unblock
+  `max_path_length`; a leaf with real typed metadata would unblock
+  `allowed_entity_types`).
 - **Trust Mark Delegation.** Works correctly. LightHouse's admin API has
   no endpoint to mint a delegation JWT on an owner's behalf and never
   exposes any instance's real private key, so proving this end-to-end

@@ -94,6 +94,16 @@ def _close_clients_at_session_end():
         client.close()
 
 
+def _restart_container(name: str, public_base: str) -> None:
+    subprocess.run(
+        ["docker", "compose", "restart", name],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    wait_healthy(public_base)
+
+
 @pytest.fixture
 def restart_mesh_ia():
     """Bust mesh-ia's in-process entity-statement cache by restarting the
@@ -107,14 +117,12 @@ def restart_mesh_ia():
     There is no admin cache-purge endpoint (checked
     `Federation Admin OpenAPI.yaml`) — restarting is the only reset lever.
     """
+    return lambda: _restart_container("mesh-ia", "http://localhost:8091")
 
-    def _restart() -> None:
-        subprocess.run(
-            ["docker", "compose", "restart", "mesh-ia"],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
-        )
-        wait_healthy("http://localhost:8091")
 
-    return _restart
+@pytest.fixture
+def restart_mesh_ta():
+    """Same as restart_mesh_ia, for mesh-ta — needed when a constraint or
+    other statement mesh-ta itself issues (about mesh-ia) needs a fresh,
+    uncached re-fetch during resolution."""
+    return lambda: _restart_container("mesh-ta", "http://localhost:8090")
