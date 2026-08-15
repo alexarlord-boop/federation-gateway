@@ -61,8 +61,12 @@ here instead.
   *discovered* owner key, not a locally held one). One real minor bug
   found along the way (owner entity_id not released after delete) — see
   investigation notes below and `docs/KNOWN-ISSUES.md`.
-- [ ] Trust Marked Entities Listing (`federation_trust_mark_list_endpoint`,
-  §8.5) — enabled in every `config.yaml`, never actually called/verified
+- [x] Trust Marked Entities Listing (`federation_trust_mark_list_endpoint`,
+  §8.5) — `mesh-tests/test_trust_marked_entities_listing.py`. Works
+  correctly: lists active holders, the optional `sub` filter narrows to
+  one entity, and a blocked subject is immediately excluded — consistent
+  with C6's revocation finding, not a separate code path that could
+  disagree with it. No bug found.
 - [x] Revocation/expiry transition — `mesh-tests/test_trust_mark_revocation_expiry.py`.
   Revocation works correctly: blocking a `TrustMarkSubject` flips an
   already-issued mark's status check to `"revoked"` and blocks fresh
@@ -113,9 +117,10 @@ is exactly why this pass was worth doing before assuming either worked.
 ~~Trust Mark Delegation (C) is next most valuable~~ — also done, works
 correctly end-to-end. ~~Revocation/expiry transition (C6)~~ — also done;
 revocation works, expiry does not (misreports as `invalid`, see
-investigation notes). Trust Marked Entities Listing (§8.5, C5) is the
-last remaining Trust Marks gap; Constraints enforcement (B2) and key
-rollover (D1/D2) are the next highest-value areas overall.
+investigation notes). ~~Trust Marked Entities Listing (C5)~~ — also done,
+works correctly, no bug. **Section C (Trust Marks) is now fully covered.**
+Constraints enforcement (B2) and key rollover (D1/D2) are what's left —
+next highest-value areas overall.
 
 ## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-15)
 
@@ -174,3 +179,12 @@ wrong" from "the product has a real gap" — full detail in
   `docs/KNOWN-ISSUES.md`, not filed upstream yet (lower priority than the
   `/resolve` one — a relying party would still correctly treat the mark
   as no good, just for the wrong stated reason).
+- **Trust Marked Entities Listing.** Works correctly, no bug. Lists
+  active holders of a type, the optional `sub` query param narrows to one
+  entity, and a blocked subject is immediately excluded from the list —
+  the same result C6 found via the status/fresh-issuance paths, confirming
+  listing isn't a separate code path that could silently disagree with
+  them. One methodological note: listing reflects the *last issued* mark's
+  validity, not just current subject status — a mark that expired since
+  it was last fetched won't reappear until a new one is issued, so the
+  tests fetch a fresh mark before asserting inclusion.

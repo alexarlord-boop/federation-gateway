@@ -197,6 +197,16 @@ class LightHouseAdmin:
         resp.raise_for_status()
         return decode_jwt_payload(resp.text)
 
+    def list_trust_marked_entities(
+        self, trust_mark_type: str, sub: str | None = None
+    ) -> list[str]:
+        params = {"trust_mark_type": trust_mark_type}
+        if sub:
+            params["sub"] = sub
+        resp = self._client.get(f"{self.base_url}/trust_mark/list", params=params)
+        resp.raise_for_status()
+        return resp.json()
+
     # -- public federation endpoints --
 
     def get_entity_configuration(self) -> dict[str, Any]:
