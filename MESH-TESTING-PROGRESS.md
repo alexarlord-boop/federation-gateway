@@ -53,9 +53,14 @@ here instead.
   `/trust_mark/status`, confirmed 200
 - [x] Cross-federation issuance (interfederation) — `mesh-ia` marks
   `mesh2-leaf-op` directly, confirmed live
-- [ ] Trust Mark Delegation — issuer ≠ owner via `trust_mark_owners` on
-  the TA (§7.2). UI has an Owners tab (`OwnersTab.tsx`); never exercised
-  end-to-end in the mesh
+- [x] Trust Mark Delegation — issuer ≠ owner via `trust_mark_owners` on
+  the TA (§7.2). `mesh-tests/test_trust_mark_delegation.py` — works
+  correctly end-to-end: owner registration → discovery via the TA's own
+  entity config → delegation JWT embedded in every issued mark → full
+  relying-party-style verification (signature checked against the
+  *discovered* owner key, not a locally held one). One real minor bug
+  found along the way (owner entity_id not released after delete) — see
+  investigation notes below and `docs/KNOWN-ISSUES.md`.
 - [ ] Trust Marked Entities Listing (`federation_trust_mark_list_endpoint`,
   §8.5) — enabled in every `config.yaml`, never actually called/verified
 - [ ] Revocation/expiry transition — only ever tested `status: active`;
@@ -100,10 +105,13 @@ product risk if silently broken~~ — done, see `mesh-tests/` and the
 investigation notes below. One came back clean (metadata policy, modulo a
 caching wrinkle), one came back a confirmed real bug (revocation), which
 is exactly why this pass was worth doing before assuming either worked.
-Trust Mark Delegation (C) is next most valuable — the Owners UI exists but
-has no live-mesh proof it works.
+~~Trust Mark Delegation (C) is next most valuable~~ — also done, works
+correctly end-to-end. Trust Marked Entities Listing (§8.5, C5) and
+revocation/expiry transition (C6) are the remaining Trust Marks gaps;
+Constraints enforcement (B2) and key rollover (D1/D2) are the next
+highest-value areas overall.
 
-## Investigation notes: `mesh-tests/` findings (2026-08-13)
+## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-15)
 
 Both dug into before writing formal tests, to separate "our test setup is
 wrong" from "the product has a real gap" — full detail in
@@ -128,3 +136,22 @@ wrong" from "the product has a real gap" — full detail in
   `go-oidfed/lib`'s `trustresolver.go` — zero references to subordinate
   `status` anywhere in the chain-walking logic. Filed upstream against
   `go-oidfed/lighthouse`.
+- **Trust Mark Delegation.** Works correctly. LightHouse's admin API has
+  no endpoint to mint a delegation JWT on an owner's behalf and never
+  exposes any instance's real private key, so proving this end-to-end
+  meant fabricating a standalone owner identity (throwaway EC keypair,
+  `python-jose` — already in `backend/requirements.txt`) and hand-signing
+  a delegation JWT per `go-oidfed/lib`'s `DelegationJWT` struct
+  (`iss`/`sub`/`trust_mark_type`/`iat`/`exp`, `typ: trust-mark-delegation+jwt`).
+  Confirmed all of: owner registration is published in the *owning*
+  instance's own entity config under `trust_mark_owners` (the spec's real
+  discovery mechanism — no local registration needed on a verifier's
+  side); the delegation JWT gets embedded verbatim in every mark the
+  issuer subsequently issues; and a full relying-party-style check
+  (rediscover the owner's jwks from the TA's published config, not from
+  memory, then verify the signature against *that*) succeeds. Found one
+  minor real bug along the way: deleting a trust mark owner doesn't
+  release its `entity_id` for reuse (409 on next `POST` with the same id,
+  even though every read/list endpoint shows it gone) — worked around
+  with a fresh `entity_id` per test, tracked in `docs/KNOWN-ISSUES.md`,
+  not filed upstream yet.

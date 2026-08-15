@@ -15,17 +15,18 @@ tests) both green as of the last verification pass.
 
 ## Recently completed
 
-- **`mesh-tests/` — first mesh integration pytest suite**: a new top-level
-  suite (deliberately sibling to `backend/tests/`, not nested in it — see
-  its `conftest.py` docstring for why) covering `MESH-TESTING-PROGRESS.md`
-  items B1 (metadata policy applied during resolution) and D3 (subordinate
-  revocation propagating to resolution). Runs on the host against
-  published localhost ports, skips cleanly if the stack isn't up. Found
-  one real, confirmed LightHouse bug in the process — `/resolve` doesn't
-  honor a subordinate's `blocked` status at all (returns a full valid
-  chain anyway), while `/list` correctly does — filed upstream, tracked in
+- **`mesh-tests/` — mesh integration pytest suite**: a new top-level suite
+  (deliberately sibling to `backend/tests/`, not nested in it — see its
+  `conftest.py` docstring for why) covering `MESH-TESTING-PROGRESS.md`
+  items B1 (metadata policy applied during resolution), C4 (trust mark
+  delegation, issuer ≠ owner), and D3 (subordinate revocation propagating
+  to resolution). Runs on the host against published localhost ports,
+  skips cleanly if the stack isn't up. Found two real, confirmed LightHouse
+  bugs in the process: `/resolve` doesn't honor a subordinate's `blocked`
+  status at all (filed upstream), and deleting a trust mark owner doesn't
+  release its `entity_id` for reuse (not yet filed) — both tracked in
   `docs/KNOWN-ISSUES.md` and `MESH-TESTING-PROGRESS.md`'s investigation
-  notes. `mise run test:mesh-integration` to run it.
+  notes. `mise run test:mesh-integration` to run it (8 tests, all green).
 - **mesh2 + interfederation testing**: a second, fully independent
   LightHouse mesh (`mesh2-ta` → `mesh2-ia` → `mesh2-leaf-op`, no shared
   root with the first mesh) plus `scripts/seed-mesh2.py`. Confirmed live
@@ -100,7 +101,8 @@ Working through `MESH-TESTING-PROGRESS.md` — a checklist of OIDF
 spec-defined flows (metadata policy enforcement, constraints enforcement,
 trust mark delegation/listing/revocation, key rollover, multi-parent
 entities) mapped against what the `mesh-*`/`mesh2-*` setup currently
-proves versus what's still untested. B1 and D3 are now done (see
-`mesh-tests/`); Trust Mark Delegation (C) is next per the file's
-"Suggested next order". No commits from this session have
+proves versus what's still untested. B1, C4, and D3 are now done (see
+`mesh-tests/`); Trust Marked Entities Listing (C5), revocation/expiry
+transition (C6), Constraints enforcement (B2), and key rollover (D1/D2)
+are next per the file's "Suggested next order". No commits from this session have
 been pushed to `origin/main` (standing rule — see `CLAUDE.md`).

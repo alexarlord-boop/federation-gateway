@@ -90,7 +90,79 @@ class LightHouseAdmin:
         if resp.status_code not in (204, 404):
             resp.raise_for_status()
 
+    # -- trust marks --
+
+    def get_trust_mark_types(self) -> list[dict[str, Any]]:
+        resp = self._client.get(f"{self.admin_base}/trust-marks/types")
+        resp.raise_for_status()
+        return resp.json()
+
+    def find_trust_mark_type(self, trust_mark_type: str) -> dict[str, Any] | None:
+        return next(
+            (
+                t
+                for t in self.get_trust_mark_types()
+                if t["trust_mark_type"] == trust_mark_type
+            ),
+            None,
+        )
+
+    def create_trust_mark_owner(
+        self, trust_mark_type_id: int, entity_id: str, jwks: dict[str, Any]
+    ) -> dict[str, Any]:
+        resp = self._client.post(
+            f"{self.admin_base}/trust-marks/types/{trust_mark_type_id}/owner",
+            json={"entity_id": entity_id, "jwks": jwks},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def delete_trust_mark_owner(self, trust_mark_type_id: int) -> None:
+        resp = self._client.delete(
+            f"{self.admin_base}/trust-marks/types/{trust_mark_type_id}/owner"
+        )
+        if resp.status_code not in (204, 404):
+            resp.raise_for_status()
+
+    def get_issuance_specs(self) -> list[dict[str, Any]]:
+        resp = self._client.get(f"{self.admin_base}/trust-marks/issuance-spec")
+        resp.raise_for_status()
+        return resp.json()
+
+    def find_issuance_spec(self, trust_mark_type: str) -> dict[str, Any] | None:
+        return next(
+            (
+                s
+                for s in self.get_issuance_specs()
+                if s["trust_mark_type"] == trust_mark_type
+            ),
+            None,
+        )
+
+    def patch_issuance_spec(self, spec_id: int, **fields: Any) -> dict[str, Any]:
+        resp = self._client.patch(
+            f"{self.admin_base}/trust-marks/issuance-spec/{spec_id}",
+            json=fields,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def fetch_trust_mark(self, sub: str, trust_mark_type: str) -> str:
+        """Returns the raw compact JWT text (not decoded — callers decode
+        with decode_jwt_payload, or verify the signature directly)."""
+        resp = self._client.get(
+            f"{self.base_url}/trust_mark",
+            params={"sub": sub, "trust_mark_type": trust_mark_type},
+        )
+        resp.raise_for_status()
+        return resp.text
+
     # -- public federation endpoints --
+
+    def get_entity_configuration(self) -> dict[str, Any]:
+        resp = self._client.get(f"{self.base_url}/.well-known/openid-federation")
+        resp.raise_for_status()
+        return decode_jwt_payload(resp.text)
 
     def fetch_statement(self, sub: str) -> dict[str, Any]:
         resp = self._client.get(f"{self.base_url}/fetch", params={"sub": sub})
