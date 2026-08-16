@@ -189,6 +189,54 @@ services:
       retries: 3
       start_period: 10s
 
+  # mesh-ia2 + mesh-leaf-multi: a second Intermediate sibling to mesh-ia
+  # (both direct subordinates of mesh-ta) and a leaf registered under
+  # both — for §10.3 (choosing among multiple valid trust chains) and
+  # "entity with redundant/multiple parents" testing. See
+  # scripts/seed-mesh.py for how both subordinate registrations and both
+  # authority_hints on mesh-leaf-multi get wired.
+  mesh-ia2:
+    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /data/keys && chmod 0777 /data /data/keys && exec /entrypoint.sh
+    ports:
+      - "${MESH_IA2_PUBLIC_PORT:-8097}:8080"
+    volumes:
+      - ./mesh-ia2/config.yaml:/config/config.yaml:ro
+      - ./mesh-ia2/data:/data
+    environment:
+      LH_CONFIG_FILE: "/config/config.yaml"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  mesh-leaf-multi:
+    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /data/keys && chmod 0777 /data /data/keys && exec /entrypoint.sh
+    ports:
+      - "${MESH_LEAF_MULTI_PUBLIC_PORT:-8098}:8080"
+    volumes:
+      - ./mesh-leaf-multi/config.yaml:/config/config.yaml:ro
+      - ./mesh-leaf-multi/data:/data
+    environment:
+      LH_CONFIG_FILE: "/config/config.yaml"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q 200"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
   # ── mesh2: a second, fully independent hierarchy — no shared root, no
   # authority_hint path to the mesh above, and (unlike mesh1) no shared
   # docker network either: mesh2-* only join mesh2net, so the only way

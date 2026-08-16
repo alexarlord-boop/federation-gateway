@@ -18,11 +18,12 @@ docker compose up -d --build
 ```
 
 Opens at http://localhost:8080. Login: `admin@oidfed.org` / `admin123`.
-Brings up 11 containers: `ui`, `backend`, two standalone LightHouse trust
-anchors (`lighthouse`, `lighthouse2`), a 4-node LightHouse mesh
-(`mesh-ta`/`mesh-ia`/`mesh-leaf-op`/`mesh-leaf-rp`) for multi-hop testing,
-and a second, fully independent 3-node mesh (`mesh2-*`) for interfederation
-testing. Full tour: `docs/GETTING-STARTED.md`.
+Brings up 13 containers: `ui`, `backend`, two standalone LightHouse trust
+anchors (`lighthouse`, `lighthouse2`), a 6-node LightHouse mesh
+(`mesh-ta`/`mesh-ia`/`mesh-ia2`/`mesh-leaf-op`/`mesh-leaf-rp`/`mesh-leaf-multi`)
+for multi-hop and multi-parent testing, and a second, fully independent
+3-node mesh (`mesh2-*`) for interfederation testing. Full tour:
+`docs/GETTING-STARTED.md`.
 
 ## Hard constraints
 

@@ -40,11 +40,15 @@ MESH_TA = LightHouseAdmin("http://localhost:8090")
 MESH_IA = LightHouseAdmin("http://localhost:8091")
 MESH_LEAF_OP = LightHouseAdmin("http://localhost:8092")
 MESH_LEAF_RP = LightHouseAdmin("http://localhost:8093")
+MESH_IA2 = LightHouseAdmin("http://localhost:8097")
+MESH_LEAF_MULTI = LightHouseAdmin("http://localhost:8098")
 
 MESH_TA_EID = "http://mesh-ta:8080"
 MESH_IA_EID = "http://mesh-ia:8080"
 MESH_LEAF_OP_EID = "http://mesh-leaf-op:8080"
 MESH_LEAF_RP_EID = "http://mesh-leaf-rp:8080"
+MESH_IA2_EID = "http://mesh-ia2:8080"
+MESH_LEAF_MULTI_EID = "http://mesh-leaf-multi:8080"
 
 
 def _mesh_reachable() -> bool:
@@ -87,10 +91,20 @@ def mesh_leaf_rp() -> LightHouseAdmin:
     return MESH_LEAF_RP
 
 
+@pytest.fixture(scope="session")
+def mesh_ia2() -> LightHouseAdmin:
+    return MESH_IA2
+
+
+@pytest.fixture(scope="session")
+def mesh_leaf_multi() -> LightHouseAdmin:
+    return MESH_LEAF_MULTI
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _close_clients_at_session_end():
     yield
-    for client in (MESH_TA, MESH_IA, MESH_LEAF_OP, MESH_LEAF_RP):
+    for client in (MESH_TA, MESH_IA, MESH_LEAF_OP, MESH_LEAF_RP, MESH_IA2, MESH_LEAF_MULTI):
         client.close()
 
 
@@ -126,3 +140,9 @@ def restart_mesh_ta():
     other statement mesh-ta itself issues (about mesh-ia) needs a fresh,
     uncached re-fetch during resolution."""
     return lambda: _restart_container("mesh-ta", "http://localhost:8090")
+
+
+@pytest.fixture
+def restart_mesh_ia2():
+    """Same as restart_mesh_ia, for mesh-ia2."""
+    return lambda: _restart_container("mesh-ia2", "http://localhost:8097")

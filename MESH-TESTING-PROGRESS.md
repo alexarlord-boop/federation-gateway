@@ -25,16 +25,24 @@ here instead.
   — `scripts/seed-mesh.py`, `scripts/seed-mesh2.py`
 - [x] Multi-hop trust chain resolution (leaf → intermediate → anchor)
   — confirmed via real `/resolve`, full `trust_chain` array returned
-- [ ] Choosing among multiple valid trust chains (§10.3) — mesh is a
-  strict tree; needs an entity with two independent paths to an anchor
+- [x] Choosing among multiple valid trust chains (§10.3) —
+  `mesh-tests/test_multi_parent_chains.py`. Added `mesh-ia2` (a second
+  Intermediate, sibling of `mesh-ia`) and `mesh-leaf-multi` (registered
+  under both). Works correctly, including the part that actually proves
+  "choosing" rather than "always finding the same one": constraining the
+  preferred path out makes resolution genuinely fall back to the other
+  still-valid path, confirmed against both intermediates, the anchor
+  itself, and an uninvolved third party. One corrected assumption along
+  the way (not a bug) — see investigation notes below.
 - [x] Trust chain expiration = min of all statement `exp`s (§10.4) —
   `mesh-tests/test_trust_chain_expiration.py`. No new topology needed.
   Confirmed live against the existing chain: resolve-response `exp`
   exactly equals `min()` of all four statements' own `exp` — verified it
   wasn't a coincidental match to the leaf's or last-fetched statement's
   value first (all four genuinely differ). Works correctly.
-- [ ] Entity with multiple `authority_hints` (member of >1
-  federation/IA at once) — every mesh node has exactly one today
+- [x] Entity with multiple `authority_hints` (member of >1
+  federation/IA at once) — `mesh-leaf-multi`'s own entity configuration
+  correctly lists both `mesh-ia` and `mesh-ia2`, same test file as above.
 
 ## B. Metadata Policy & Constraints (§6)
 
@@ -124,7 +132,9 @@ here instead.
 - [x] Multi-level hierarchy (TA → IA → leaf)
 - [x] Two independent federations with no shared root or docker network
   (`mesh-*` vs `mesh2-*`, see `docs/FEDERATION-TOPOLOGY.md`)
-- [ ] Entity with redundant/multiple parents
+- [x] Entity with redundant/multiple parents — same addition and same
+  test file as A's §10.3 item above (`mesh-ia2` + `mesh-leaf-multi`); the
+  two checklist entries turned out to be the exact same topology need.
 - [x] Dedicated Resolver role distinct from the TA (§17.3, §10.6) —
   `mesh-tests/test_resolver_role.py`. Turned out not to need a standalone
   entity or any config at all: confirmed against the actual spec text
@@ -170,18 +180,34 @@ endpoint (§8.7) which had never been turned on anywhere in this repo.
 (§17.3/§10.6)~~ — both also done, and neither needed new topology: the
 first was a one-line assertion against the existing chain, the second
 turned out to be a usage pattern any existing node already satisfies
-(see investigation notes below).
+(see investigation notes below). ~~"Entity with multiple/redundant
+parents" and §10.3's "choosing among multiple valid trust chains"~~ —
+also done (they were the same underlying topology need): added
+`mesh-ia2` (a second Intermediate, **sibling** of `mesh-ia`, both direct
+subordinates of `mesh-ta`) and `mesh-leaf-multi`, registered under both.
 
-**The only item left that a self-contained deployment could reasonably
-prove is "entity with multiple/redundant parents"** (§10.3's "choosing
-among multiple valid trust chains" and this section's item are really the
-same underlying topology need) — it genuinely needs a new mesh node
-(`mesh-ia2`, a second intermediate under `mesh-ta`) and a leaf registered
-under both. Same addition would also unblock the two constraint
-sub-mechanisms noted above (`max_path_length` needs the extra hierarchy
-level; `allowed_entity_types` needs that leaf to publish real typed
-metadata). A real infra decision, not just more test-writing — scope it
-with the user before building.
+**Every checklist item that can be proven with a topology this repo
+plausibly needs for its own sake is now checked off.** Two narrow gaps
+remain, both still genuinely blocked on topology, and both corrected from
+an earlier (wrong) claim that the `mesh-ia2` addition above would resolve
+them:
+- `max_path_length` — `mesh-ia2` is a *sibling* of `mesh-ia` (same depth,
+  for multi-parent testing), not a deeper serial hop, so the mesh is
+  still only 2 levels deep everywhere. Would need `mesh-ta -> mesh-ia ->
+  mesh-ia2 -> leaf` (`mesh-ia2` as a child of `mesh-ia` instead) to
+  actually exceed a meaningful path-length limit — a different, smaller
+  addition from the multi-parent one, not something this session's
+  `mesh-ia2` happens to also cover.
+- `allowed_entity_types` — needs a leaf that publishes real typed
+  metadata (`openid_provider`/`openid_relying_party` claims, not just
+  `federation_entity`); `mesh-leaf-multi` doesn't, same as every other
+  mesh leaf.
+
+Neither is worth a dedicated session on its own — low spec risk
+(both sub-mechanisms are confirmed correctly implemented in
+`go-oidfed/lib`'s source, just not provable live here), and either would
+be cheap to fold into a future pass if one of these areas comes back into
+focus for another reason.
 
 Four real product gaps found across all of this, not one — worth stating
 plainly since the *first* pass (metadata policy) initially looked clean
@@ -192,7 +218,7 @@ isn't released after delete; expired trust marks report `invalid` instead
 of `expired`; and `constraints` `PUT` silently freezes a subordinate's
 metadata policy.
 
-## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-15)
+## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-16)
 
 Dug into each before or while writing formal tests, to separate "our test
 setup is wrong" from "the product has a real gap" — full detail in
@@ -340,3 +366,26 @@ out caching" is not a safe assumption against this product.
   and had to be corrected once the live response showed otherwise. The
   inner `trust_chain` array is unaffected — still the real chain, signed
   by the real parties, the resolver doesn't insert itself into it.
+- **Multi-parent chains + §10.3.** Added `mesh-ia2` (sibling Intermediate
+  of `mesh-ia`, both direct subordinates of `mesh-ta`) and
+  `mesh-leaf-multi` (subordinate of both, both as `authority_hints`).
+  Works correctly, and one initial assumption had to be corrected before
+  the test was right: expected that querying `mesh-ia2`'s own `/resolve`
+  endpoint directly would force the chain through `mesh-ia2` to be
+  chosen. It doesn't — confirmed live that resolution is *subject-rooted*:
+  every resolver (either intermediate, the anchor itself, or a completely
+  uninvolved third party) independently walks `mesh-leaf-multi`'s own
+  `authority_hints` and converges on the same globally-preferred chain
+  (`mesh-ia`, tie-broken by `authority_hints` array order when both paths
+  are equal length), regardless of which endpoint answered the query.
+  What actually proves "choosing among multiple valid chains" rather than
+  "always finding the same one regardless" is the fallback test:
+  constrain the preferred `mesh-ia` path out (a targeted
+  `naming_constraints.excluded: ["mesh-leaf-multi"]` on mesh-ta's
+  constraint for its `mesh-ia` subordinate, not the whole-hostname
+  exclusion used in `test_constraints_enforcement.py`) and confirm
+  resolution genuinely switches to `mesh-ia2` instead of failing outright.
+  Corrected an earlier claim in this file's "Suggested next order" that
+  this same addition would also unblock `max_path_length` constraint
+  testing — it doesn't, `mesh-ia2` is a sibling (same depth), not a
+  deeper serial hop; see that section for what actually would.

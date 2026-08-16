@@ -35,14 +35,15 @@ federation-gateway/
 ├── lighthouse/, lighthouse2/     # Two standalone LightHouse trust anchors
 │   ├── config.yaml               # LightHouse node config (entity_id, storage, signing)
 │   └── data/                     # SQLite DB + generated signing keys (gitignored)
-├── mesh-ta/, mesh-ia/,           # Two independent multi-hop federations
-│   mesh-leaf-op/, mesh-leaf-rp/, # (real trust chains + interfederation)
+├── mesh-ta/, mesh-ia/, mesh-ia2/, # Two independent multi-hop federations
+│   mesh-leaf-op/, mesh-leaf-rp/, # (real trust chains, multi-parent, +
+│   mesh-leaf-multi/,             # interfederation)
 │   mesh2-ta/, mesh2-ia/,         # — see docs/FEDERATION-TOPOLOGY.md
 │   mesh2-leaf-op/
 ├── scripts/                      # seed-demo.py, seed-mesh.py, seed-mesh2.py, and other setup scripts
 ├── docs/                         # Topic documentation — see "Documentation" below
 ├── Federation Admin OpenAPI.yaml # Canonical API contract (source of truth)
-├── docker-compose.yml            # ui · backend · lighthouse · lighthouse2 · 7 mesh nodes
+├── docker-compose.yml            # ui · backend · lighthouse · lighthouse2 · 9 mesh nodes
 └── Dockerfile                    # UI: Bun build → nginx:alpine
 ```
 
@@ -56,6 +57,7 @@ federation-gateway/
 | **LightHouse 2** | `8082` (configurable via `LIGHTHOUSE2_PUBLIC_PORT`) | A second, independent federation node/trust anchor |
 | **Mesh** (`mesh-ta`/`mesh-ia`/`mesh-leaf-op`/`mesh-leaf-rp`) | `8090`–`8093` | A real multi-hop federation (TA → Intermediate → 2 leaves) — see `docs/FEDERATION-TOPOLOGY.md` |
 | **Mesh2** (`mesh2-ta`/`mesh2-ia`/`mesh2-leaf-op`) | `8094`–`8096` | A second, fully independent hierarchy — for interfederation testing, see `docs/FEDERATION-TOPOLOGY.md` |
+| **Mesh multi-parent** (`mesh-ia2`/`mesh-leaf-multi`) | `8097`–`8098` | A second Intermediate sibling to `mesh-ia`, and a leaf registered under both — for multiple-valid-trust-chains testing, see `docs/FEDERATION-TOPOLOGY.md` |
 
 > **API flow**: Browser → nginx:8080 → FastAPI:8765 → LightHouse:8080 (internal Docker network)
 > **Configuration**: Instances are defined in `backend/config/gateway.yaml` and loaded at backend startup.
@@ -101,8 +103,8 @@ instances:
 docker compose up -d --build
 ```
 
-Opens at **http://localhost:8080**. This brings up all 11 services (ui,
-backend, lighthouse, lighthouse2, and 7 mesh nodes across two independent
+Opens at **http://localhost:8080**. This brings up all 13 services (ui,
+backend, lighthouse, lighthouse2, and 9 mesh nodes across two independent
 federations). See `docs/GETTING-STARTED.md` for the guided first-run tour.
 
 **Environment variables** (optional):

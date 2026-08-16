@@ -65,13 +65,23 @@ the mesh below for why.
 
 `ta-1`/`ta-2` above are two *independent* trust anchors with no relationship
 between them. For testing real multi-hop trust chains and trust-mark
-delegation, `docker-compose.yml` also ships a small **mesh** — four more
+delegation, `docker-compose.yml` also ships a small **mesh** — six more
 LightHouse containers wired into an actual hierarchy:
 
 ```
-mesh-ta (root TA, :8090)  →  mesh-ia (Intermediate, :8091)  →  mesh-leaf-op (:8092, Subject)
-                                                             →  mesh-leaf-rp (:8093, verifier)
+mesh-ta (root TA, :8090)  →  mesh-ia (Intermediate, :8091)   →  mesh-leaf-op (:8092, Subject)
+                                                              →  mesh-leaf-rp (:8093, verifier)
+                          →  mesh-ia2 (Intermediate, :8097)  →  mesh-leaf-multi (:8098)
 ```
+
+`mesh-leaf-multi` is registered as a subordinate of **both** `mesh-ia` and
+`mesh-ia2` (two `authority_hints`) — the only entity in this deployment with
+more than one parent, for testing §10.3 (choosing among multiple valid trust
+chains) and the "redundant parents" topology pattern. Confirmed live: any
+resolver (either intermediate, the anchor itself, or a completely uninvolved
+third party like `mesh-leaf-rp`) discovers both paths and genuinely falls
+back to the other one if the preferred path becomes invalid — see
+`mesh-tests/test_multi_parent_chains.py`.
 
 Unlike `scripts/seed-demo.py` (which registers fake subordinates with
 throwaway generated keys — fine for populating list/table UIs, but not real
@@ -82,7 +92,7 @@ container's docker-network hostname (e.g. `http://mesh-ta:8080`, not
 configurations.
 
 ```bash
-docker compose up -d mesh-ta mesh-ia mesh-leaf-op mesh-leaf-rp
+docker compose up -d mesh-ta mesh-ia mesh-ia2 mesh-leaf-op mesh-leaf-rp mesh-leaf-multi
 python3 scripts/seed-mesh.py   # idempotent — safe to re-run
 ```
 
@@ -90,9 +100,9 @@ The script registers each child as a real subordinate of its parent (using
 the child's actual public JWKS, fetched from its own entity configuration),
 sets authority hints, and issues a trust mark owned by `mesh-ta`, issued by
 `mesh-ia`, held by `mesh-leaf-op` — printing example `curl` commands for
-verifying the resolved chain and the mark's status when it's done. `mesh-ta`
-and `mesh-ia` are also registered in `backend/config/gateway.yaml`, so you
-can drive the same scenario from the app's instance switcher instead.
+verifying the resolved chain and the mark's status when it's done. `mesh-ta`,
+`mesh-ia`, and `mesh-ia2` are also registered in `backend/config/gateway.yaml`,
+so you can drive the same scenarios from the app's instance switcher instead.
 
 Note: Chain Inspector's "Any Entity" ad-hoc mode and the live trust-mark
 status checker won't work against mesh entity_ids — see `KNOWN-ISSUES.md`.

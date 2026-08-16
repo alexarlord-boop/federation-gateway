@@ -24,10 +24,12 @@ instances:
       username_env: LIGHTHOUSE_ADMIN_USERNAME
       password_env: LIGHTHOUSE_ADMIN_PASSWORD
   # Small mesh — a real multi-hop federation (see docker-compose.yml and
-  # scripts/seed-mesh.py). Only the two nodes that manage their own
-  # subordinates (mesh-ta, mesh-ia) are registered here; the leaves
-  # (mesh-leaf-op, mesh-leaf-rp) are administered from mesh-ia's own
-  # Subordinates/Trust Marks pages, same as any other subordinate entity.
+  # scripts/seed-mesh.py). Only the nodes that manage their own
+  # subordinates (mesh-ta, mesh-ia, mesh-ia2) are registered here; the
+  # leaves (mesh-leaf-op, mesh-leaf-rp, mesh-leaf-multi) are administered
+  # from their parent(s)' own Subordinates/Trust Marks pages, same as any
+  # other subordinate entity. mesh-leaf-multi has two parents (mesh-ia AND
+  # mesh-ia2 — see scripts/seed-mesh.py), so it shows up under both.
   - id: mesh-ta
     name: Mesh - Trust Anchor
     public_base_url: http://localhost:8090
@@ -43,6 +45,16 @@ instances:
     public_base_url: http://localhost:8091
     admin_base_url: http://mesh-ia:8080
     public_port: 8091
+    admin_port: 8080
+    admin_auth:
+      type: basic
+      username_env: LIGHTHOUSE_ADMIN_USERNAME
+      password_env: LIGHTHOUSE_ADMIN_PASSWORD
+  - id: mesh-ia2
+    name: Mesh - Intermediate 2
+    public_base_url: http://localhost:8097
+    admin_base_url: http://mesh-ia2:8080
+    public_port: 8097
     admin_port: 8080
     admin_auth:
       type: basic

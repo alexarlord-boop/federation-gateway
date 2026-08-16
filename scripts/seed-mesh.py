@@ -30,12 +30,16 @@ MESH_TA_ADMIN = "http://localhost:8090/api/v1/admin"
 MESH_IA_ADMIN = "http://localhost:8091/api/v1/admin"
 MESH_LEAF_OP_ADMIN = "http://localhost:8092/api/v1/admin"
 MESH_LEAF_RP_ADMIN = "http://localhost:8093/api/v1/admin"
+MESH_IA2_ADMIN = "http://localhost:8097/api/v1/admin"
+MESH_LEAF_MULTI_ADMIN = "http://localhost:8098/api/v1/admin"
 
 # Public entity-configuration URL (also the host-published port).
 MESH_TA_PUBLIC = "http://localhost:8090"
 MESH_IA_PUBLIC = "http://localhost:8091"
 MESH_LEAF_OP_PUBLIC = "http://localhost:8092"
 MESH_LEAF_RP_PUBLIC = "http://localhost:8093"
+MESH_IA2_PUBLIC = "http://localhost:8097"
+MESH_LEAF_MULTI_PUBLIC = "http://localhost:8098"
 
 # Canonical entity_id of each node — the docker-network hostname baked into
 # its own config.yaml, i.e. what actually appears as `sub`/`iss` in its
@@ -44,6 +48,8 @@ MESH_TA_EID = "http://mesh-ta:8080"
 MESH_IA_EID = "http://mesh-ia:8080"
 MESH_LEAF_OP_EID = "http://mesh-leaf-op:8080"
 MESH_LEAF_RP_EID = "http://mesh-leaf-rp:8080"
+MESH_IA2_EID = "http://mesh-ia2:8080"
+MESH_LEAF_MULTI_EID = "http://mesh-leaf-multi:8080"
 
 
 # ── helpers ──────────────────────────────────────────────────────────────
@@ -143,6 +149,8 @@ for public, label in [
     (MESH_IA_PUBLIC, "mesh-ia"),
     (MESH_LEAF_OP_PUBLIC, "mesh-leaf-op"),
     (MESH_LEAF_RP_PUBLIC, "mesh-leaf-rp"),
+    (MESH_IA2_PUBLIC, "mesh-ia2"),
+    (MESH_LEAF_MULTI_PUBLIC, "mesh-leaf-multi"),
 ]:
     wait_healthy(public, label)
     print(f"  OK  {label} is healthy")
@@ -175,6 +183,38 @@ register_subordinate(
     "Mesh leaf Relying Party — used from Chain Inspector as verifier",
 )
 set_authority_hint(MESH_LEAF_RP_ADMIN, MESH_IA_EID, "Mesh Intermediate Authority")
+
+# ── 2b. multi-parent: mesh-ta -> mesh-ia2 (sibling of mesh-ia), and
+#        mesh-leaf-multi registered as a subordinate of BOTH mesh-ia and
+#        mesh-ia2, with BOTH as authority_hints — for §10.3 (choosing
+#        among multiple valid trust chains) and "redundant parents"
+#        testing. See mesh-tests/test_multi_parent_chains.py.
+
+print("\n=== mesh-ta -> mesh-ia2 ===\n")
+ia2_jwks = fetch_real_jwks(MESH_IA2_PUBLIC)
+register_subordinate(
+    MESH_TA_ADMIN, MESH_IA2_EID, ia2_jwks,
+    ["federation_entity"],
+    "Mesh second Intermediate Authority — sibling of mesh-ia",
+)
+set_authority_hint(MESH_IA2_ADMIN, MESH_TA_EID, "Mesh root Trust Anchor")
+
+print("\n=== mesh-ia -> mesh-leaf-multi ===\n")
+leaf_multi_jwks = fetch_real_jwks(MESH_LEAF_MULTI_PUBLIC)
+register_subordinate(
+    MESH_IA_ADMIN, MESH_LEAF_MULTI_EID, leaf_multi_jwks,
+    ["federation_entity"],
+    "Mesh leaf with two parents — mesh-ia and mesh-ia2",
+)
+set_authority_hint(MESH_LEAF_MULTI_ADMIN, MESH_IA_EID, "Mesh Intermediate Authority")
+
+print("\n=== mesh-ia2 -> mesh-leaf-multi ===\n")
+register_subordinate(
+    MESH_IA2_ADMIN, MESH_LEAF_MULTI_EID, leaf_multi_jwks,
+    ["federation_entity"],
+    "Mesh leaf with two parents — mesh-ia and mesh-ia2",
+)
+set_authority_hint(MESH_LEAF_MULTI_ADMIN, MESH_IA2_EID, "Mesh second Intermediate Authority")
 
 # ── 3. trust mark: Owner=mesh-ta, Issuer=mesh-ia, Subject=mesh-leaf-op ───
 
@@ -226,9 +266,16 @@ if tm_type:
 
 print("\n=== Done ===\n")
 print("Chain: mesh-leaf-op -> mesh-ia -> mesh-ta\n")
+print("Multi-parent: mesh-leaf-multi -> {mesh-ia, mesh-ia2} -> mesh-ta\n")
 print("Verify multi-hop resolution (run from any mesh container, or curl the")
 print("published port directly since /resolve fetches by entity_id over HTTP):")
 print(f"  http://localhost:8091/resolve?sub={urllib.parse.quote(MESH_LEAF_OP_EID, safe='')}"
+      f"&trust_anchor={urllib.parse.quote(MESH_TA_EID, safe='')}")
+print()
+print("Verify multi-parent resolution via either parent:")
+print(f"  http://localhost:8091/resolve?sub={urllib.parse.quote(MESH_LEAF_MULTI_EID, safe='')}"
+      f"&trust_anchor={urllib.parse.quote(MESH_TA_EID, safe='')}")
+print(f"  http://localhost:8097/resolve?sub={urllib.parse.quote(MESH_LEAF_MULTI_EID, safe='')}"
       f"&trust_anchor={urllib.parse.quote(MESH_TA_EID, safe='')}")
 print()
 if tm_type:
