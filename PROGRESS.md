@@ -16,31 +16,34 @@ tests) both green as of the last verification pass.
 ## Recently completed
 
 - **`mesh-tests/` — mesh integration pytest suite, `MESH-TESTING-PROGRESS.md`
-  now essentially complete**: a new top-level suite (deliberately sibling
-  to `backend/tests/`, not nested in it — see its `conftest.py` docstring
-  for why) covering items B1 (metadata policy), B2 (constraints
+  now complete except one item**: a new top-level suite (deliberately
+  sibling to `backend/tests/`, not nested in it — see its `conftest.py`
+  docstring for why) covering items B1 (metadata policy), B2 (constraints
   enforcement), C4 (trust mark delegation, issuer ≠ owner), C5 (trust
   marked entities listing), C6 (trust mark revocation/expiry), D1
   (federation historical keys endpoint — enabled it on `mesh-leaf-rp`,
-  wasn't turned on anywhere in this repo before), D2 (key rollover), and
-  D3 (subordinate revocation propagating to resolution). Everything left
-  unchecked in that file needs new mesh topology this repo doesn't have
-  yet (a second intermediate, a multi-parent leaf), not more test-writing.
-  Runs on the host against published localhost ports, skips cleanly if
-  the stack isn't up. `mise run test:mesh-integration` to run it (19
-  tests, all green, confirmed idempotent across repeated full runs).
-  Found four real, confirmed LightHouse bugs along the way: `/resolve`
-  doesn't honor a subordinate's `blocked` status at all (filed upstream);
-  deleting a trust mark owner doesn't release its `entity_id` for reuse;
-  an expired trust mark is reported as `invalid` instead of the
-  spec-defined `expired`; and setting per-subordinate constraints
-  silently freezes that subordinate's metadata policy against future
-  general-policy changes (found while fixing a test that broke — chasing
-  it down corrected an earlier wrong belief that `docker compose restart`
-  clears LightHouse's caching/state, which it does not; see
+  wasn't turned on anywhere in this repo before), D2 (key rollover), D3
+  (subordinate revocation propagating to resolution), §10.4 (trust chain
+  expiration), and the standalone Resolver role (§17.3/§10.6 — turned out
+  to need no new node at all, just any uninvolved entity's existing
+  `/resolve` endpoint). The one item left ("entity with redundant/multiple
+  parents") genuinely needs new mesh topology (a second intermediate,
+  `mesh-ia2`) — not more test-writing against what's already here. Runs
+  on the host against published localhost ports, skips cleanly if the
+  stack isn't up. `mise run test:mesh-integration` to run it (21 tests,
+  all green, confirmed idempotent across repeated full runs). Found four
+  real, confirmed LightHouse bugs along the way: `/resolve` doesn't honor
+  a subordinate's `blocked` status at all (filed upstream); deleting a
+  trust mark owner doesn't release its `entity_id` for reuse; an expired
+  trust mark is reported as `invalid` instead of the spec-defined
+  `expired`; and setting per-subordinate constraints silently freezes
+  that subordinate's metadata policy against future general-policy
+  changes (found while fixing a test that broke — chasing it down
+  corrected an earlier wrong belief that `docker compose restart` clears
+  LightHouse's caching/state, which it does not; see
   `MESH-TESTING-PROGRESS.md`'s investigation notes for the full story).
-  All four tracked in `docs/KNOWN-ISSUES.md`, three not yet filed
-  upstream.
+  All four tracked in `docs/KNOWN-ISSUES.md` as bugs 5-8, three not yet
+  filed upstream.
 - **mesh2 + interfederation testing**: a second, fully independent
   LightHouse mesh (`mesh2-ta` → `mesh2-ia` → `mesh2-leaf-op`, no shared
   root with the first mesh) plus `scripts/seed-mesh2.py`. Confirmed live
@@ -112,13 +115,13 @@ tests) both green as of the last verification pass.
 ## Next steps
 
 `MESH-TESTING-PROGRESS.md` — the checklist of OIDF spec-defined flows
-mapped against what the `mesh-*`/`mesh2-*` setup proves — is now
-essentially complete (`mesh-tests/`, 19 tests). What's left in that file
-all needs new mesh topology this repo doesn't have: a second intermediate
-(`mesh-ia2`) and a multi-parent leaf, for §10.3's "multiple valid chains"
-item and `max_path_length` constraint testing; and a standalone Resolver
-role (§17.3) distinct from a Trust Anchor, which needs research into
-whether LightHouse's config schema even supports that role before
-deciding whether it's a new compose service or not. Both are real infra
-additions worth scoping with the user first, not something to just start
-building. No other mesh testing work is currently planned.
+mapped against what the `mesh-*`/`mesh2-*` setup proves — has exactly one
+item left: "entity with redundant/multiple parents", which also covers
+§10.3's "multiple valid trust chains" and unblocks the two constraint
+sub-mechanisms (`max_path_length`, `allowed_entity_types`) noted in B2.
+Genuinely needs new mesh topology — a second intermediate (`mesh-ia2`
+under `mesh-ta`) and a leaf registered under both — a real infra addition
+(new compose service, config.yaml, seed-script wiring) worth scoping with
+the user before building, not something to just start on. The standalone
+Resolver role question that used to be paired with this turned out not to
+need new topology at all (see `mesh-tests/test_resolver_role.py`).

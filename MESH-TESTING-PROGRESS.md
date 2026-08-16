@@ -27,8 +27,12 @@ here instead.
   — confirmed via real `/resolve`, full `trust_chain` array returned
 - [ ] Choosing among multiple valid trust chains (§10.3) — mesh is a
   strict tree; needs an entity with two independent paths to an anchor
-- [ ] Trust chain expiration = min of all statement `exp`s (§10.4) —
-  never asserted directly against a resolved chain
+- [x] Trust chain expiration = min of all statement `exp`s (§10.4) —
+  `mesh-tests/test_trust_chain_expiration.py`. No new topology needed.
+  Confirmed live against the existing chain: resolve-response `exp`
+  exactly equals `min()` of all four statements' own `exp` — verified it
+  wasn't a coincidental match to the leaf's or last-fetched statement's
+  value first (all four genuinely differ). Works correctly.
 - [ ] Entity with multiple `authority_hints` (member of >1
   federation/IA at once) — every mesh node has exactly one today
 
@@ -121,9 +125,21 @@ here instead.
 - [x] Two independent federations with no shared root or docker network
   (`mesh-*` vs `mesh2-*`, see `docs/FEDERATION-TOPOLOGY.md`)
 - [ ] Entity with redundant/multiple parents
-- [ ] Dedicated Resolver role distinct from the TA (§17.3, §10.6) —
-  LightHouse's `/resolve` plays double duty; a standalone resolver
-  entity is a distinct spec concept we haven't stood up
+- [x] Dedicated Resolver role distinct from the TA (§17.3, §10.6) —
+  `mesh-tests/test_resolver_role.py`. Turned out not to need a standalone
+  entity or any config at all: confirmed against the actual spec text
+  (§10.6, not recalled from memory) that a "Resolver" is a usage pattern,
+  not a role — any entity offering `/resolve` (§8.3) that a relying party
+  queries instead of walking the chain itself is a Resolver by
+  definition; §17.4 ("One Entity, One Service") explicitly endorses this
+  as a dedicated, TA-independent entity. Proved live: `mesh-leaf-rp`
+  (a leaf with zero authority relationship to `mesh-ta` or
+  `mesh-leaf-op`) correctly resolves *their* chain via its own
+  `/resolve` — genuinely acting as a third-party resolver. One real
+  finding along the way, not a bug: the resolve-response's `iss` is the
+  *resolver itself* (whoever answered the query), not an intermediate in
+  the underlying chain — the inner `trust_chain` array still carries the
+  real chain, signed by the real parties.
 
 ## Explicitly out of scope
 
@@ -150,13 +166,22 @@ in source but need mesh topology this repo doesn't have yet to prove live
 `mesh-leaf-rp`; works correctly, plus enabled the historical keys
 endpoint (§8.7) which had never been turned on anywhere in this repo.
 
-**Every item in this file that a self-contained registry+LightHouse
-deployment could reasonably prove is now checked off**, except the
-explicitly-scoped-out multi-parent-entity and standalone-Resolver-role
-items under §E (both need new mesh topology this repo doesn't have —
-`mesh-ia2` and a second parent for a leaf, see the mesh test-infra
-diagram from earlier in this project) and the two constraint
-sub-mechanisms noted above (same reason).
+~~Trust chain expiration (§10.4)~~ and ~~standalone Resolver role
+(§17.3/§10.6)~~ — both also done, and neither needed new topology: the
+first was a one-line assertion against the existing chain, the second
+turned out to be a usage pattern any existing node already satisfies
+(see investigation notes below).
+
+**The only item left that a self-contained deployment could reasonably
+prove is "entity with multiple/redundant parents"** (§10.3's "choosing
+among multiple valid trust chains" and this section's item are really the
+same underlying topology need) — it genuinely needs a new mesh node
+(`mesh-ia2`, a second intermediate under `mesh-ta`) and a leaf registered
+under both. Same addition would also unblock the two constraint
+sub-mechanisms noted above (`max_path_length` needs the extra hierarchy
+level; `allowed_entity_types` needs that leaf to publish real typed
+metadata). A real infra decision, not just more test-writing — scope it
+with the user before building.
 
 Four real product gaps found across all of this, not one — worth stating
 plainly since the *first* pass (metadata policy) initially looked clean
@@ -294,3 +319,24 @@ out caching" is not a safe assumption against this product.
   still needed after the re-sync for resolution to pick it up (consistent
   with the per-subordinate statement caching found elsewhere in this
   file).
+- **Trust chain expiration (§10.4).** Works correctly, no new topology
+  needed — a one-assertion test against the existing chain. Computed the
+  expected value from the live chain itself (`min()` of all four
+  statements' own `exp`) rather than hardcoding one, and confirmed first
+  that all four genuinely differ (so a match wasn't a coincidence with
+  e.g. the leaf's own or the last-fetched statement's value).
+- **Standalone Resolver role (§17.3/§10.6).** Also didn't need new
+  topology — turned out to be a usage pattern, not a role, confirmed
+  against the actual spec text rather than assumed: §10.6 defines a
+  Resolver as any entity offering `/resolve` that a relying party queries
+  instead of walking the chain itself; §17.4 ("One Entity, One Service")
+  explicitly endorses a dedicated, TA-independent resolver entity as good
+  practice. Proved live with `mesh-leaf-rp` (a leaf, zero authority
+  relationship to `mesh-ta` or `mesh-leaf-op`) correctly resolving their
+  chain as an uninvolved third party. One thing worth knowing, not a bug:
+  the resolve-response's `iss` claim is the *resolver itself* — whoever
+  answered the query — not an intermediate within the resolved chain; the
+  test's first draft wrongly assumed it would be the real intermediate
+  and had to be corrected once the live response showed otherwise. The
+  inner `trust_chain` array is unaffected — still the real chain, signed
+  by the real parties, the resolver doesn't insert itself into it.
