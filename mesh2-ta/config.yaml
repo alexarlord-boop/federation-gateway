@@ -40,6 +40,8 @@ endpoints:
     path: /trust_mark/status
   trust_mark_list:
     path: /trust_mark/list
+  historical_keys:
+    path: /historical_keys
 
 stats:
   enabled: true

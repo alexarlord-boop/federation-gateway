@@ -25,6 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Textarea } from '@/components/ui/textarea';
 import { useTrustMarkTypes } from '@/hooks/useTrustMarkTypes';
 import { useTrustMarkSpecs, useTrustMarkSubjects } from '@/hooks/useTrustMarkIssuance';
+import { useTrustMarkListing } from '@/hooks/useTrustMarkListing';
 import { useTrustMarkSubjectClaims } from '@/hooks/useTrustMarkSubjectClaims';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
@@ -413,7 +414,7 @@ function IssuanceSpecsTab() {
               </CardHeader>
               {expandedSpec === (spec.id as number) && (
                 <CardContent className="pt-0">
-                  <SpecSubjectsPanel specId={spec.id as number} />
+                  <SpecSubjectsPanel specId={spec.id as number} trustMarkType={spec.trust_mark_type as string} />
                 </CardContent>
               )}
             </Card>
@@ -558,14 +559,22 @@ function SubjectClaimsPanel({ specId, subjectId }: { specId: number; subjectId: 
 
 // ── Subjects panel inside an expanded spec ──────────────
 
-function SpecSubjectsPanel({ specId }: { specId: number }) {
+function SpecSubjectsPanel({ specId, trustMarkType }: { specId: number; trustMarkType: string }) {
   const { subjects, isLoading, create, remove, changeStatus } = useTrustMarkSubjects(specId);
+  const { holders } = useTrustMarkListing(trustMarkType);
   const { toast } = useToast();
   const canCreate = useOperationAllowed('trust_mark_issuance', 'create');
   const canDelete = useOperationAllowed('trust_mark_issuance', 'delete');
   const canUpdate = useOperationAllowed('trust_mark_issuance', 'update');
   const [newEntityId, setNewEntityId] = useState('');
   const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(null);
+
+  // undefined while loading, so a row never briefly flashes "not live"
+  // before the real answer is in.
+  const holderSet = holders ? new Set(holders) : undefined;
+  const liveCount = holderSet
+    ? subjects.filter((s) => holderSet.has(s.entity_id as string)).length
+    : undefined;
 
   const handleAdd = async () => {
     if (!newEntityId) return;
@@ -583,9 +592,26 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
 
   return (
     <div className="space-y-3 border-t pt-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Users className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-medium">Subjects ({subjects.length})</span>
+        {liveCount !== undefined && subjects.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs text-muted-foreground cursor-help">
+                · {liveCount} of {subjects.length} currently live
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64">
+              <p className="text-xs leading-snug">
+                "Live" means this entity currently holds a valid, publicly
+                resolvable mark of this type (OIDF §8.5). A subject can be
+                Active here but not live if it's blocked, or if a fresh mark
+                hasn't been issued to it recently.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
       {subjects.length > 0 && (
         <Table>
@@ -612,7 +638,35 @@ function SpecSubjectsPanel({ specId }: { specId: number }) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell><Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status === 'active' ? 'Active' : 'Inactive'}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={sub.status === 'active' ? 'default' : 'secondary'}>{sub.status === 'active' ? 'Active' : 'Inactive'}</Badge>
+                        {holderSet && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  holderSet.has(sub.entity_id as string)
+                                    ? 'gap-1 bg-green-500/10 text-green-700 border-green-300 dark:text-green-400'
+                                    : 'gap-1 text-muted-foreground'
+                                }
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${holderSet.has(sub.entity_id as string) ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
+                                {holderSet.has(sub.entity_id as string) ? 'Live' : 'Not live'}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-64">
+                              <p className="text-xs leading-snug">
+                                {holderSet.has(sub.entity_id as string)
+                                  ? 'This entity currently holds a valid, publicly resolvable mark of this type.'
+                                  : "Not currently in the public listing — either blocked, or no fresh mark has been issued to it recently."}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant={isExpanded ? 'secondary' : 'ghost'}

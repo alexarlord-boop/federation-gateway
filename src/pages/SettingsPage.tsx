@@ -23,6 +23,8 @@ import {
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
 import { useEntityConfiguration } from '@/hooks/useEntityConfiguration';
 import { useKeyManagement } from '@/hooks/useKeyManagement';
+import { useHistoricalKeys } from '@/hooks/useHistoricalKeys';
+import { formatExpiryRelative } from '@/lib/jwt-utils';
 import { useGeneralConstraints } from '@/hooks/useGeneralConstraints';
 import { useGeneralMetadataPolicies } from '@/hooks/useGeneralMetadataPolicies';
 import { useCriticalPolicyOperators } from '@/hooks/useCriticalPolicyOperators';
@@ -33,7 +35,7 @@ import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw,
+  Loader2, Trash2, Plus, Key, Shield, FileText, XCircle, RotateCw, History,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -478,6 +480,7 @@ function KeyManagementSection() {
     rotationOptions, rotationLoading, updateRotation,
     publishedJwks, jwksLoading,
   } = useKeyManagement();
+  const { historicalKeys, isLoading: historicalKeysLoading } = useHistoricalKeys();
   const [rotIntervalDraft, setRotIntervalDraft] = useState('');
   const [rotAutoRotateDraft, setRotAutoRotateDraft] = useState<boolean | null>(null);
   const [addKeyDraft, setAddKeyDraft] = useState('');
@@ -668,6 +671,38 @@ function KeyManagementSection() {
             <ScrollArea className="h-[250px] rounded-md border p-3">
               <pre className="text-xs font-mono">{JSON.stringify(publishedJwks, null, 2)}</pre>
             </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Historical Keys */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><History className="w-5 h-5" /> Historical Keys</CardTitle>
+          <CardDescription>Keys previously used to sign this entity's statements — still valid for verifying old signatures (OIDF §8.7)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {historicalKeysLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : historicalKeys.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Key ID (kid)</TableHead>
+                  <TableHead>Algorithm</TableHead>
+                  <TableHead>Valid Until</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historicalKeys.map((k) => (
+                  <TableRow key={k.kid}>
+                    <TableCell className="font-mono text-sm">{k.kid}</TableCell>
+                    <TableCell><Badge variant="outline">{k.alg ?? k.kty ?? '—'}</Badge></TableCell>
+                    <TableCell className="text-muted-foreground">{typeof k.exp === 'number' ? formatExpiryRelative(k.exp) : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground">No historical keys yet — appears here after this instance rotates its signing key.</p>
           )}
         </CardContent>
       </Card>

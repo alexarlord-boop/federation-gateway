@@ -15,6 +15,30 @@ pytest suite (105 tests) both green as of the last verification pass.
 
 ## Recently completed
 
+- **UI for Trust Marked Entities Listing (§8.5) and Federation Historical
+  Keys (§8.7)**: the two capabilities `mesh-tests/` covers that had no UI
+  before. `historical_keys` enabled in every `config.yaml` in this repo
+  (was only on `mesh-leaf-rp`, added for last session's key-rollover
+  tests). Trust mark listing lives inline in Trust Marks → Issuance → each
+  spec's Subjects table (not a separate page) — a live/not-live badge per
+  subject plus a summary line, cross-referencing the public
+  `/trust_mark/list` endpoint against the admin-configured subjects, the
+  same operational signal `mesh-tests` found matters (a subject can be
+  configured `active` but not actually live if blocked, or just not
+  freshly re-issued). Historical keys get a new card in Settings → Keys &
+  KMS, styled like the existing Public Keys table rather than a raw JSON
+  dump. Both use the raw-request escape hatch (`__request(OpenAPI, {...})`,
+  same pattern `useTrustMarkIssuance.ts` already uses) rather than the
+  generated client — these are OIDF federation protocol endpoints, not
+  part of `Federation Admin OpenAPI.yaml`'s admin-API scope, so adding
+  them there would misrepresent that file's purpose. Verified live via a
+  throwaway Playwright script (screenshotted both features against real
+  seeded mesh data, not just typecheck) — one real side effect caught and
+  fixed in the process: rotating `mesh-ia`'s key for the historical-keys
+  screenshot went stale against `mesh-ta`'s stored record of it (the same
+  issue `test_key_rollover.py` covers), re-synced and confirmed resolution
+  recovered before finishing. `npx tsc --noEmit`, `eslint`, `npm run build`
+  all clean; 25/25 `mesh-tests` still green afterward.
 - **`mesh-tests/` — mesh integration pytest suite, `MESH-TESTING-PROGRESS.md`
   now fully complete**: a new top-level suite (deliberately sibling to
   `backend/tests/`, not nested in it — see its `conftest.py` docstring
