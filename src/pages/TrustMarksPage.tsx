@@ -366,6 +366,7 @@ function IssuanceSpecsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <SpecLiveBadge specId={spec.id as number} trustMarkType={spec.trust_mark_type as string} />
                     {spec.lifetime && (
                       <Badge variant="outline" className="gap-1">
                         <Clock className="w-3 h-3" />{spec.lifetime}s
@@ -554,6 +555,57 @@ function SubjectClaimsPanel({ specId, subjectId }: { specId: number; subjectId: 
         </div>
       )}
     </div>
+  );
+}
+
+// ── Live-count summary shown on a spec's collapsed card ─
+//
+// Shares a React Query cache key with SpecSubjectsPanel's own calls to the
+// same two hooks, so expanding a spec doesn't re-fetch anything this badge
+// already loaded — and collapsing it doesn't lose the number either.
+
+function SpecLiveBadge({ specId, trustMarkType }: { specId: number; trustMarkType: string }) {
+  const { subjects } = useTrustMarkSubjects(specId);
+  const { holders } = useTrustMarkListing(trustMarkType);
+
+  if (!holders) {
+    return (
+      <Badge variant="outline" className="gap-1 text-muted-foreground">
+        <Loader2 className="w-3 h-3 animate-spin" />
+      </Badge>
+    );
+  }
+
+  const holderSet = new Set(holders);
+  const liveCount = subjects.filter((s) => holderSet.has(s.entity_id as string)).length;
+  const allLive = subjects.length > 0 && liveCount === subjects.length;
+  const noneLive = liveCount === 0;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          className={
+            noneLive
+              ? 'gap-1 text-muted-foreground'
+              : allLive
+                ? 'gap-1 bg-green-500/10 text-green-700 border-green-300 dark:text-green-400'
+                : 'gap-1 bg-amber-400/10 text-amber-700 border-amber-300 dark:text-amber-400'
+          }
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${noneLive ? 'bg-muted-foreground/40' : allLive ? 'bg-green-500' : 'bg-amber-500'}`} />
+          {liveCount}/{subjects.length} live
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        <p className="text-xs leading-snug">
+          {liveCount} of {subjects.length} subjects currently hold a valid,
+          publicly resolvable mark of this type (OIDF §8.5). Expand to see
+          which.
+        </p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
