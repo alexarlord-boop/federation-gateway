@@ -142,7 +142,8 @@ pytest suite (105 tests) both green as of the last verification pass.
 - Everything else open is tracked in `docs/KNOWN-ISSUES.md`, not here —
   that file is the maintained, evidence-based list of gaps and upstream
   issues. Production-deployment gaps (real login, TLS, secrets, LightHouse
-  admin auth) are parked in its own section there.
+  admin auth) are still detailed there, now with priority order and
+  status tracking on top in `PRODUCTION-READINESS.md`.
 
 ## Next steps
 
@@ -153,3 +154,11 @@ constraint enforcement becomes a priority later, see that file's
 (neither is unblocked by the `mesh-ia2` sibling added for multi-parent
 testing — that was a corrected assumption, see the file's investigation
 notes).
+
+Focus has shifted to `PRODUCTION-READINESS.md` — a new priority-ordered
+checklist (user's own ranking, 2026-08-19) for what's left before this
+deployment is safe to hand to a real federation admin. Order: real user
+login (#1, up next) → LightHouse admin API auth → TLS → secrets
+management → backup/restore → deployment docs. The `/resolve`-ignores-
+blocked-status LightHouse bug is tracked there as a handover item, not
+buildable in this repo.

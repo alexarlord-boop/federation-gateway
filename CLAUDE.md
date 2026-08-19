@@ -111,5 +111,10 @@ live check), not just a green typecheck.
 `MESH-TESTING-PROGRESS.md` (repo root) — checklist of OIDF spec-defined
 flows against the mesh setup, what's proven vs. still untested.
 
+`PRODUCTION-READINESS.md` (repo root) — priority-ordered checklist of what's
+left before this deployment is safe to hand to a real federation admin
+(real login, LightHouse admin auth, TLS, secrets, backup/restore,
+deployment docs).
+
 `PROGRESS.md` (repo root) — current state, recent work, open blockers. Read
 it at the start of a session; update it before a substantial one ends.
