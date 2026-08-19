@@ -199,6 +199,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: data.created_at || new Date().toISOString(),
       };
 
+      // Re-persist here, not just at the top: `/auth/callback` is a hard
+      // browser navigation (external IdP redirect), so this effect and
+      // AuthProvider's own mount-time session-restore effect both fire on
+      // the same fresh mount. If session-restore runs its "no auth_user
+      // yet → wipe" branch in between (it doesn't know a login is
+      // in-flight), it clears the tokens stored above. Writing everything
+      // again once the profile fetch has actually succeeded guarantees the
+      // final state is correct no matter how that race resolves.
+      storeTokens({ accessToken, refreshToken });
       setUser(userData);
       localStorage.setItem(userKey, JSON.stringify(userData));
       scheduleProactiveRefresh();

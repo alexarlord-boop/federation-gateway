@@ -276,6 +276,14 @@ def test_callback_happy_path_jit_provisions_user_with_no_role(client, oidc_provi
         assert user.oidc_sub == "idp-user-1"
         assert user.oidc_issuer == ISSUER
         assert list(user.roles) == []
+
+        # Regression: seed_rbac_data() re-runs on every backend restart and
+        # back-fills a role for any *legacy* roleless user — it must not
+        # paper over a deliberately-roleless SSO account when that happens.
+        from app.db.rbac_seed import seed_rbac_data
+        seed_rbac_data(db)
+        db.refresh(user)
+        assert list(user.roles) == []
     finally:
         db.close()
 

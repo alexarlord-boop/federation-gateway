@@ -241,17 +241,28 @@ def seed_rbac_data(db: Session, spec_path: str = None):
     default_tech = db.query(Role).filter(Role.role_id == "tech_contact").first()
 
     for user in users:
-        # legacy admin users should be super_admin
+        # SSO-provisioned users are deliberately roleless until a
+        # super_admin assigns one by hand (PRODUCTION-READINESS.md #1) —
+        # this migration is for *pre-RBAC local accounts* only, and must
+        # not paper over that on every restart.
+        if user.oidc_sub:
+            continue
+
+        # legacy admin users should be super_admin — but only as a
+        # one-time bootstrap for accounts with no RBAC role yet. Without
+        # the `not user.roles` guard this would silently revert any
+        # RBAC role a super_admin later assigned by hand back to the
+        # legacy default on every backend restart (seed_rbac_data runs
+        # unconditionally on every startup).
         if user.role == "admin":
-            if default_admin and default_admin not in user.roles:
-                user.roles.clear()
+            if not user.roles and default_admin:
                 user.roles.append(default_admin)
             continue
 
-        # legacy standard users should be technical contacts by default
+        # legacy standard users should be technical contacts by default —
+        # same one-time-bootstrap-only guard as above.
         if user.role == "user":
-            if default_tech and default_tech not in user.roles:
-                user.roles.clear()
+            if not user.roles and default_tech:
                 user.roles.append(default_tech)
             continue
 

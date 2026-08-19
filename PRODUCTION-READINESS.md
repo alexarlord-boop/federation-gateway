@@ -35,11 +35,22 @@ else first.
    client secrets encrypted at rest (Fernet, `OIDC_ENCRYPTION_KEY`).
    11 new backend tests (respx-mocked IdP + a forged, validly-signed ID
    token — no live IdP needed) plus full existing suite (116 total) and
-   the BFF e2e tier green. Verified live: created a provider through the
-   new admin UI, confirmed the login page's SSO button appears/works,
-   and the Users page's new Auth column shows Local/SSO correctly. Not
-   yet verified against a *real* external IdP (eduGAIN, Google, etc.) —
-   flagged as a follow-up if/when one is available to test against.
+   the BFF e2e tier green. Verified live end-to-end against a **real
+   Keycloak instance** (not just mocks) — real browser redirect, real
+   login form, real authorization-code+PKCE exchange, JIT-provisioned
+   user landing on `/dashboard` with no RBAC role. That pass caught two
+   real bugs, both fixed with regression tests: (1) the UI's nginx
+   proxy used `$host` instead of `$http_host`, dropping the port from
+   every forwarded `Host` header — broke `request.url_for`'s
+   `redirect_uri` construction, which Keycloak correctly rejected
+   (`Dockerfile`); (2) a genuinely pre-existing bug in
+   `seed_rbac_data()`'s legacy-user migration — it unconditionally
+   reassigned any legacy `role="user"`/`"admin"` account back to the
+   default RBAC role on *every* call, silently reverting any
+   manually-assigned role (including "leave this SSO user roleless")
+   on every backend restart, since that function runs unconditionally
+   at every startup. Never caught before because nothing had called it
+   a second time mid-session until this verification pass did.
 
 2. [ ] **LightHouse admin API auth** — `api.admin.users_enabled: false`
    in every `config.yaml` in this repo. The only thing protecting those

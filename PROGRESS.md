@@ -35,7 +35,17 @@ pytest suite (105 tests) both green as of the last verification pass.
   follow-up); full 116-test backend suite and the BFF e2e tier both green
   afterward. Verified live via Playwright screenshots: provider creation,
   the login page's real SSO button, and the Users page's new Auth
-  (Local/SSO) column.
+  (Local/SSO) column. Then verified against a **real Keycloak instance**
+  (throwaway `docker run` container, not part of the compose stack) —
+  full real browser redirect → real login form → callback → dashboard,
+  which caught two real bugs the mocked tests couldn't: nginx's `$host`
+  vs `$http_host` dropping the port from forwarded requests (broke the
+  OIDC `redirect_uri`, `Dockerfile`), and a pre-existing
+  `seed_rbac_data()` bug that silently reverted manually-assigned RBAC
+  roles on every backend restart (`backend/app/db/rbac_seed.py`). Both
+  fixed, both covered by new regression tests (118 backend tests total
+  now), both confirmed fixed live by restarting the backend mid-session
+  and re-checking role persistence.
 - **UI for Trust Marked Entities Listing (§8.5) and Federation Historical
   Keys (§8.7)**: the two capabilities `mesh-tests/` covers that had no UI
   before. `historical_keys` enabled in every `config.yaml` in this repo
