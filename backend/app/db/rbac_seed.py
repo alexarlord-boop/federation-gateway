@@ -72,6 +72,23 @@ def seed_rbac_data(db: Session, spec_path: str = None):
                 "tag": "trust-anchors",
             },
         },
+        {
+            "feature_name": "oidc_providers",
+            "enabled": True,
+            "reason": None,
+            "operations": ["manage"],
+            "config_metadata": {
+                "description": "Configure external OIDC providers for real user login (gateway-local, holds client secrets — super_admin only)",
+                "openapi_path": "/api/v1/oidc/providers",
+                "endpoints": [
+                    "GET /api/v1/oidc/providers",
+                    "POST /api/v1/oidc/providers",
+                    "PATCH /api/v1/oidc/providers/{id}",
+                    "DELETE /api/v1/oidc/providers/{id}",
+                ],
+                "tag": "oidc",
+            },
+        },
     ]
     for gw_feat in gateway_local_features:
         # Only add if not already present from OAS
@@ -161,7 +178,11 @@ def seed_rbac_data(db: Session, spec_path: str = None):
     all_permissions = db.query(Permission).all()
     read_ops = {"list", "view", "read"}
     technical_feature_hints = ("subordinate", "key", "entity_configuration")
-    
+    # Administrative-only features: never granted to non-super_admin roles,
+    # even ones that otherwise get broad access (fed_operator). oidc_providers
+    # holds IdP client secrets, same sensitivity class as rbac itself.
+    admin_only_features = {"rbac", "oidc_providers"}
+
     # Create roles and assign permissions
     for role_data in roles_data:
         existing_role = db.query(Role).filter_by(role_id=role_data["role_id"]).first()
@@ -190,13 +211,13 @@ def seed_rbac_data(db: Session, spec_path: str = None):
         if role.role_id == "super_admin":
             role.permissions.extend(all_permissions)
         elif role.role_id == "fed_operator":
-            role.permissions.extend([p for p in all_permissions if p.feature != "rbac"])
+            role.permissions.extend([p for p in all_permissions if p.feature not in admin_only_features])
         elif role.role_id == "tech_contact":
             role.permissions.extend(
                 [
                     p
                     for p in all_permissions
-                    if p.feature != "rbac"
+                    if p.feature not in admin_only_features
                     and (
                         p.operation in read_ops
                         or (
@@ -207,7 +228,9 @@ def seed_rbac_data(db: Session, spec_path: str = None):
                 ]
             )
         elif role.role_id == "viewer":
-            role.permissions.extend([p for p in all_permissions if p.feature != "rbac" and p.operation in read_ops])
+            role.permissions.extend(
+                [p for p in all_permissions if p.feature not in admin_only_features and p.operation in read_ops]
+            )
     
     db.commit()
 

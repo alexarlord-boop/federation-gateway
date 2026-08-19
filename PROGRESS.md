@@ -15,6 +15,27 @@ pytest suite (105 tests) both green as of the last verification pass.
 
 ## Recently completed
 
+- **Real user login via OIDC — PRODUCTION-READINESS.md #1**: replaced the
+  fake "Sign in with OIDC" stub (`LoginPage.tsx` used to just log in as
+  the demo admin) with a real authorization-code+PKCE flow against
+  external IdPs, built on the previously-unwired `OIDCProvider` model.
+  New admin UI at `/identity-providers` (super_admin-only) to configure
+  providers; login page shows a real "Sign in with {provider}" button
+  per enabled provider once one exists. New SSO users are JIT-provisioned
+  with no RBAC role (manual assignment via the existing Users page, by
+  design — no claim/group auto-mapping). Local password login stays as
+  a fallback; SSO accounts can no longer log in with a password. Client
+  secrets encrypted at rest (Fernet, `OIDC_ENCRYPTION_KEY` — same
+  dev-default caveat as the LightHouse admin credentials, tracked under
+  PRODUCTION-READINESS.md #4). `authlib` added as a new backend
+  dependency (ID-token/JWKS validation is exactly the kind of
+  security-critical code better left to a maintained library). 11 new
+  backend tests using `respx` to mock the IdP and a forged, validly-signed
+  ID token (no live IdP available to test against yet — flagged as a
+  follow-up); full 116-test backend suite and the BFF e2e tier both green
+  afterward. Verified live via Playwright screenshots: provider creation,
+  the login page's real SSO button, and the Users page's new Auth
+  (Local/SSO) column.
 - **UI for Trust Marked Entities Listing (§8.5) and Federation Historical
   Keys (§8.7)**: the two capabilities `mesh-tests/` covers that had no UI
   before. `historical_keys` enabled in every `config.yaml` in this repo
@@ -155,10 +176,10 @@ constraint enforcement becomes a priority later, see that file's
 testing — that was a corrected assumption, see the file's investigation
 notes).
 
-Focus has shifted to `PRODUCTION-READINESS.md` — a new priority-ordered
-checklist (user's own ranking, 2026-08-19) for what's left before this
-deployment is safe to hand to a real federation admin. Order: real user
-login (#1, up next) → LightHouse admin API auth → TLS → secrets
-management → backup/restore → deployment docs. The `/resolve`-ignores-
-blocked-status LightHouse bug is tracked there as a handover item, not
-buildable in this repo.
+Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
+own ranking, 2026-08-19) for what's left before this deployment is safe to
+hand to a real federation admin. #1 (real user login) is done — next up
+is LightHouse admin API auth (#2), then TLS → secrets management →
+backup/restore → deployment docs. The `/resolve`-ignores-blocked-status
+LightHouse bug is tracked there as a handover item, not buildable in this
+repo.

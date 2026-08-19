@@ -13,6 +13,7 @@ import { ApiError } from "@/client/core/ApiError";
 import { refreshAccessToken } from "@/lib/token-manager";
 import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
+import OidcCallbackPage from "./pages/OidcCallbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import EntitiesPage from "./pages/EntitiesPage";
 import EntityDetailPage from "./pages/EntityDetailPage";
@@ -24,6 +25,7 @@ import ChainInspectorPage from "./pages/ChainInspectorPage";
 import StatsPage from "./pages/StatsPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import UsersPage from "./pages/UsersPage";
+import IdentityProvidersPage from "./pages/IdentityProvidersPage";
 import SettingsPage from "./pages/SettingsPage";
 import RBACManagementPage from "./pages/RBACManagementPage";
 import NotFound from "./pages/NotFound";
@@ -85,6 +87,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<OidcCallbackPage />} />
       
       <Route element={
         <ProtectedRoute>
@@ -141,6 +144,11 @@ function AppRoutes() {
         <Route path="/rbac" element={
           <ProtectedRoute adminOnly>
             <RBACManagementPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/identity-providers" element={
+          <ProtectedRoute adminOnly>
+            <IdentityProvidersPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={<SettingsPage />} />

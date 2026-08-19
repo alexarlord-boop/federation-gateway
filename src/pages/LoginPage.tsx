@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Network, ArrowRight, AlertCircle, Globe, Shield, ArrowDownToLine, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOidcProviders } from '@/hooks/useOidcProviders';
+import { GATEWAY_BASE } from '@/lib/api-config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,12 +15,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
+  const { providers: oidcProviders } = useOidcProviders();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     try {
       await login(email, password);
       navigate('/dashboard');
@@ -27,14 +30,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleOIDCLogin = async () => {
-    try {
-      // Simulate successful OIDC login as Admin
-      await login('admin@oidfed.org', 'admin123');
-      navigate('/dashboard');
-    } catch (err) {
-      setError('OIDC Login failed');
-    }
+  const handleOidcLogin = (providerId: string) => {
+    // Real browser navigation — this must leave the SPA to reach the IdP.
+    window.location.href = `${GATEWAY_BASE}/api/auth/oidc/${providerId}/login`;
   };
 
   return (
@@ -166,25 +164,32 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-6">
-                <div className="relative">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    OR
-                  </span>
+              {oidcProviders.length > 0 && (
+                <div className="mt-6">
+                  <div className="relative">
+                    <Separator />
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                      OR
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {oidcProviders.map((provider) => (
+                      <Button
+                        key={provider.id}
+                        variant="outline"
+                        className="w-full"
+                        type="button"
+                        onClick={() => handleOidcLogin(provider.id)}
+                        disabled={isLoading}
+                      >
+                        <Globe className="mr-2 h-4 w-4" />
+                        Sign in with {provider.name}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4"
-                  type="button"
-                  onClick={handleOIDCLogin}
-                  disabled={isLoading}
-                >
-                  <Globe className="mr-2 h-4 w-4" />
-                  Sign in with OIDC (eduGAIN)
-                </Button>
-              </div>
+              )}
 
               <p className="mt-6 text-center text-sm text-muted-foreground">
                 Need an account?{' '}

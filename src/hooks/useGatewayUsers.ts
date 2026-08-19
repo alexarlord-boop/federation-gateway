@@ -20,6 +20,8 @@ export interface GatewayUser {
   organization_name?: string;
   status?: string;
   created_at?: string;
+  /** Non-null for SSO-provisioned accounts (OIDC login). */
+  oidc_sub?: string | null;
 }
 
 export interface GatewayUserCreate {

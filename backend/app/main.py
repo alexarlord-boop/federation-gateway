@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine, SessionLocal
 from app.routers import auth, debug, trust_anchors, capabilities, rbac, proxy, users, instances
-from app.routers import resolve, tenants, tech_contacts, registrations, audit
+from app.routers import resolve, tenants, tech_contacts, registrations, audit, oidc_providers
 from app.db.seed import seed_data
 from app.db.rbac_seed import seed_rbac_data
 from app.config.deployment import load_deployment_config, resolve_deployment_config_path
@@ -82,6 +82,7 @@ app.add_middleware(
 app.include_router(capabilities.router)
 app.include_router(rbac.router)
 app.include_router(auth.router)
+app.include_router(oidc_providers.router)
 app.include_router(debug.router)
 app.include_router(trust_anchors.router)
 app.include_router(users.router)

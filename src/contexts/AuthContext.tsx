@@ -27,6 +27,10 @@ interface AuthContextType {
   isAdmin: boolean;
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Hydrate a session from a token pair already issued elsewhere (the
+   * OIDC callback) — fetches the profile and persists it the same way
+   * `login()` does, so both paths leave AuthContext in an identical state. */
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -171,12 +175,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [selectedBackend.baseUrl, userKey, scheduleProactiveRefresh]);
 
+  const loginWithTokens = useCallback(async (accessToken: string, refreshToken: string) => {
+    setIsLoading(true);
+    try {
+      storeTokens({ accessToken, refreshToken });
+
+      const response = await fetch(`${selectedBackend.baseUrl}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) {
+        clearTokens();
+        throw new Error('Could not load user profile');
+      }
+
+      const data = await response.json();
+      const userData: User = {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        organizationId: data.organization_id,
+        organizationName: data.organization_name,
+        createdAt: data.created_at || new Date().toISOString(),
+      };
+
+      setUser(userData);
+      localStorage.setItem(userKey, JSON.stringify(userData));
+      scheduleProactiveRefresh();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedBackend.baseUrl, userKey, scheduleProactiveRefresh]);
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isInitialized,
     login,
+    loginWithTokens,
     logout,
     isLoading,
   };

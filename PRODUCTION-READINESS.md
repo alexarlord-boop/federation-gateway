@@ -20,13 +20,26 @@ else first.
 
 ## Priority order
 
-1. [ ] **Real user login** — external IdP federation (OIDC/SAML), not just
-   local seeded JWT accounts. `backend/app/models/oidc_provider.py`
-   exists as scaffolding, not wired to a live flow. RBAC itself is fully
-   implemented and unaffected — this is specifically about
-   *authenticating* real people. See `docs/ARCHITECTURE.md`'s
-   Authentication & Authorization section for current state, and
-   `docs/KNOWN-ISSUES.md` for the original gap writeup.
+1. [x] **Real user login** — external IdP federation via OIDC (SAML
+   explicitly out of scope). Authorization-code + PKCE flow
+   (`backend/app/routers/auth.py`'s `/api/auth/oidc/{provider}/login` +
+   `/callback`), signed short-lived `state` carries provider/nonce/PKCE
+   verifier (no server-side session store), ID token validated against
+   the IdP's live JWKS via `authlib`. New SSO users are JIT-provisioned
+   with **no RBAC role** — a super_admin assigns one afterward via the
+   existing Users page, same as any other account (manual assignment,
+   no claim/group auto-mapping, by design). Local password login is kept
+   as a fallback; an account with `oidc_sub` set can no longer log in
+   with a password. Admin UI at `/identity-providers`
+   (`oidc_providers:manage`, super_admin-only) manages provider configs;
+   client secrets encrypted at rest (Fernet, `OIDC_ENCRYPTION_KEY`).
+   11 new backend tests (respx-mocked IdP + a forged, validly-signed ID
+   token — no live IdP needed) plus full existing suite (116 total) and
+   the BFF e2e tier green. Verified live: created a provider through the
+   new admin UI, confirmed the login page's SSO button appears/works,
+   and the Users page's new Auth column shows Local/SSO correctly. Not
+   yet verified against a *real* external IdP (eduGAIN, Google, etc.) —
+   flagged as a follow-up if/when one is available to test against.
 
 2. [ ] **LightHouse admin API auth** — `api.admin.users_enabled: false`
    in every `config.yaml` in this repo. The only thing protecting those
@@ -51,7 +64,9 @@ else first.
    non-default values with no fallback) before real deployment. Overlaps
    with #2 — turning on LightHouse-side auth makes these credentials
    actually load-bearing for the first time, raising the stakes on
-   getting this right together.
+   getting this right together. `OIDC_ENCRYPTION_KEY` (added for #1, the
+   Fernet key encrypting stored IdP client secrets) has the exact same
+   dev-default-in-`docker-compose.yml` problem — same fix, same place.
 
 5. [ ] **Backup/restore** — no snapshot/restore procedure documented or
    automated anywhere for `backend/data/backend.db` (users, RBAC config,

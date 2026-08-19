@@ -38,6 +38,9 @@ class UserOut(BaseModel):
     status: str = "active"
     created_at: Optional[str] = None
     rbac_roles: List[str] = []
+    # Non-null for SSO-provisioned accounts (see routers/auth.py's OIDC
+    # callback) — the frontend uses this to show an "SSO" vs "Local" badge.
+    oidc_sub: Optional[str] = None
 
 
 class CreateUserRequest(BaseModel):
@@ -78,6 +81,7 @@ def _serialize_user(user: User) -> UserOut:
         status="active",
         created_at=user.created_at.isoformat() if user.created_at else None,
         rbac_roles=[r.role_id for r in (user.roles or [])],
+        oidc_sub=user.oidc_sub,
     )
 
 

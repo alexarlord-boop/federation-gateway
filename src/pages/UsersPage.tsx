@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Plus, Building2, Shield, MoreHorizontal, Loader2, Trash2, KeyRound } from 'lucide-react';
+import { Users, Plus, Building2, Shield, MoreHorizontal, Loader2, Trash2, KeyRound, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -217,6 +217,7 @@ export default function UsersPage() {
               <TableHead>User</TableHead>
               <TableHead>Organization</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Auth</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -225,13 +226,13 @@ export default function UsersPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={7} className="h-32 text-center">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent" />
                 </TableCell>
               </TableRow>
             ) : error || !users || users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Users className="w-10 h-10 mb-2 opacity-30" />
                     <p>{error ? 'User management unavailable' : 'No users found'}</p>
@@ -278,6 +279,18 @@ export default function UsersPage() {
                       </span>
                     )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {user.oidc_sub ? (
+                    <span className="entity-badge bg-accent/10 text-accent border border-accent/30">
+                      <Globe className="w-3 h-3 mr-1" />
+                      SSO
+                    </span>
+                  ) : (
+                    <span className="entity-badge bg-secondary text-secondary-foreground">
+                      Local
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <span className={`entity-badge ${

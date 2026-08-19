@@ -14,6 +14,7 @@ import {
   ScanSearch,
   BarChart3,
   ScrollText,
+  Fingerprint,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
@@ -121,6 +122,12 @@ const sidebarSections: SidebarSection[] = [
         title: 'RBAC Management',
         href: '/rbac',
         icon: Shield,
+        adminOnly: true,
+      },
+      {
+        title: 'Identity Providers',
+        href: '/identity-providers',
+        icon: Fingerprint,
         adminOnly: true,
       },
     ],
