@@ -66,15 +66,34 @@ else first.
    (#7) either way. Found while explaining the current auth bootstrap
    path, not via a specific test.
 
-3. [ ] **LightHouse admin API auth** (up next) — `api.admin.users_enabled: false`
-   in every `config.yaml` in this repo. The only thing protecting those
-   admin APIs today is docker-network isolation, not real access control.
-   `backend/app/routers/proxy.py` already attaches Basic Auth on every
-   proxied request, so LightHouse-side enforcement should be additive —
-   but `users_enabled: true` has never actually been tested against this
-   deployment. Needs its own design pass (does turning this on break
-   anything already relying on the current unauthenticated behavior —
-   `scripts/seed-mesh.py`/`seed-mesh2.py`, `mesh-tests/`, e2e fixtures?).
+3. [x] **LightHouse admin API auth** — `api.admin.users_enabled: true`
+   now set in all 11 `config.yaml` files. LightHouse's actual mechanism
+   is undocumented anywhere (no vendored docs — reverse-engineered from
+   strings embedded in the `oidfed/lighthouse` binary, then confirmed
+   live against a throwaway container): the flag alone enforces nothing
+   until a user exists; while zero users exist,
+   `POST /api/v1/admin/users/` is itself unauthenticated. New script
+   `scripts/bootstrap-lighthouse-admin-users.py` creates exactly one
+   admin user per instance using the credentials already flowing through
+   this codebase (`LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`,
+   `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD`) — from that point every admin
+   endpoint requires real Basic Auth, confirmed: no creds → `401`, wrong
+   creds → `401`, right creds → `200`, persists across restarts.
+   `backend/app/routers/proxy.py` and `main.py`'s capability prober
+   needed **zero** code changes — they already sent this exact Basic
+   Auth on every request. Four direct (non-proxy-mediated) callers did:
+   `scripts/seed-demo.py`, `seed-mesh.py`, `seed-mesh2.py`,
+   `generate_traffic_and_stats.sh`, and `mesh-tests/_lighthouse_client.py`
+   — all updated. `e2e/` and every Docker healthcheck needed no changes
+   (proxy-mediated / public-endpoint-only). Verified live end-to-end on
+   the full 13-container stack: pre-bootstrap open → bootstrap → 401/200
+   enforcement confirmed → idempotent re-run confirmed → all 4 scripts
+   re-run successfully → full `mesh-tests` (25/25) → full e2e (26 `@bff`
+   + 90 `@proxy`, 8 pre-existing skips) → backend restarted mid-session,
+   capability probing and the proxy both still authenticate correctly.
+   Credential strength itself is unchanged — still the same weak
+   `gateway`/`gateway` defaults, now genuinely load-bearing for the
+   first time, exactly as #5 already anticipated.
 
 4. [ ] **TLS everywhere** — every hop (browser→UI, UI→backend,
    backend→LightHouse, LightHouse→LightHouse) is plain HTTP today,

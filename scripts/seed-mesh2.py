@@ -33,6 +33,7 @@ Requires only the Python standard library.
 
 import base64
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -43,6 +44,23 @@ MESH2_TA_ADMIN = "http://localhost:8094/api/v1/admin"
 MESH2_IA_ADMIN = "http://localhost:8095/api/v1/admin"
 MESH2_LEAF_OP_ADMIN = "http://localhost:8096/api/v1/admin"
 MESH_IA_ADMIN = "http://localhost:8091/api/v1/admin"  # the *other* mesh's issuer
+
+# mesh2-* instances use distinct admin credentials from the rest of the
+# deployment (see backend/config/gateway.yaml); the MESH_IA_ADMIN call above
+# is the *other* mesh, so it needs the *other* credential pair. Run
+# scripts/bootstrap-lighthouse-admin-users.py first if you haven't
+# (PRODUCTION-READINESS.md #3).
+_LH_USER = os.environ.get("LIGHTHOUSE_ADMIN_USERNAME", "gateway")
+_LH_PASS = os.environ.get("LIGHTHOUSE_ADMIN_PASSWORD", "gateway")
+_LH2_USER = os.environ.get("LIGHTHOUSE2_ADMIN_USERNAME", "gateway2")
+_LH2_PASS = os.environ.get("LIGHTHOUSE2_ADMIN_PASSWORD", "gateway2")
+_MESH1_AUTH_HEADER = "Basic " + base64.b64encode(f"{_LH_USER}:{_LH_PASS}".encode()).decode()
+_MESH2_AUTH_HEADER = "Basic " + base64.b64encode(f"{_LH2_USER}:{_LH2_PASS}".encode()).decode()
+_MESH2_ADMIN_BASES = (MESH2_TA_ADMIN, MESH2_IA_ADMIN, MESH2_LEAF_OP_ADMIN)
+
+
+def _auth_header_for(url):
+    return _MESH2_AUTH_HEADER if url.startswith(_MESH2_ADMIN_BASES) else _MESH1_AUTH_HEADER
 
 # Public entity-configuration URL (also the host-published port).
 MESH2_TA_PUBLIC = "http://localhost:8094"
@@ -68,7 +86,11 @@ def api(method, url, body=None, content_type="application/json"):
         url,
         data=data,
         method=method,
-        headers={"Content-Type": content_type, "X-Gateway-User-Email": "seed-mesh2@demo.local"},
+        headers={
+            "Content-Type": content_type,
+            "X-Gateway-User-Email": "seed-mesh2@demo.local",
+            "Authorization": _auth_header_for(url),
+        },
     )
     try:
         with urllib.request.urlopen(req) as resp:

@@ -10,6 +10,7 @@ Requires: pip install cryptography requests (or use system Python with these)
 
 import base64
 import json
+import os
 import sys
 import urllib.request
 import urllib.error
@@ -19,6 +20,13 @@ from cryptography.hazmat.backends import default_backend
 
 TA1 = "http://localhost:8081/api/v1/admin"
 TA2 = "http://localhost:8082/api/v1/admin"
+
+# Both ta-1 and ta-2 use the same admin credentials (see
+# backend/config/gateway.yaml) — run scripts/bootstrap-lighthouse-admin-users.py
+# first if you haven't (PRODUCTION-READINESS.md #3).
+_LH_USER = os.environ.get("LIGHTHOUSE_ADMIN_USERNAME", "gateway")
+_LH_PASS = os.environ.get("LIGHTHOUSE_ADMIN_PASSWORD", "gateway")
+_AUTH_HEADER = "Basic " + base64.b64encode(f"{_LH_USER}:{_LH_PASS}".encode()).decode()
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -52,7 +60,11 @@ def api(method, url, body=None):
         url,
         data=data,
         method=method,
-        headers={"Content-Type": "application/json", "X-Gateway-User-Email": "seed-script@demo.local"},
+        headers={
+            "Content-Type": "application/json",
+            "X-Gateway-User-Email": "seed-script@demo.local",
+            "Authorization": _AUTH_HEADER,
+        },
     )
     try:
         with urllib.request.urlopen(req) as resp:

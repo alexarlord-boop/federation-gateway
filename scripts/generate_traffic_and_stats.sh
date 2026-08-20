@@ -13,6 +13,13 @@ set -euo pipefail
 TA1="http://localhost:8081"
 TA2="http://localhost:8082"
 
+# The admin stats endpoints below now require auth (PRODUCTION-READINESS.md
+# #3 — api.admin.users_enabled: true). Same credentials the backend's proxy
+# and every seed script already use; run scripts/bootstrap-lighthouse-admin-users.py
+# first if you haven't.
+LIGHTHOUSE_ADMIN_USERNAME="${LIGHTHOUSE_ADMIN_USERNAME:-gateway}"
+LIGHTHOUSE_ADMIN_PASSWORD="${LIGHTHOUSE_ADMIN_PASSWORD:-gateway}"
+
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 hit() {
@@ -89,16 +96,18 @@ print_stats() {
   local base="$2"
 
   section "Stats: $label ($base)"
-  python3 - "$base" <<'PYEOF'
-import urllib.request, urllib.error, json, sys
+  python3 - "$base" "$LIGHTHOUSE_ADMIN_USERNAME" "$LIGHTHOUSE_ADMIN_PASSWORD" <<'PYEOF'
+import base64, urllib.request, urllib.error, json, sys
 from datetime import datetime, timezone, timedelta
 
 base = sys.argv[1]
+auth_header = "Basic " + base64.b64encode(f"{sys.argv[2]}:{sys.argv[3]}".encode()).decode()
 frm  = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 def get(path):
     try:
-        r = urllib.request.urlopen(f"{base}{path}")
+        req = urllib.request.Request(f"{base}{path}", headers={"Authorization": auth_header})
+        r = urllib.request.urlopen(req)
         return json.loads(r.read())
     except urllib.error.HTTPError as e:
         print(f"  ERROR {e.code}: {e.read(120).decode()}")

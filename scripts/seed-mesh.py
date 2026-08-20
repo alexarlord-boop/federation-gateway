@@ -20,6 +20,7 @@ Requires only the Python standard library.
 
 import base64
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -32,6 +33,13 @@ MESH_LEAF_OP_ADMIN = "http://localhost:8092/api/v1/admin"
 MESH_LEAF_RP_ADMIN = "http://localhost:8093/api/v1/admin"
 MESH_IA2_ADMIN = "http://localhost:8097/api/v1/admin"
 MESH_LEAF_MULTI_ADMIN = "http://localhost:8098/api/v1/admin"
+
+# All mesh-* instances share one admin credential pair (see
+# backend/config/gateway.yaml) — run scripts/bootstrap-lighthouse-admin-users.py
+# first if you haven't (PRODUCTION-READINESS.md #3).
+_LH_USER = os.environ.get("LIGHTHOUSE_ADMIN_USERNAME", "gateway")
+_LH_PASS = os.environ.get("LIGHTHOUSE_ADMIN_PASSWORD", "gateway")
+_AUTH_HEADER = "Basic " + base64.b64encode(f"{_LH_USER}:{_LH_PASS}".encode()).decode()
 
 # Public entity-configuration URL (also the host-published port).
 MESH_TA_PUBLIC = "http://localhost:8090"
@@ -62,7 +70,11 @@ def api(method, url, body=None, content_type="application/json"):
         url,
         data=data,
         method=method,
-        headers={"Content-Type": content_type, "X-Gateway-User-Email": "seed-mesh@demo.local"},
+        headers={
+            "Content-Type": content_type,
+            "X-Gateway-User-Email": "seed-mesh@demo.local",
+            "Authorization": _AUTH_HEADER,
+        },
     )
     try:
         with urllib.request.urlopen(req) as resp:

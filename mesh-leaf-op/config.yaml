@@ -18,7 +18,7 @@ signing:
 api:
   admin:
     enabled: true
-    users_enabled: false
+    users_enabled: true
     actor_source: "header"
     actor_header: "X-Gateway-User-Email"
 

@@ -147,15 +147,14 @@ dev/demo but need addressing before any real deployment. None are
 blocking further feature/mesh work; parked here so they don't get
 rediscovered as a surprise later.
 
-- [ ] **No real user login — only local JWT accounts**  
-  Auth is JWT against accounts seeded directly in the backend's own
-  `users` table (`admin@oidfed.org` / `admin123`, `tech@example.org` /
-  `user123` — see `README.md`). An `OIDCProvider` model already exists as
-  scaffolding (`backend/app/models/oidc_provider.py`) but isn't wired to
-  a live login flow. Real external IdP federation (OIDC/SAML) is a real
-  gap, not a nice-to-have — authorization (RBAC) itself is fully
-  implemented and not affected by this (see `ARCHITECTURE.md`'s
-  Authentication & Authorization section).
+- [x] **No real user login — only local JWT accounts** — fixed, see
+  PRODUCTION-READINESS.md #1. Real OIDC authorization-code+PKCE login
+  now wired to the previously-unwired `OIDCProvider` model, admin UI at
+  `/identity-providers`, verified live against a real Keycloak instance.
+  Local JWT accounts (`admin@oidfed.org`/`admin123`,
+  `tech@example.org`/`user123`) are kept as an intentional fallback, not
+  removed. The seeded `admin@oidfed.org` bootstrap-admin credential
+  itself is a separate, still-open gap — see PRODUCTION-READINESS.md #2.
 
 - [ ] **No TLS anywhere**  
   Every service in `docker-compose.yml` — `ui`, `backend`, every
@@ -172,17 +171,29 @@ rediscovered as a surprise later.
   secrets story (Vault, cloud secrets manager, or at minimum enforced
   non-default values with no fallback) before real deployment.
 
-- [ ] **Every LightHouse node has its own admin API auth turned off**  
-  `api.admin.users_enabled: false` in every `config.yaml` in this repo
-  (`lighthouse`, `lighthouse2`, `mesh-*`, `mesh2-*`) — LightHouse itself
-  doesn't check the admin credentials above at all today; the only thing
-  protecting those admin APIs is that they're not publicly reachable,
-  which is a docker-network accident (see `docs/FEDERATION-TOPOLOGY.md`'s
-  network-separation notes), not a real security boundary. Turning this
-  on for a real deployment needs its own design pass — `backend/app/routers/proxy.py`
-  already attaches Basic Auth on every request, so LightHouse-side
-  enforcement should be additive, but this hasn't been tested with
-  `users_enabled: true` at all.
+- [x] **Every LightHouse node has its own admin API auth turned off** —
+  fixed, see PRODUCTION-READINESS.md #3. `api.admin.users_enabled: true`
+  now set in all 11 `config.yaml` files. LightHouse's actual mechanism
+  (undocumented anywhere — reverse-engineered from strings embedded in
+  the `oidfed/lighthouse` binary itself, then confirmed live): the flag
+  alone enforces nothing until a user exists; while zero users exist,
+  `POST /api/v1/admin/users/` is itself unauthenticated, so
+  `scripts/bootstrap-lighthouse-admin-users.py` (new) creates exactly one
+  admin user per instance using the credentials already flowing through
+  this codebase (`LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`,
+  `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD`) — from that point every admin
+  endpoint requires real Basic Auth. `backend/app/routers/proxy.py` and
+  `main.py`'s capability prober needed zero code changes (they already
+  sent this Basic Auth on every request); `scripts/seed-demo.py`,
+  `seed-mesh.py`, `seed-mesh2.py`, `generate_traffic_and_stats.sh`, and
+  `mesh-tests/_lighthouse_client.py` did, since they called LightHouse
+  admin endpoints directly with no auth at all. Verified live: full
+  25-test `mesh-tests` suite, full e2e suite (26 `@bff` + 90 `@proxy`,
+  8 pre-existing skips), and a mid-session backend restart, all green.
+  Credential strength itself is unchanged and still weak
+  (`gateway`/`gateway` etc.) — tracked separately under
+  PRODUCTION-READINESS.md #5 (secrets management), which already
+  anticipated this making them load-bearing for the first time.
 
 ---
 

@@ -24,6 +24,7 @@ test_metadata_policy.py's docstring), which needs the host's docker CLI.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -36,12 +37,20 @@ from _lighthouse_client import LightHouseAdmin, wait_healthy  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-MESH_TA = LightHouseAdmin("http://localhost:8090")
-MESH_IA = LightHouseAdmin("http://localhost:8091")
-MESH_LEAF_OP = LightHouseAdmin("http://localhost:8092")
-MESH_LEAF_RP = LightHouseAdmin("http://localhost:8093")
-MESH_IA2 = LightHouseAdmin("http://localhost:8097")
-MESH_LEAF_MULTI = LightHouseAdmin("http://localhost:8098")
+# All mesh-* instances share one admin credential pair (see
+# backend/config/gateway.yaml) — run scripts/bootstrap-lighthouse-admin-users.py
+# first if you haven't (PRODUCTION-READINESS.md #3).
+_MESH_AUTH = (
+    os.environ.get("LIGHTHOUSE_ADMIN_USERNAME", "gateway"),
+    os.environ.get("LIGHTHOUSE_ADMIN_PASSWORD", "gateway"),
+)
+
+MESH_TA = LightHouseAdmin("http://localhost:8090", auth=_MESH_AUTH)
+MESH_IA = LightHouseAdmin("http://localhost:8091", auth=_MESH_AUTH)
+MESH_LEAF_OP = LightHouseAdmin("http://localhost:8092", auth=_MESH_AUTH)
+MESH_LEAF_RP = LightHouseAdmin("http://localhost:8093", auth=_MESH_AUTH)
+MESH_IA2 = LightHouseAdmin("http://localhost:8097", auth=_MESH_AUTH)
+MESH_LEAF_MULTI = LightHouseAdmin("http://localhost:8098", auth=_MESH_AUTH)
 
 MESH_TA_EID = "http://mesh-ta:8080"
 MESH_IA_EID = "http://mesh-ia:8080"

@@ -47,11 +47,17 @@ class LightHouseAdmin:
     """Client for one LightHouse node's admin API + public federation
     endpoints (both live on the same base URL in this deployment)."""
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, auth: tuple[str, str] | None = None):
         self.base_url = base_url
         self.admin_base = f"{base_url}/api/v1/admin"
+        # `auth` — Basic Auth for the admin API (PRODUCTION-READINESS.md #3,
+        # api.admin.users_enabled: true). Applying it client-wide is fine:
+        # public federation endpoints ignore an Authorization header
+        # entirely, so this doesn't affect any non-admin call this client
+        # also makes (e.g. get_entity_configuration).
         self._client = httpx.Client(
             headers={"X-Gateway-User-Email": "mesh-integration-tests@demo.local"},
+            auth=auth,
             timeout=10,
         )
 

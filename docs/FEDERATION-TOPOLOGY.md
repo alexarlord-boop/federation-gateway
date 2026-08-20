@@ -54,6 +54,12 @@ give a new instance its own pair if it needs separate credentials.
          password_env: LIGHTHOUSE_ADMIN_PASSWORD
    ```
 4. Restart: `docker compose down && docker compose up --build --force-recreate`.
+5. Bootstrap its admin user (its `config.yaml` already has
+   `api.admin.users_enabled: true`, copied from `lighthouse2/config.yaml`
+   — PRODUCTION-READINESS.md #3): add it to the `INSTANCES` list in
+   `scripts/bootstrap-lighthouse-admin-users.py`, then re-run
+   `python3 scripts/bootstrap-lighthouse-admin-users.py` (idempotent —
+   only touches instances that haven't been bootstrapped yet).
 
 **`entity_id` matters more than it looks.** If this new instance ever needs
 to be reachable *from another LightHouse container* (not just from your own
@@ -93,8 +99,16 @@ configurations.
 
 ```bash
 docker compose up -d mesh-ta mesh-ia mesh-ia2 mesh-leaf-op mesh-leaf-rp mesh-leaf-multi
+python3 scripts/bootstrap-lighthouse-admin-users.py   # one-time — idempotent, safe to re-run
 python3 scripts/seed-mesh.py   # idempotent — safe to re-run
 ```
+
+Every LightHouse node's admin API now enforces real auth
+(`api.admin.users_enabled: true` — PRODUCTION-READINESS.md #3); the
+bootstrap script above creates each instance's admin user using the same
+`LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD` credentials the backend's proxy and
+every seed script already send. It must run before `seed-mesh.py` (and
+`seed-mesh2.py`, `seed-demo.py`) or those will start getting `401`s.
 
 The script registers each child as a real subordinate of its parent (using
 the child's actual public JWKS, fetched from its own entity configuration),
@@ -161,6 +175,7 @@ infrastructure.
 
 ```bash
 docker compose up -d mesh2-ta mesh2-ia mesh2-leaf-op
+python3 scripts/bootstrap-lighthouse-admin-users.py   # if you haven't already — covers mesh2 too
 python3 scripts/seed-mesh.py    # if you haven't already — mesh2's seed script reads its issuer
 python3 scripts/seed-mesh2.py   # idempotent — safe to re-run
 ```

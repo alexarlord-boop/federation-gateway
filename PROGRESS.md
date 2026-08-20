@@ -9,12 +9,38 @@ All 13 compose services (`ui`, `backend`, `lighthouse`, `lighthouse2`,
 `mesh-ta`, `mesh-ia`, `mesh-ia2`, `mesh-leaf-op`, `mesh-leaf-rp`,
 `mesh-leaf-multi`, `mesh2-ta`, `mesh2-ia`, `mesh2-leaf-op`) are up and
 healthy, spread across two docker networks (`default` + `mesh2net`,
-`backend` on both — see `docs/FEDERATION-TOPOLOGY.md`). Full e2e suite
-(90 passing + 8 pre-existing, testbed-dependent skips) and full backend
-pytest suite (105 tests) both green as of the last verification pass.
+`backend` on both — see `docs/FEDERATION-TOPOLOGY.md`). Every LightHouse
+node's admin API now enforces real auth (`api.admin.users_enabled: true`
+— run `python3 scripts/bootstrap-lighthouse-admin-users.py` once after
+bringing the stack up, before any seed script). Full e2e suite (90
+passing + 8 pre-existing, testbed-dependent skips), full `mesh-tests`
+suite (25 tests), and full backend pytest suite (118 tests) all green as
+of the last verification pass.
 
 ## Recently completed
 
+- **LightHouse admin API auth — PRODUCTION-READINESS.md #3**: turned on
+  `api.admin.users_enabled: true` in all 11 `config.yaml` files.
+  LightHouse's actual auth mechanism has no docs anywhere (external Go
+  binary) — reverse-engineered by extracting an embedded OpenAPI spec
+  from strings in the `oidfed/lighthouse` binary itself, then confirmed
+  live: `users_enabled` alone enforces nothing until a user exists;
+  while zero users exist, `POST /api/v1/admin/users/` is itself
+  unauthenticated (bootstrapping), and the instant one is created, every
+  admin endpoint requires real Basic Auth. New
+  `scripts/bootstrap-lighthouse-admin-users.py` creates that one user
+  per instance using the credentials already flowing through this
+  codebase, so `backend/app/routers/proxy.py` and the backend's own
+  capability prober needed zero code changes — they already sent this
+  exact Basic Auth on every request. Four direct callers that didn't
+  (`scripts/seed-demo.py`, `seed-mesh.py`, `seed-mesh2.py`,
+  `generate_traffic_and_stats.sh`, `mesh-tests/_lighthouse_client.py`)
+  got it added. Verified live on the full stack: pre-bootstrap open →
+  bootstrap → 401/200 enforcement → idempotent re-run → all four scripts
+  re-run clean → full `mesh-tests` (25/25) → full e2e (26 `@bff` + 90
+  `@proxy`) → backend restarted mid-session, still authenticates
+  correctly. `docs/FEDERATION-TOPOLOGY.md` updated with the new
+  bootstrap step in every documented setup sequence.
 - **Real user login via OIDC — PRODUCTION-READINESS.md #1**: replaced the
   fake "Sign in with OIDC" stub (`LoginPage.tsx` used to just log in as
   the demo admin) with a real authorization-code+PKCE flow against
@@ -188,11 +214,12 @@ notes).
 
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
-hand to a real federation admin. #1 (real user login) is done. #2
-(bootstrap admin credential — the seeded `admin@oidfed.org`/`admin123`
-account is the only path to `super_admin`, no rotation/invite flow) was
-added while explaining the auth bootstrap path, but is intentionally
-*not* next — LightHouse admin API auth (#3) stays the active next item,
-then TLS → secrets management → backup/restore → deployment docs. The
-`/resolve`-ignores-blocked-status LightHouse bug is tracked there as a
-handover item, not buildable in this repo.
+hand to a real federation admin. #1 (real user login) and #3 (LightHouse
+admin API auth) are both done. #2 (bootstrap admin credential — the
+seeded `admin@oidfed.org`/`admin123` account is the only path to
+`super_admin`, no rotation/invite flow) is still open and not yet
+scheduled. Next up: #4 (TLS everywhere) → #5 (secrets management,
+which now also covers `LIGHTHOUSE_ADMIN_*`/`LIGHTHOUSE2_ADMIN_*` being
+genuinely load-bearing since #3 landed) → #6 (backup/restore) → #7
+(deployment docs). The `/resolve`-ignores-blocked-status LightHouse bug
+is tracked there as a handover item, not buildable in this repo.
