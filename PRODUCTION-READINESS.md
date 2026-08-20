@@ -52,7 +52,21 @@ else first.
    at every startup. Never caught before because nothing had called it
    a second time mid-session until this verification pass did.
 
-2. [ ] **LightHouse admin API auth** — `api.admin.users_enabled: false`
+2. [ ] **Bootstrap admin credential** — the *only* path to `super_admin`
+   is the seeded `admin@oidfed.org`/`admin123` local account
+   (`backend/app/db/seed.py`, fires once against an empty DB) plus
+   `rbac_seed.py`'s one-time legacy migration that assigns it
+   `super_admin` on first boot. There's no invite flow, no forced
+   password rotation or change-on-first-login, and no supported way to
+   disable/rotate that seeded account short of editing the DB directly.
+   A real deployment needs at least one of: a forced-rotation/change-
+   on-first-login flow, an explicit "bootstrap complete, disable seed
+   account" step, or a documented way to set a non-default password at
+   first startup via env var — plus a loud callout in deployment docs
+   (#7) either way. Found while explaining the current auth bootstrap
+   path, not via a specific test.
+
+3. [ ] **LightHouse admin API auth** (up next) — `api.admin.users_enabled: false`
    in every `config.yaml` in this repo. The only thing protecting those
    admin APIs today is docker-network isolation, not real access control.
    `backend/app/routers/proxy.py` already attaches Basic Auth on every
@@ -62,24 +76,24 @@ else first.
    anything already relying on the current unauthenticated behavior —
    `scripts/seed-mesh.py`/`seed-mesh2.py`, `mesh-tests/`, e2e fixtures?).
 
-3. [ ] **TLS everywhere** — every hop (browser→UI, UI→backend,
+4. [ ] **TLS everywhere** — every hop (browser→UI, UI→backend,
    backend→LightHouse, LightHouse→LightHouse) is plain HTTP today,
    including between containers. No cert termination configured anywhere
    in this repo (reverse proxy, sidecar, or otherwise).
 
-4. [ ] **Secrets management** — `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`
+5. [ ] **Secrets management** — `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`
    and `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD` are plain env vars with
    weak hardcoded defaults (`gateway`/`gateway`, `gateway2`/`gateway2`,
    `docker-compose.yml`), no secrets-manager integration. Needs a real
    secrets story (Vault, cloud secrets manager, or at minimum enforced
    non-default values with no fallback) before real deployment. Overlaps
-   with #2 — turning on LightHouse-side auth makes these credentials
+   with #3 — turning on LightHouse-side auth makes these credentials
    actually load-bearing for the first time, raising the stakes on
    getting this right together. `OIDC_ENCRYPTION_KEY` (added for #1, the
    Fernet key encrypting stored IdP client secrets) has the exact same
    dev-default-in-`docker-compose.yml` problem — same fix, same place.
 
-5. [ ] **Backup/restore** — no snapshot/restore procedure documented or
+6. [ ] **Backup/restore** — no snapshot/restore procedure documented or
    automated anywhere for `backend/data/backend.db` (users, RBAC config,
    audit history, instance registry) or any LightHouse node's
    `data/lighthouse.db` + `data/keys/` (federation state, signing keys —
@@ -87,10 +101,10 @@ else first.
    losing a database, since it can't be regenerated to the same identity).
    Not found via gap-testing — just never built.
 
-6. [ ] **Deployment docs** — `docs/GETTING-STARTED.md`/`README.md` walk
+7. [ ] **Deployment docs** — `docs/GETTING-STARTED.md`/`README.md` walk
    through running the bundled demo mesh (`mesh-*`/`mesh2-*`, seeded
    local accounts), not "how do I point this at my federation's real
-   LightHouse instances with real credentials." Depends on #1-#5 landing
+   LightHouse instances with real credentials." Depends on #1-#6 landing
    first — a deployment guide written before the auth/TLS/secrets story
    is real would just be documenting the gaps.
 
@@ -103,7 +117,7 @@ else first.
   picks this deployment up, but it's an upstream LightHouse bug, not
   something buildable in this repo. Re-check `docs/KNOWN-ISSUES.md` for
   fix status before considering this deployment-ready regardless of where
-  the other 6 items stand.
+  the other items stand.
 
 ---
 
@@ -114,6 +128,6 @@ else first.
   organizations sharing one deployment. Not a gap unless that model
   changes.
 - Rate limiting / DoS protection on the backend's own API — not
-  evaluated yet; not clear it's actually needed before #1-#6, revisit
+  evaluated yet; not clear it's actually needed before #1-#7, revisit
   once real auth exists (rate limiting an unauthenticated demo endpoint
   is a different problem than rate limiting a real login).

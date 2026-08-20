@@ -188,8 +188,11 @@ notes).
 
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
-hand to a real federation admin. #1 (real user login) is done — next up
-is LightHouse admin API auth (#2), then TLS → secrets management →
-backup/restore → deployment docs. The `/resolve`-ignores-blocked-status
-LightHouse bug is tracked there as a handover item, not buildable in this
-repo.
+hand to a real federation admin. #1 (real user login) is done. #2
+(bootstrap admin credential — the seeded `admin@oidfed.org`/`admin123`
+account is the only path to `super_admin`, no rotation/invite flow) was
+added while explaining the auth bootstrap path, but is intentionally
+*not* next — LightHouse admin API auth (#3) stays the active next item,
+then TLS → secrets management → backup/restore → deployment docs. The
+`/resolve`-ignores-blocked-status LightHouse bug is tracked there as a
+handover item, not buildable in this repo.
