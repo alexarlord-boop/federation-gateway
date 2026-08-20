@@ -11,13 +11,11 @@ Everything else (comments, the VITE_* frontend section, usernames that
 already have a real default) is copied through unchanged.
 
 Run:  python3 scripts/generate-secrets.py [--force]
-Requires: cryptography (already a backend dependency — see
-backend/requirements.txt; run inside the repo's Python env or via
-`docker run --rm -v "$(pwd):/repo" -w /repo python:3.11-slim sh -c
-"pip install -q cryptography && python3 scripts/generate-secrets.py"`
-if you don't have it installed locally).
+Requires only the Python standard library.
 """
 
+import base64
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -28,9 +26,12 @@ ENV_FILE = REPO_ROOT / ".env"
 
 
 def _generate_fernet_key() -> str:
-    from cryptography.fernet import Fernet
-
-    return Fernet.generate_key().decode()
+    # A Fernet key is exactly `base64.urlsafe_b64encode(os.urandom(32))` —
+    # cryptography.fernet.Fernet.generate_key()'s own implementation, right
+    # down to the byte count. No need for the `cryptography` package just to
+    # produce one; it's only needed to *use* the key (backend/app/auth/crypto.py),
+    # not to generate it, and this script otherwise has zero dependencies.
+    return base64.urlsafe_b64encode(os.urandom(32)).decode()
 
 
 # Maps each placeholder KEY to a generator function producing its real value.
