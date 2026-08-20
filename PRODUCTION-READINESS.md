@@ -52,19 +52,39 @@ else first.
    at every startup. Never caught before because nothing had called it
    a second time mid-session until this verification pass did.
 
-2. [ ] **Bootstrap admin credential** — the *only* path to `super_admin`
-   is the seeded `admin@oidfed.org`/`admin123` local account
-   (`backend/app/db/seed.py`, fires once against an empty DB) plus
-   `rbac_seed.py`'s one-time legacy migration that assigns it
-   `super_admin` on first boot. There's no invite flow, no forced
-   password rotation or change-on-first-login, and no supported way to
-   disable/rotate that seeded account short of editing the DB directly.
-   A real deployment needs at least one of: a forced-rotation/change-
-   on-first-login flow, an explicit "bootstrap complete, disable seed
-   account" step, or a documented way to set a non-default password at
-   first startup via env var — plus a loud callout in deployment docs
-   (#7) either way. Found while explaining the current auth bootstrap
-   path, not via a specific test.
+2. [x] **Bootstrap admin credential** — scoped to "configurable password
+   via `.env`, fail-closed" (user's call, 2026-08-20 — smallest of the
+   three options the original writeup listed; forced-rotation/change-
+   on-first-login and a disable-after-bootstrap flow are both explicitly
+   *not* built here). `backend/app/db/seed.py` no longer hardcodes
+   `admin123` in source — it reads `ADMIN_BOOTSTRAP_PASSWORD`, wired
+   through `.env.example`/`docker-compose.yml` the same fail-closed way
+   as #5's other secrets. Deliberately different from those, though:
+   `.env.example` keeps it as the literal `admin123` default and
+   `scripts/generate-secrets.py` does *not* randomize it — it's a
+   human-typed login credential (the demo/tests need it to stay
+   predictable), not a machine-to-machine secret, unlike everything else
+   #5 touched. `docker-compose.yml` still requires it to be *explicitly
+   present* in `.env` (no fallback there), which is what actually closes
+   the gap: the old hardcoded Python default is gone, and a real
+   deployer copying `.env.example` is looking straight at "admin123" —
+   impossible to miss the way a silent code-level default was. A
+   code-level fallback (also `"admin123"`) stays in `seed.py` for
+   non-compose runs, same split `JWT_SECRET` already uses. Found and
+   fixed a real, pre-existing CI gap while wiring this in: `.github/
+   workflows/ci.yml`'s `e2e-bff`/`e2e-full` jobs ran `docker compose up`
+   with no `.env` and no secrets-generation step at all — harmless
+   before #5 (weak defaults covered it silently) but would have hard-failed
+   the instant #5's changes were ever pushed; added a `generate-secrets.py`
+   step to both jobs. Verified live: full pytest suite (118) on a fresh
+   per-test DB confirms the new env-var-driven seeding produces a working
+   default login; a standalone fresh-DB container with a custom
+   `ADMIN_BOOTSTRAP_PASSWORD` proved the override *actually* takes effect
+   (old default rejected, custom password accepted) — not just that the
+   default still works; full stack rebuilt, existing seeded DB
+   unaffected (only fresh DBs re-seed) and still logs in with `admin123`
+   as documented; BFF e2e (26/26) and full e2e (90/98, 8 pre-existing
+   skips) both green.
 
 3. [x] **LightHouse admin API auth** — `api.admin.users_enabled: true`
    now set in all 11 `config.yaml` files. LightHouse's actual mechanism

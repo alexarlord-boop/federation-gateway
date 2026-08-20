@@ -30,6 +30,13 @@ services:
       # compose); non-compose runs (tests, LOCAL-DEVELOPMENT.md) still hit
       # that code-level fallback, which is fine for those.
       JWT_SECRET: ${JWT_SECRET:?Set in .env — run python3 scripts/generate-secrets.py or see .env.example}
+      # Seeded admin@oidfed.org login password (PRODUCTION-READINESS.md #2)
+      # — was hardcoded in backend/app/db/seed.py with no override at all;
+      # this is the only path to super_admin on a fresh DB. Code-level
+      # fallback stays "admin123" for non-compose runs (same split as
+      # JWT_SECRET above) — real deployments must consciously set this to
+      # something real, same as every other var here.
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:?Set in .env — run python3 scripts/generate-secrets.py or see .env.example}
       # Where the OIDC callback redirects the browser back to after login.
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
     volumes:

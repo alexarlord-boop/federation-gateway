@@ -14,6 +14,7 @@ os.environ.setdefault("LIGHTHOUSE2_ADMIN_USERNAME", "test-admin2")
 os.environ.setdefault("LIGHTHOUSE2_ADMIN_PASSWORD", "test-password2")
 os.environ.setdefault("OIDC_ENCRYPTION_KEY", "2Qxngk9sClRgXBNngZO5Kdssls8Ox92p079PuWQeA9Q=")
 os.environ.setdefault("FRONTEND_URL", "http://frontend.test")
+os.environ.setdefault("ADMIN_BOOTSTRAP_PASSWORD", "admin123")
 
 import pytest
 from fastapi.testclient import TestClient

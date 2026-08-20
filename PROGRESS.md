@@ -24,6 +24,25 @@ last verification pass.
 
 ## Recently completed
 
+- **Bootstrap admin credential — PRODUCTION-READINESS.md #2**:
+  `backend/app/db/seed.py` no longer hardcodes `admin123` — reads
+  `ADMIN_BOOTSTRAP_PASSWORD`, fail-closed in `docker-compose.yml` like
+  #5's other secrets, but deliberately *not* randomized by
+  `generate-secrets.py` (it's a human-typed login, demo/tests need it
+  predictable, unlike #5's machine-to-machine secrets) — `.env.example`
+  keeps it as the visible, documented `admin123` default. Forced
+  password rotation / a disable-after-bootstrap flow explicitly not
+  built (user's choice — smallest of the three options the item
+  originally listed). Found and fixed a real pre-existing CI gap along
+  the way: `.github/workflows/ci.yml`'s e2e jobs ran `docker compose up`
+  with no `.env`/secrets step at all — harmless before #5, would have
+  hard-failed the moment these commits were ever pushed. Verified live:
+  full pytest (118) on a fresh per-test DB, a standalone fresh-DB
+  container proving a custom `ADMIN_BOOTSTRAP_PASSWORD` actually
+  overrides the default (old default rejected, custom one accepted),
+  full stack rebuilt with the existing seeded DB unaffected, BFF e2e
+  (26/26) and full e2e (90/98, 8 pre-existing skips) green.
+
 - **Backup/restore — PRODUCTION-READINESS.md #6**: new `scripts/backup.py`
   snapshots `backend.db` + every LightHouse instance's `lighthouse.db` +
   signing keys into one timestamped `tar.gz`, using SQLite's online
@@ -272,13 +291,12 @@ notes).
 
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
-hand to a real federation admin. #1 (real user login), #3 (LightHouse
-admin API auth), #4 (TLS everywhere, documentation-only by choice), #5
-(secrets management, fail-closed-on-weak-defaults by choice), and #6
-(backup/restore) are all done. #2 (bootstrap admin credential — the
-seeded `admin@oidfed.org`/`admin123` account is the only path to
-`super_admin`, no rotation/invite flow) is still open and not yet
-scheduled. Next up: #7 (deployment docs) — the last item, deliberately,
-since writing it before the rest was real would just have documented
-gaps. The `/resolve`-ignores-blocked-status LightHouse bug is tracked
+hand to a real federation admin. #1–#6 are all done (#1 real user login,
+#2 bootstrap admin credential — configurable-password-only by choice, no
+forced rotation, #3 LightHouse admin API auth, #4 TLS everywhere —
+documentation-only by choice, #5 secrets management —
+fail-closed-on-weak-defaults by choice, #6 backup/restore). Only #7
+(deployment docs) is left — the last item, deliberately, since writing
+it before the rest was real would just have documented gaps. The
+`/resolve`-ignores-blocked-status LightHouse bug is tracked
 there as a handover item, not buildable in this repo.

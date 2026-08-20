@@ -1,3 +1,4 @@
+import os
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.db.database import SessionLocal
@@ -7,6 +8,12 @@ from app.models.tenant import Tenant
 from app.auth.security import get_password_hash
 from app.config.deployment import DeploymentConfig
 import json
+
+# Only a code-level fallback for non-docker-compose runs (LOCAL-DEVELOPMENT.md's
+# direct `uvicorn` flow, tests) — docker-compose.yml itself has no fallback
+# and fails closed if ADMIN_BOOTSTRAP_PASSWORD isn't set (PRODUCTION-READINESS.md
+# #2), same split JWT_SECRET already uses in backend/app/auth/security.py.
+_ADMIN_BOOTSTRAP_PASSWORD = os.environ.get("ADMIN_BOOTSTRAP_PASSWORD", "admin123")
 
 # Prefix used to flag trust anchors that are owned by the deployment config.
 # The trust_anchors router reads this same prefix to compute deployment_managed.
@@ -23,7 +30,7 @@ def seed_data(instance_config: Optional[DeploymentConfig] = None):
                 email="admin@oidfed.org",
                 name="Federation Admin",
                 role="admin",
-                password_hash=get_password_hash("admin123"),
+                password_hash=get_password_hash(_ADMIN_BOOTSTRAP_PASSWORD),
             )
             user = User(
                 id="2",

@@ -46,6 +46,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
           restore-keys: playwright-chromium-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate .env
+        # docker compose up fails closed without one (PRODUCTION-READINESS.md
+        # #5/#2) — cryptography is the only non-stdlib dep generate-secrets.py needs.
+        run: pip install -q cryptography && python3 scripts/generate-secrets.py
       - name: Start full stack and wait for healthchecks
         run: docker compose up -d --wait --wait-timeout 120
       - name: Install e2e deps
@@ -75,6 +82,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('e2e/package-lock.json') }}
           restore-keys: playwright-chromium-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate .env
+        # docker compose up fails closed without one (PRODUCTION-READINESS.md
+        # #5/#2) — cryptography is the only non-stdlib dep generate-secrets.py needs.
+        run: pip install -q cryptography && python3 scripts/generate-secrets.py
       - name: Start full stack and wait for healthchecks
         run: docker compose up -d --wait --wait-timeout 120
       - name: Install e2e deps

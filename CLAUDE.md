@@ -18,7 +18,10 @@ python3 scripts/generate-secrets.py   # one-time — see hard constraint 12
 docker compose up -d --build
 ```
 
-Opens at http://localhost:8080. Login: `admin@oidfed.org` / `admin123`.
+Opens at http://localhost:8080. Login: `admin@oidfed.org` / `admin123`
+(the default in `.env.example` — configurable via `ADMIN_BOOTSTRAP_PASSWORD`,
+see hard constraint 12; this is the only path to `super_admin` on a fresh
+DB, PRODUCTION-READINESS.md #2).
 Brings up 13 containers: `ui`, `backend`, two standalone LightHouse trust
 anchors (`lighthouse`, `lighthouse2`), a 6-node LightHouse mesh
 (`mesh-ta`/`mesh-ia`/`mesh-ia2`/`mesh-leaf-op`/`mesh-leaf-rp`/`mesh-leaf-multi`)
@@ -65,9 +68,12 @@ for multi-hop and multi-parent testing, and a second, fully independent
     static container DNS names map onto that model directly.
 12. **`docker compose up` fails closed without a root `.env`.**
     `LIGHTHOUSE_ADMIN_*`/`LIGHTHOUSE2_ADMIN_*`/`OIDC_ENCRYPTION_KEY`/
-    `JWT_SECRET` have no fallback defaults (PRODUCTION-READINESS.md #5) —
-    run `python3 scripts/generate-secrets.py` once (writes a gitignored
-    `.env`) before the first `docker compose up`.
+    `JWT_SECRET`/`ADMIN_BOOTSTRAP_PASSWORD` have no fallback defaults
+    (PRODUCTION-READINESS.md #5/#2) — run
+    `python3 scripts/generate-secrets.py` once (writes a gitignored
+    `.env`) before the first `docker compose up`. Unlike the others,
+    `ADMIN_BOOTSTRAP_PASSWORD` stays `admin123` in `.env.example` and is
+    never randomized — it's a human-typed login, not a machine secret.
 
 ## Verification (run before calling anything done)
 

@@ -95,6 +95,10 @@ instances:
 | Admin | `admin@oidfed.org` | `admin123` |
 | User | `tech@example.org` | `user123` |
 
+The admin password is configurable (`ADMIN_BOOTSTRAP_PASSWORD` in
+`.env`) — it's the only path to `super_admin` on a fresh database, so
+change it before any real deployment. See `PRODUCTION-READINESS.md` #2.
+
 ---
 
 ## Quick start

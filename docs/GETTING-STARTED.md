@@ -33,6 +33,9 @@ Open **http://localhost:8080** and log in:
 | Admin | `admin@oidfed.org` | `admin123` |
 | Regular user | `tech@example.org` | `user123` |
 
+(admin password is `ADMIN_BOOTSTRAP_PASSWORD` in `.env` — change it
+before any real deployment, see `PRODUCTION-READINESS.md` #2)
+
 **You'll land with no instance selected on purpose** — the UI never
 auto-picks one. Use the instance switcher at the top of the sidebar and
 choose **LightHouse** (or **LightHouse 2**) before anything else will load
