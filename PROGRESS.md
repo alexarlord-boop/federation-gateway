@@ -24,6 +24,20 @@ last verification pass.
 
 ## Recently completed
 
+- **Deployment docs — PRODUCTION-READINESS.md #7 (last item)**: new
+  `docs/DEPLOYMENT.md` — pointing the same `ui`+`backend` app at a real
+  LightHouse instance instead of the bundled demo mesh, synthesizing
+  #1–#6 into one guide rather than adding new mechanism (docs-only, no
+  code). Explicit about only `ui`/`backend` being "this app" — the
+  Docker-Compose-not-Kubernetes constraint (#11) is about LightHouse's
+  `entity_id` identity binding specifically, doesn't apply to the
+  gateway itself. `docs/GETTING-STARTED.md` and `README.md` both got a
+  one-line pointer to it. `PRODUCTION-READINESS.md` #1–#7 are all now
+  closed (#2's forced-rotation/disable-account gap and #4's/#5's
+  documentation-only scope remain exactly as those items describe —
+  "closed" means "scoped and shipped what was chosen," not "zero
+  remaining risk," and each item's own text says so).
+
 - **Bootstrap admin credential — PRODUCTION-READINESS.md #2**:
   `backend/app/db/seed.py` no longer hardcodes `admin123` — reads
   `ADMIN_BOOTSTRAP_PASSWORD`, fail-closed in `docker-compose.yml` like
@@ -289,14 +303,17 @@ constraint enforcement becomes a priority later, see that file's
 testing — that was a corrected assumption, see the file's investigation
 notes).
 
-Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
-own ranking, 2026-08-19) for what's left before this deployment is safe to
-hand to a real federation admin. #1–#6 are all done (#1 real user login,
-#2 bootstrap admin credential — configurable-password-only by choice, no
-forced rotation, #3 LightHouse admin API auth, #4 TLS everywhere —
-documentation-only by choice, #5 secrets management —
-fail-closed-on-weak-defaults by choice, #6 backup/restore). Only #7
-(deployment docs) is left — the last item, deliberately, since writing
-it before the rest was real would just have documented gaps. The
-`/resolve`-ignores-blocked-status LightHouse bug is tracked
-there as a handover item, not buildable in this repo.
+`PRODUCTION-READINESS.md` — the priority-ordered checklist (user's own
+ranking, 2026-08-19) for what's left before this deployment is safe to
+hand to a real federation admin — is now fully checked off (#1 real user
+login, #2 bootstrap admin credential, #3 LightHouse admin API auth, #4
+TLS everywhere, #5 secrets management, #6 backup/restore, #7 deployment
+docs). No open PRODUCTION-READINESS.md items remain as of 2026-08-20.
+That doesn't mean zero remaining risk — several items were deliberately
+scoped narrower than "fully solved" (see each item's own text): #2 has
+no forced password rotation or account-disable flow, #4 and #5 are
+documentation/fail-closed-only rather than full TLS/secrets-manager
+integration, and the "Tracked, not actionable here" section still has
+LightHouse's `/resolve`-ignores-blocked-status bug as an upstream
+handover item. No new priority list has been set since — check back with
+whoever's driving this next on what (if anything) comes after.

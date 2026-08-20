@@ -159,6 +159,9 @@ per-instance) — who can do what across this whole deployment.
 
 ## 4. Where to go deeper
 
+- **`DEPLOYMENT.md`** — this tour is the bundled demo mesh with seeded
+  local accounts. Pointing this at your own real LightHouse instance(s)
+  with real credentials and real login is a different (short) doc.
 - **`KNOWN-ISSUES.md`** — an honest, continuously-updated list of what's
   fixed, what's a known gap in our own code, and what needs upstream
   LightHouse/OIDFed collaboration. Read this before assuming something

@@ -182,6 +182,7 @@ proxies to a real federation node (LightHouse) and owns its own concerns
 - **[`PROGRESS.md`](PROGRESS.md)** — current state, recent work, known blockers
 - **[`PRODUCTION-READINESS.md`](PRODUCTION-READINESS.md)** — priority-ordered checklist of what's left before this is safe to hand to a real federation admin
 - **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** — one-page tour for newcomers and operators: run it, then use it
+- **[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** — pointing this at your own real LightHouse instance(s) instead of the bundled demo mesh
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — system architecture and design
 - **[`docs/CAPABILITY-DISCOVERY.md`](docs/CAPABILITY-DISCOVERY.md)** — backend capability system
 - **[`docs/KNOWN-ISSUES.md`](docs/KNOWN-ISSUES.md)** — maintained list of fixed bugs, known gaps, and upstream LightHouse/OIDFed issues

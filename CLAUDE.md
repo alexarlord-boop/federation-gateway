@@ -111,7 +111,8 @@ live check), not just a green typecheck.
 
 ## Topic docs (`docs/`)
 
-- `GETTING-STARTED.md` — human tour: run it, then use it
+- `GETTING-STARTED.md` — human tour: run it, then use it (bundled demo mesh)
+- `DEPLOYMENT.md` — pointing this at a real LightHouse instance instead of the demo mesh
 - `ARCHITECTURE.md` — system design, component responsibilities
 - `CAPABILITY-DISCOVERY.md` — how the capability manifest drives dynamic UI adaptation
 - `KNOWN-ISSUES.md` — read before assuming something broken is a new bug; also this project's de facto feature/gap tracker

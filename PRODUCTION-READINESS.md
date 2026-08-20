@@ -212,12 +212,25 @@ else first.
    that the files exist. Full `mesh-tests` (25/25) and BFF e2e (26/26)
    green afterward.
 
-7. [ ] **Deployment docs** — `docs/GETTING-STARTED.md`/`README.md` walk
-   through running the bundled demo mesh (`mesh-*`/`mesh2-*`, seeded
-   local accounts), not "how do I point this at my federation's real
-   LightHouse instances with real credentials." Depends on #1-#6 landing
-   first — a deployment guide written before the auth/TLS/secrets story
-   is real would just be documenting the gaps.
+7. [x] **Deployment docs** — new `docs/DEPLOYMENT.md`: pointing the same
+   `ui`+`backend` application at a real LightHouse instance instead of
+   the bundled demo mesh. Explicit about what's actually "this app" (only
+   `ui`/`backend` — the mesh containers are demo fixtures, and
+   `entity_id`'s identity constraints that force Docker Compose for
+   LightHouse per constraint #11 don't apply to the gateway itself, which
+   can run under any orchestration) vs. what's the deployer's own
+   infrastructure (the real LightHouse instance(s), a real secrets
+   manager, TLS termination, backup storage — each pointed at the doc
+   that already covers it: #3, #5, #4, #6 respectively). Covers
+   `gateway.yaml`'s static (no admin-UI) instance-list model concretely,
+   the bootstrap-off-the-seeded-admin-account sequence with real OIDC
+   from #1, and a pre-launch checklist. `docs/GETTING-STARTED.md` and
+   `README.md` both got a one-line pointer to it, closing the literal
+   complaint this item opened with — those two docs no longer look like
+   they're *all* there is. This is docs-only, synthesizing #1–#6 rather
+   than adding new mechanism, so verification is a read-through for
+   internal consistency against what those items actually built, not a
+   test run.
 
 ## Tracked, not actionable here (handover)
 
