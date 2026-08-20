@@ -19,6 +19,16 @@ of the last verification pass.
 
 ## Recently completed
 
+- **TLS everywhere — PRODUCTION-READINESS.md #4**: scoped to
+  documentation-only by explicit user choice — new `docs/TLS.md`
+  explains why (LightHouse's `entity_id` is the entity's cryptographic
+  identity, not a connection address, so LightHouse-to-LightHouse TLS
+  can't be retrofitted onto the already-seeded demo mesh without
+  invalidating every trust chain in it) and lays out real guidance
+  per hop for whoever deploys this for real. No code changed. Also
+  fixed a stale item-number cross-reference in `docker-compose.yml`
+  (`OIDC_ENCRYPTION_KEY`'s comment pointed at #4 instead of #5, left
+  over from the #2 bootstrap-admin-credential insertion).
 - **LightHouse admin API auth — PRODUCTION-READINESS.md #3**: turned on
   `api.admin.users_enabled: true` in all 11 `config.yaml` files.
   LightHouse's actual auth mechanism has no docs anywhere (external Go
@@ -214,12 +224,13 @@ notes).
 
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
-hand to a real federation admin. #1 (real user login) and #3 (LightHouse
-admin API auth) are both done. #2 (bootstrap admin credential — the
-seeded `admin@oidfed.org`/`admin123` account is the only path to
-`super_admin`, no rotation/invite flow) is still open and not yet
-scheduled. Next up: #4 (TLS everywhere) → #5 (secrets management,
-which now also covers `LIGHTHOUSE_ADMIN_*`/`LIGHTHOUSE2_ADMIN_*` being
-genuinely load-bearing since #3 landed) → #6 (backup/restore) → #7
-(deployment docs). The `/resolve`-ignores-blocked-status LightHouse bug
-is tracked there as a handover item, not buildable in this repo.
+hand to a real federation admin. #1 (real user login), #3 (LightHouse
+admin API auth), and #4 (TLS everywhere, documentation-only by choice)
+are done. #2 (bootstrap admin credential — the seeded
+`admin@oidfed.org`/`admin123` account is the only path to `super_admin`,
+no rotation/invite flow) is still open and not yet scheduled. Next up:
+#5 (secrets management — now also covers `LIGHTHOUSE_ADMIN_*`/
+`LIGHTHOUSE2_ADMIN_*` being genuinely load-bearing since #3 landed) →
+#6 (backup/restore) → #7 (deployment docs). The
+`/resolve`-ignores-blocked-status LightHouse bug is tracked there as a
+handover item, not buildable in this repo.

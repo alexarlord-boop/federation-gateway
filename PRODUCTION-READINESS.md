@@ -95,10 +95,30 @@ else first.
    `gateway`/`gateway` defaults, now genuinely load-bearing for the
    first time, exactly as #5 already anticipated.
 
-4. [ ] **TLS everywhere** — every hop (browser→UI, UI→backend,
-   backend→LightHouse, LightHouse→LightHouse) is plain HTTP today,
-   including between containers. No cert termination configured anywhere
-   in this repo (reverse proxy, sidecar, or otherwise).
+4. [x] **TLS everywhere** — scoped to documentation-only, deliberately
+   (user's call, 2026-08-20): see `docs/TLS.md`, new. Every hop is still
+   plain HTTP in the bundled demo stack — nothing here changes that. The
+   real finding is why this doesn't decompose into one build task:
+   LightHouse's `entity_id` is not a connection address, it's the
+   entity's cryptographic identity in the federation (`CLAUDE.md`
+   constraints #2/#11) — every subordinate registration and trust mark
+   in the seeded demo mesh is signed against literal `http://mesh-ta:8080`-
+   style strings, so changing scheme is an identity change, not a
+   transport tweak, and can't be retrofitted or migrated in place.
+   Browser→UI and UI→backend stay genuinely retrofittable (real reverse
+   proxy/ingress + real cert, standard pattern, no identity semantics).
+   backend→LightHouse (admin API, not federation-protocol — a separate
+   config field from `entity_id`) is also transport-only but would need
+   LightHouse's `admin_tls` config schema verified first (spotted in the
+   binary's strings during #3's reverse-engineering, never confirmed
+   live) plus `verify=` added to `proxy.py`/`capability_probe.py`'s
+   httpx clients (neither passes it today). LightHouse-to-LightHouse
+   federation-protocol TLS is the one that can't be bolted on after the
+   fact: a real deployment needs real HTTPS entity_ids from the very
+   first entity configuration it ever publishes, never `http://` now
+   with a migration plan — the bundled demo mesh is explicitly not
+   meant to be "upgraded" to this, it's disposable-by-design test
+   fixture data. Full breakdown and a per-hop table in `docs/TLS.md`.
 
 5. [ ] **Secrets management** — `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`
    and `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD` are plain env vars with

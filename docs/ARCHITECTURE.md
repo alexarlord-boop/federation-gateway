@@ -259,7 +259,7 @@ Access:
 
 ### Production Deployment (Planned)
 
-Not yet built. Aspirational direction: container orchestration (Kubernetes), a managed Postgres instead of SQLite for the backend's own data, TLS termination, and — most importantly — real OIDC/SAML federation for login instead of local accounts. RBAC and audit logging, previously listed here as "planned," are already implemented; what remains genuinely planned is federated identity and horizontal scaling of the backend itself.
+Not yet built. Aspirational direction: container orchestration (Kubernetes), a managed Postgres instead of SQLite for the backend's own data, and SAML federation for login alongside the OIDC support that already exists (see `PRODUCTION-READINESS.md` #1). TLS termination guidance now exists (`docs/TLS.md`) but isn't implemented in the bundled demo stack — LightHouse's `entity_id` is a cryptographic identity, not just a connection address, so it needs to be right from a real deployment's first seed rather than retrofitted. RBAC, audit logging, and real user login, previously listed here as "planned," are already implemented; what remains genuinely planned is SAML support and horizontal scaling of the backend itself.
 
 ## Technology Decisions
 

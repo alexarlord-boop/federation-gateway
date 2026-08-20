@@ -20,7 +20,7 @@ services:
       DATABASE_URL: sqlite:////data/backend.db
       # Fernet key for OIDC provider client_secret encryption at rest. This
       # dev default is fine for local/demo use only — see
-      # PRODUCTION-READINESS.md #4 (secrets management) before real
+      # PRODUCTION-READINESS.md #5 (secrets management) before real
       # deployment. Rotating it invalidates any already-stored secrets.
       OIDC_ENCRYPTION_KEY: ${OIDC_ENCRYPTION_KEY:-IWAeEan3LcsReeonGZPYtr--iQo8C0YOuCa-byg7YqA=}
       # Where the OIDC callback redirects the browser back to after login.

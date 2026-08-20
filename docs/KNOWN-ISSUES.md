@@ -156,12 +156,17 @@ rediscovered as a surprise later.
   removed. The seeded `admin@oidfed.org` bootstrap-admin credential
   itself is a separate, still-open gap — see PRODUCTION-READINESS.md #2.
 
-- [ ] **No TLS anywhere**  
-  Every service in `docker-compose.yml` — `ui`, `backend`, every
-  LightHouse node — speaks plain HTTP, including between containers.
-  Fine for a local/demo docker network, not for a real deployment on a
-  real network. No cert termination (reverse proxy, sidecar, or
-  otherwise) is configured anywhere in this repo.
+- [x] **No TLS anywhere** — scoped to documentation-only by design, see
+  PRODUCTION-READINESS.md #4 and `docs/TLS.md`. Every service still
+  speaks plain HTTP in the bundled demo stack; the reason isn't just
+  "not built yet" — LightHouse's `entity_id` is the entity's
+  cryptographic identity, not a connection address, so changing its
+  scheme can't be retrofitted onto the already-seeded demo mesh without
+  invalidating every existing trust chain. Browser↔UI TLS and
+  backend→LightHouse-admin TLS are genuinely retrofittable later;
+  LightHouse-to-LightHouse federation-protocol TLS needs real HTTPS
+  entity_ids from the first seed of a real deployment, never migrated
+  in place. Full breakdown in `docs/TLS.md`.
 
 - [ ] **Admin credentials are plain env vars with weak hardcoded defaults**  
   `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD` and `LIGHTHOUSE2_ADMIN_USERNAME`/
