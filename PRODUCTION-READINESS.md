@@ -164,13 +164,33 @@ else first.
    pre-existing skips), full backend pytest (118, unaffected — its own
    env is independent of `docker compose`'s `.env`).
 
-6. [ ] **Backup/restore** — no snapshot/restore procedure documented or
-   automated anywhere for `backend/data/backend.db` (users, RBAC config,
-   audit history, instance registry) or any LightHouse node's
-   `data/lighthouse.db` + `data/keys/` (federation state, signing keys —
-   losing a signing key is a genuinely different severity of loss than
-   losing a database, since it can't be regenerated to the same identity).
-   Not found via gap-testing — just never built.
+6. [x] **Backup/restore** — new `scripts/backup.py` snapshots
+   `backend/data/backend.db` and every LightHouse instance's
+   `data/lighthouse.db` + `data/keys/*.pem` into one timestamped
+   `tar.gz`. Every `.db` file is snapshotted via SQLite's own online
+   backup API (`sqlite3.Connection.backup()`), safe even while the
+   container has it open for writes — not a raw file copy of a
+   possibly-mid-write file. New `scripts/restore.py` reverses it:
+   refuses to run while any part of the docker compose stack is up (no
+   override — corrupting a live-open DB/key file is exactly the mistake
+   this exists to prevent), requires `--force` to actually overwrite
+   anything, replaces DB files wholesale but only *adds* key files
+   (never deletes a key present on disk but absent from the backup, so
+   restoring an older archive can't silently destroy newer key
+   material). Full breakdown in new `docs/BACKUP-RESTORE.md`, including
+   why a signing key and a database are different severities of loss.
+   Where the archive ends up (off-host storage) and how often it runs
+   (cron/systemd/CI) are explicitly the deployer's call, not built here
+   — same "don't commit this repo to infra it doesn't control" reasoning
+   as #4/#5. Verified live, not just read: backed up the real running
+   demo stack, `docker compose down`, restored, confirmed identical
+   user/subordinate counts and all signing keys present (including a
+   63-file key-rollover-history instance) *before* bringing the stack
+   back up, then confirmed post-restore that login, the admin-API proxy,
+   and a live trust-chain `/resolve` all still work — the last one
+   proving the restored keys still produce valid signatures, not just
+   that the files exist. Full `mesh-tests` (25/25) and BFF e2e (26/26)
+   green afterward.
 
 7. [ ] **Deployment docs** — `docs/GETTING-STARTED.md`/`README.md` walk
    through running the bundled demo mesh (`mesh-*`/`mesh2-*`, seeded

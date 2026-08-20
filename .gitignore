@@ -47,6 +47,10 @@ backend/.env
 *.pyc
 .worktrees/
 
+# scripts/backup.py output — contains real signing keys + database
+# snapshots, never commit these (PRODUCTION-READINESS.md #6)
+/backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

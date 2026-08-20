@@ -113,6 +113,8 @@ live check), not just a green typecheck.
 - `LOCAL-DEVELOPMENT.md` — running UI/backend outside Docker
 - `FEDERATION-TOPOLOGY.md` — adding an instance, the LightHouse mesh, the Trust Anchors page model
 - `BACKEND-IMPLEMENTORS.md` — implementing the Admin API in another language
+- `TLS.md` — why TLS can't be retrofitted onto LightHouse-to-LightHouse traffic, what a real deployment needs per hop
+- `BACKUP-RESTORE.md` — snapshotting/restoring databases + LightHouse signing keys (`scripts/backup.py`/`restore.py`)
 
 `MESH-TESTING-PROGRESS.md` (repo root) — checklist of OIDF spec-defined
 flows against the mesh setup, what's proven vs. still untested.

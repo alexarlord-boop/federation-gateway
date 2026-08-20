@@ -15,12 +15,33 @@ node's admin API now enforces real auth (`api.admin.users_enabled: true`
 bringing the stack up, before any seed script). `docker compose up` now
 fails closed without a real `.env` — run
 `python3 scripts/generate-secrets.py` once first (one-time; see
-`CLAUDE.md`'s First run). Full e2e suite (90 passing + 8 pre-existing,
-testbed-dependent skips), full `mesh-tests` suite (25 tests), and full
-backend pytest suite (118 tests) all green as of the last verification
-pass.
+`CLAUDE.md`'s First run). `scripts/backup.py`/`restore.py` exist for
+snapshotting/restoring `backend.db` + every LightHouse instance's DB and
+signing keys (`docs/BACKUP-RESTORE.md`). Full e2e suite (90 passing + 8
+pre-existing, testbed-dependent skips), full `mesh-tests` suite (25
+tests), and full backend pytest suite (118 tests) all green as of the
+last verification pass.
 
 ## Recently completed
+
+- **Backup/restore — PRODUCTION-READINESS.md #6**: new `scripts/backup.py`
+  snapshots `backend.db` + every LightHouse instance's `lighthouse.db` +
+  signing keys into one timestamped `tar.gz`, using SQLite's online
+  backup API (safe with the stack up, not a raw file copy). New
+  `scripts/restore.py` reverses it — refuses to run while the stack is
+  up (no override), requires `--force`, replaces DBs wholesale but only
+  adds key files (never deletes one present locally but absent from the
+  backup). New `docs/BACKUP-RESTORE.md`. Where the archive is stored and
+  how often it runs are explicitly the deployer's call, not built here —
+  same reasoning as #4/#5. Verified live, not just read: backed up the
+  real running demo stack, brought it down, restored, confirmed
+  identical data *before* bringing the stack back up, then confirmed
+  login/proxy/a live trust-chain `/resolve` all still work post-restore
+  (proving the restored keys still produce valid signatures). Full
+  `mesh-tests` (25/25) and BFF e2e (26/26) green afterward. Also fixed
+  two stale doc-index misses noticed along the way — `docs/TLS.md` was
+  never added to `README.md`'s or `CLAUDE.md`'s topic-doc lists when #4
+  landed.
 
 - **Secrets management — PRODUCTION-READINESS.md #5**: `docker-compose.yml`
   no longer has fallback defaults for `LIGHTHOUSE_ADMIN_*`/
@@ -252,11 +273,12 @@ notes).
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
 hand to a real federation admin. #1 (real user login), #3 (LightHouse
-admin API auth), #4 (TLS everywhere, documentation-only by choice), and
-#5 (secrets management, fail-closed-on-weak-defaults by choice) are all
-done. #2 (bootstrap admin credential — the seeded
-`admin@oidfed.org`/`admin123` account is the only path to `super_admin`,
-no rotation/invite flow) is still open and not yet scheduled. Next up:
-#6 (backup/restore) → #7 (deployment docs). The
-`/resolve`-ignores-blocked-status LightHouse bug is tracked there as a
-handover item, not buildable in this repo.
+admin API auth), #4 (TLS everywhere, documentation-only by choice), #5
+(secrets management, fail-closed-on-weak-defaults by choice), and #6
+(backup/restore) are all done. #2 (bootstrap admin credential — the
+seeded `admin@oidfed.org`/`admin123` account is the only path to
+`super_admin`, no rotation/invite flow) is still open and not yet
+scheduled. Next up: #7 (deployment docs) — the last item, deliberately,
+since writing it before the rest was real would just have documented
+gaps. The `/resolve`-ignores-blocked-status LightHouse bug is tracked
+there as a handover item, not buildable in this repo.

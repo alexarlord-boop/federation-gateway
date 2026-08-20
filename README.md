@@ -176,6 +176,7 @@ proxies to a real federation node (LightHouse) and owns its own concerns
 
 - **[`CLAUDE.md`](CLAUDE.md)** — map of this repo for agents/new developers: constraints, verification commands, session checklist
 - **[`PROGRESS.md`](PROGRESS.md)** — current state, recent work, known blockers
+- **[`PRODUCTION-READINESS.md`](PRODUCTION-READINESS.md)** — priority-ordered checklist of what's left before this is safe to hand to a real federation admin
 - **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** — one-page tour for newcomers and operators: run it, then use it
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — system architecture and design
 - **[`docs/CAPABILITY-DISCOVERY.md`](docs/CAPABILITY-DISCOVERY.md)** — backend capability system
@@ -184,6 +185,8 @@ proxies to a real federation node (LightHouse) and owns its own concerns
 - **[`docs/LOCAL-DEVELOPMENT.md`](docs/LOCAL-DEVELOPMENT.md)** — running the UI/backend outside Docker
 - **[`docs/FEDERATION-TOPOLOGY.md`](docs/FEDERATION-TOPOLOGY.md)** — adding instances, the LightHouse mesh, the Trust Anchors page model
 - **[`docs/BACKEND-IMPLEMENTORS.md`](docs/BACKEND-IMPLEMENTORS.md)** — implementing the Admin API in your own language/framework
+- **[`docs/TLS.md`](docs/TLS.md)** — why TLS can't be retrofitted onto LightHouse-to-LightHouse traffic, and what a real deployment needs per hop
+- **[`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md)** — snapshotting and restoring databases + LightHouse signing keys
 - **[`Federation Admin OpenAPI.yaml`](Federation Admin OpenAPI.yaml)** — API specification (the contract)
 
 ---
