@@ -37,6 +37,28 @@ from _lighthouse_client import LightHouseAdmin, wait_healthy  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+
+def _load_dotenv() -> None:
+    """Best-effort: load KEY=value pairs from the repo-root .env into
+    os.environ (without overriding anything already set). docker compose
+    auto-loads .env for the containers; this suite runs on the host, so
+    without this it would silently fall back to stale/wrong credentials
+    the moment .env's values diverge from any hardcoded fallback here —
+    exactly what generate-secrets.py's random passwords do on purpose
+    (PRODUCTION-READINESS.md #5)."""
+    env_path = REPO_ROOT / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_dotenv()
+
 # All mesh-* instances share one admin credential pair (see
 # backend/config/gateway.yaml) — run scripts/bootstrap-lighthouse-admin-users.py
 # first if you haven't (PRODUCTION-READINESS.md #3).

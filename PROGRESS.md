@@ -12,13 +12,40 @@ healthy, spread across two docker networks (`default` + `mesh2net`,
 `backend` on both — see `docs/FEDERATION-TOPOLOGY.md`). Every LightHouse
 node's admin API now enforces real auth (`api.admin.users_enabled: true`
 — run `python3 scripts/bootstrap-lighthouse-admin-users.py` once after
-bringing the stack up, before any seed script). Full e2e suite (90
-passing + 8 pre-existing, testbed-dependent skips), full `mesh-tests`
-suite (25 tests), and full backend pytest suite (118 tests) all green as
-of the last verification pass.
+bringing the stack up, before any seed script). `docker compose up` now
+fails closed without a real `.env` — run
+`python3 scripts/generate-secrets.py` once first (one-time; see
+`CLAUDE.md`'s First run). Full e2e suite (90 passing + 8 pre-existing,
+testbed-dependent skips), full `mesh-tests` suite (25 tests), and full
+backend pytest suite (118 tests) all green as of the last verification
+pass.
 
 ## Recently completed
 
+- **Secrets management — PRODUCTION-READINESS.md #5**: `docker-compose.yml`
+  no longer has fallback defaults for `LIGHTHOUSE_ADMIN_*`/
+  `LIGHTHOUSE2_ADMIN_*`/`OIDC_ENCRYPTION_KEY`/`JWT_SECRET` (the last one
+  newly found — was silently defaulting to a hardcoded string in
+  `backend/app/auth/security.py`, not previously in `docker-compose.yml`
+  at all) — `docker compose up` fails closed without a real `.env`. New
+  `scripts/generate-secrets.py` writes one for local/demo use; every doc
+  documenting `docker compose up` updated to run it first, plus a new
+  `CLAUDE.md` hard constraint (#12). Two real bugs found and fixed while
+  verifying against the already-bootstrapped live stack: rotating
+  `LIGHTHOUSE_ADMIN_PASSWORD` doesn't rotate the LightHouse-side user
+  `bootstrap-lighthouse-admin-users.py` already created (fixed the live
+  stack by hand, added a warning to `generate-secrets.py --force`); and
+  `mesh-tests`/the seed scripts/`generate_traffic_and_stats.sh` all run
+  on the host, not through `docker compose`, so they were silently
+  falling back to the old hardcoded credential the moment `.env`'s
+  generated password diverged from it (fixed with a shared
+  `.env`-loading helper). Full Vault/cloud secrets-manager integration
+  explicitly not built — same reasoning as #4, picking a vendor would
+  commit this repo to a deployment shape it doesn't know. Verified live:
+  full stack rebuilt with real secrets, credentials rotated and
+  confirmed old ones rejected, full `mesh-tests` (25/25), all host
+  scripts clean, full e2e (26 `@bff` + 90 `@proxy`), full backend pytest
+  (118).
 - **TLS everywhere — PRODUCTION-READINESS.md #4**: scoped to
   documentation-only by explicit user choice — new `docs/TLS.md`
   explains why (LightHouse's `entity_id` is the entity's cryptographic
@@ -225,12 +252,11 @@ notes).
 Focus is `PRODUCTION-READINESS.md` — a priority-ordered checklist (user's
 own ranking, 2026-08-19) for what's left before this deployment is safe to
 hand to a real federation admin. #1 (real user login), #3 (LightHouse
-admin API auth), and #4 (TLS everywhere, documentation-only by choice)
-are done. #2 (bootstrap admin credential — the seeded
+admin API auth), #4 (TLS everywhere, documentation-only by choice), and
+#5 (secrets management, fail-closed-on-weak-defaults by choice) are all
+done. #2 (bootstrap admin credential — the seeded
 `admin@oidfed.org`/`admin123` account is the only path to `super_admin`,
 no rotation/invite flow) is still open and not yet scheduled. Next up:
-#5 (secrets management — now also covers `LIGHTHOUSE_ADMIN_*`/
-`LIGHTHOUSE2_ADMIN_*` being genuinely load-bearing since #3 landed) →
 #6 (backup/restore) → #7 (deployment docs). The
 `/resolve`-ignores-blocked-status LightHouse bug is tracked there as a
 handover item, not buildable in this repo.

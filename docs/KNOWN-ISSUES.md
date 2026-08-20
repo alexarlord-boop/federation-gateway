@@ -168,13 +168,14 @@ rediscovered as a surprise later.
   entity_ids from the first seed of a real deployment, never migrated
   in place. Full breakdown in `docs/TLS.md`.
 
-- [ ] **Admin credentials are plain env vars with weak hardcoded defaults**  
-  `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD` and `LIGHTHOUSE2_ADMIN_USERNAME`/
-  `PASSWORD` default to `gateway`/`gateway` and `gateway2`/`gateway2`
-  (`docker-compose.yml`) with no secrets-manager integration — anyone who
-  can read the compose file or process environment has them. Needs a real
-  secrets story (Vault, cloud secrets manager, or at minimum enforced
-  non-default values with no fallback) before real deployment.
+- [x] **Admin credentials are plain env vars with weak hardcoded defaults**
+  — fixed, see PRODUCTION-READINESS.md #5. `docker-compose.yml` no longer
+  has any fallback for `LIGHTHOUSE_ADMIN_*`/`LIGHTHOUSE2_ADMIN_*`/
+  `OIDC_ENCRYPTION_KEY`/`JWT_SECRET` — `docker compose up` fails closed
+  without a real `.env` (`scripts/generate-secrets.py` writes one). Full
+  Vault/cloud secrets-manager integration explicitly not built — scoped
+  to this (user's call), since picking a specific vendor would commit
+  this repo to a deployment shape it doesn't actually know.
 
 - [x] **Every LightHouse node has its own admin API auth turned off** —
   fixed, see PRODUCTION-READINESS.md #3. `api.admin.users_enabled: true`

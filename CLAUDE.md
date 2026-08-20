@@ -14,6 +14,7 @@ plug in in place of the reference FastAPI backend.
 ## First run
 
 ```sh
+python3 scripts/generate-secrets.py   # one-time — see hard constraint 12
 docker compose up -d --build
 ```
 
@@ -62,6 +63,11 @@ for multi-hop and multi-parent testing, and a second, fully independent
     `entity_id` is a literal URL baked into an entity's identity, which
     fights k3s-style dynamic scheduling/service discovery. Compose's
     static container DNS names map onto that model directly.
+12. **`docker compose up` fails closed without a root `.env`.**
+    `LIGHTHOUSE_ADMIN_*`/`LIGHTHOUSE2_ADMIN_*`/`OIDC_ENCRYPTION_KEY`/
+    `JWT_SECRET` have no fallback defaults (PRODUCTION-READINESS.md #5) —
+    run `python3 scripts/generate-secrets.py` once (writes a gitignored
+    `.env`) before the first `docker compose up`.
 
 ## Verification (run before calling anything done)
 

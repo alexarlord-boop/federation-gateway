@@ -8,8 +8,10 @@ For a fresh demo with no stale LightHouse state:
 docker compose down
 find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
 
-LIGHTHOUSE_ADMIN_USERNAME=gateway \
-LIGHTHOUSE_ADMIN_PASSWORD=gateway \
+# One-time: docker compose up now fails closed without a .env (no more
+# gateway/gateway-style defaults — see PRODUCTION-READINESS.md #5).
+python3 scripts/generate-secrets.py
+
 docker compose up --build --force-recreate
 ```
 

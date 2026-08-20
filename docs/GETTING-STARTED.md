@@ -9,8 +9,14 @@ for the first time. Two parts: **run it**, then **use it**.
 ## 1. Run it
 
 ```sh
+python3 scripts/generate-secrets.py   # one-time — writes a gitignored .env
 docker compose up --build
 ```
+
+The first command generates real local values for the admin credentials
+and signing keys `docker compose up` now requires (`docker-compose.yml`
+fails closed with no defaults — see `PRODUCTION-READINESS.md` #5). Only
+needed once; it skips itself on a second run if `.env` already exists.
 
 This starts the **UI** (nginx, port `8080`), the **backend** gateway/BFF
 (FastAPI, port `8765`), two standalone **LightHouse** federation nodes

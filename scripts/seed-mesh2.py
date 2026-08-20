@@ -39,6 +39,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _dotenv import load_dotenv
+
+load_dotenv()
+
 # Admin API base (script runs on the host, so these are the published ports).
 MESH2_TA_ADMIN = "http://localhost:8094/api/v1/admin"
 MESH2_IA_ADMIN = "http://localhost:8095/api/v1/admin"

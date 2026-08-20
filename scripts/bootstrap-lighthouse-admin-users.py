@@ -31,6 +31,10 @@ import sys
 import urllib.error
 import urllib.request
 
+from _dotenv import load_dotenv
+
+load_dotenv()
+
 LIGHTHOUSE_USER = os.environ.get("LIGHTHOUSE_ADMIN_USERNAME", "gateway")
 LIGHTHOUSE_PASS = os.environ.get("LIGHTHOUSE_ADMIN_PASSWORD", "gateway")
 LIGHTHOUSE2_USER = os.environ.get("LIGHTHOUSE2_ADMIN_USERNAME", "gateway2")

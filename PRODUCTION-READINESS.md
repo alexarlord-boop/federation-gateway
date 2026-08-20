@@ -120,17 +120,49 @@ else first.
    meant to be "upgraded" to this, it's disposable-by-design test
    fixture data. Full breakdown and a per-hop table in `docs/TLS.md`.
 
-5. [ ] **Secrets management** — `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`
-   and `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD` are plain env vars with
-   weak hardcoded defaults (`gateway`/`gateway`, `gateway2`/`gateway2`,
-   `docker-compose.yml`), no secrets-manager integration. Needs a real
-   secrets story (Vault, cloud secrets manager, or at minimum enforced
-   non-default values with no fallback) before real deployment. Overlaps
-   with #3 — turning on LightHouse-side auth makes these credentials
-   actually load-bearing for the first time, raising the stakes on
-   getting this right together. `OIDC_ENCRYPTION_KEY` (added for #1, the
-   Fernet key encrypting stored IdP client secrets) has the exact same
-   dev-default-in-`docker-compose.yml` problem — same fix, same place.
+5. [x] **Secrets management** — scoped to "enforced non-default values
+   with no fallback" (user's call, 2026-08-20; full Vault/cloud
+   secrets-manager integration would commit this repo to a deployment
+   shape it doesn't actually know, same tension #4 hit). `docker-compose.yml`
+   no longer has *any* fallback default for `LIGHTHOUSE_ADMIN_USERNAME`/
+   `PASSWORD`, `LIGHTHOUSE2_ADMIN_USERNAME`/`PASSWORD`, `OIDC_ENCRYPTION_KEY`,
+   or the newly-added `JWT_SECRET` (found along the way — signs every
+   gateway JWT, was silently falling back to a hardcoded
+   `"dev-secret-change-me"` string in `backend/app/auth/security.py`,
+   not previously even wired into `docker-compose.yml` at all) — `docker
+   compose up` now fails closed with a clear per-variable error if `.env`
+   is missing any of them (confirmed live). New `.env.example` documents
+   every required value; new `scripts/generate-secrets.py` writes a real
+   `.env` (gitignored) with freshly generated random passwords/keys for
+   local/demo use, refusing to overwrite an existing one without
+   `--force`. Every doc that documents `docker compose up` as the first
+   command updated to run the generator first (`CLAUDE.md`, `README.md`,
+   `docs/GETTING-STARTED.md`, `docs/LOCAL-DEVELOPMENT.md`,
+   `docs/TESTING.md`) — `CLAUDE.md` also got a new hard constraint (#12)
+   so this doesn't get rediscovered as a surprise in a future session.
+   Found and fixed a real bug while verifying against the live,
+   already-bootstrapped stack: rotating `LIGHTHOUSE_ADMIN_PASSWORD` in
+   `.env` doesn't rotate the LightHouse-side user `scripts/bootstrap-
+   lighthouse-admin-users.py` already created (#3) — had to fix the
+   already-running stack by hand via LightHouse's `PUT
+   /api/v1/admin/users/{username}`, then added a loud warning to
+   `generate-secrets.py --force` about it. Also found and fixed a second
+   real bug: `mesh-tests/`, the three `seed-*.py` scripts, and
+   `generate_traffic_and_stats.sh` all run on the *host*, not through
+   `docker compose` — they were reading credentials via `os.environ`
+   with the old hardcoded fallback, so the moment `.env`'s generated
+   password diverged from that fallback they'd have silently
+   authenticated with a stale, wrong value. Fixed with a shared
+   `.env`-loading helper (`scripts/_dotenv.py`, imported by all four
+   Python scripts; a small inline equivalent in `mesh-tests/conftest.py`,
+   kept local per that file's own stay-self-contained design; a bash
+   version in the `.sh` script). Verified live end-to-end: full stack
+   rebuilt with real generated secrets, backend restarted, LightHouse
+   credentials rotated and confirmed old ones rejected / new ones
+   accepted, full `mesh-tests` (25/25), all four host scripts re-run
+   clean with zero auth errors, full e2e (26 `@bff` + 90 `@proxy`, 8
+   pre-existing skips), full backend pytest (118, unaffected — its own
+   env is independent of `docker compose`'s `.env`).
 
 6. [ ] **Backup/restore** — no snapshot/restore procedure documented or
    automated anywhere for `backend/data/backend.db` (users, RBAC config,

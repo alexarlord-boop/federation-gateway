@@ -18,6 +18,10 @@ import urllib.error
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 
+from _dotenv import load_dotenv
+
+load_dotenv()
+
 TA1 = "http://localhost:8081/api/v1/admin"
 TA2 = "http://localhost:8082/api/v1/admin"
 

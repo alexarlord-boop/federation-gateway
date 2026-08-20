@@ -100,6 +100,7 @@ instances:
 ## Quick start
 
 ```sh
+python3 scripts/generate-secrets.py   # one-time — writes a gitignored .env
 docker compose up -d --build
 ```
 
@@ -107,13 +108,18 @@ Opens at **http://localhost:8080**. This brings up all 13 services (ui,
 backend, lighthouse, lighthouse2, and 9 mesh nodes across two independent
 federations). See `docs/GETTING-STARTED.md` for the guided first-run tour.
 
-**Environment variables** (optional):
+**Required secrets**: `docker compose up` fails closed —
+`LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`, `LIGHTHOUSE2_ADMIN_USERNAME`/
+`PASSWORD`, `OIDC_ENCRYPTION_KEY`, and `JWT_SECRET` have no fallback
+defaults (see `PRODUCTION-READINESS.md` #5 for why). `generate-secrets.py`
+above handles this for local/demo use; see `.env.example` if you'd rather
+set them by hand or wire in a real secrets manager for production.
+
+**Other environment variables** (optional, all have working defaults):
 ```sh
 UI_PORT=8080 \
 BACKEND_PORT=8765 \
 LIGHTHOUSE_PUBLIC_PORT=8081 \
-LIGHTHOUSE_ADMIN_USERNAME=gateway \
-LIGHTHOUSE_ADMIN_PASSWORD=gateway \
 docker compose up -d --build
 ```
 

@@ -10,7 +10,8 @@ cd e2e && npx playwright install chromium
 ## Full-stack tests (`@proxy` — requires Docker stack running)
 
 ```sh
-# Start the stack first
+# Start the stack first (needs a .env — see CLAUDE.md's First run /
+# PRODUCTION-READINESS.md #5 if you haven't run scripts/generate-secrets.py yet)
 docker compose up --build -d
 
 cd e2e

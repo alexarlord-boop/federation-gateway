@@ -10,6 +10,21 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# docker compose auto-loads .env for the containers; this script runs on
+# the host, so it doesn't get that for free — load anything not already
+# exported (PRODUCTION-READINESS.md #5: no more gateway/gateway-style
+# fallback defaults, generate-secrets.py writes real values into .env).
+if [ -f "$REPO_ROOT/.env" ]; then
+  while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    if [ -z "${!key:-}" ]; then
+      export "$key=$value"
+    fi
+  done < "$REPO_ROOT/.env"
+fi
+
 TA1="http://localhost:8081"
 TA2="http://localhost:8082"
 
