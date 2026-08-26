@@ -17,12 +17,39 @@ fails closed without a real `.env` — run
 `python3 scripts/generate-secrets.py` once first (one-time; see
 `CLAUDE.md`'s First run). `scripts/backup.py`/`restore.py` exist for
 snapshotting/restoring `backend.db` + every LightHouse instance's DB and
-signing keys (`docs/BACKUP-RESTORE.md`). Full e2e suite (90 passing + 8
-pre-existing, testbed-dependent skips), full `mesh-tests` suite (25
-tests), and full backend pytest suite (118 tests) all green as of the
-last verification pass.
+signing keys (`docs/BACKUP-RESTORE.md`). LightHouse is now pinned at
+`0.22.3` — after `docker compose up`, `python3
+scripts/migrate-lighthouse-config.py` must run once per instance
+(`CLAUDE.md` hard constraint #13) or every public federation endpoint
+404s. Full e2e suite (90 passing + 8 pre-existing, testbed-dependent
+skips), full `mesh-tests` suite (25 tests), and full backend pytest suite
+(118 tests) all green as of the last verification pass, run against the
+live stack post-upgrade.
 
 ## Recently completed
+
+- **Adopted LightHouse 0.22.3 as the pinned image.** Upstream fixed four
+  bugs this repo had filed (`docs/KNOWN-ISSUES.md` Bugs 5-8: blocked
+  subordinates still resolving, trust mark owner `entity_id` not
+  releasable on delete, expired marks reported as `invalid` instead of
+  `expired`, `constraints` PUT freezing metadata policy) — verified each
+  live against the new image in an isolated git worktree before touching
+  anything real, not just trusting the upstream report. Verifying the
+  upgrade surfaced a genuinely undocumented breaking change: 0.22.x reads
+  federation endpoint config from its own database, not live from
+  `config.yaml`, so a fresh container 404s on every public endpoint until
+  a one-time `lhmigrate config2db` runs. New `scripts/migrate-
+  lighthouse-config.py` automates that (same idempotent,
+  `bootstrap-lighthouse-admin-users.py`-shaped pattern) and is now wired
+  into every documented setup sequence. Flipped the two mesh-tests that
+  used to assert the pre-fix buggy behavior to assert the spec-correct
+  one. Verified in the worktree (mesh-tests 25/25 stable across repeat
+  runs, e2e BFF 26/26, e2e proxy 90/98) before adopting the pin for real;
+  then backed up the live demo stack (`scripts/backup.py`), upgraded it
+  in place, re-ran the migration and the full test suite against it
+  directly — all green, all pre-upgrade federation data (subordinates,
+  trust marks, signing keys) intact.
+
 
 - **Deployment docs — PRODUCTION-READINESS.md #7 (last item)**: new
   `docs/DEPLOYMENT.md` — pointing the same `ui`+`backend` app at a real
