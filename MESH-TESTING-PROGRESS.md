@@ -218,6 +218,14 @@ isn't released after delete; expired trust marks report `invalid` instead
 of `expired`; and `constraints` `PUT` silently freezes a subordinate's
 metadata policy.
 
+**Update (2026-08-26):** all four gaps described below are fixed
+upstream as of `oidfed/lighthouse:0.22.3` — verified live by re-running
+`mesh-tests` against it, not just taking the report at face value. See
+`docs/KNOWN-ISSUES.md` Bugs 5-8 for current status and verification
+evidence; the investigation notes below are left as-written since they
+document real findings at the time, not stale claims to correct in
+place.
+
 ## Investigation notes: `mesh-tests/` findings (2026-08-13 – 2026-08-16)
 
 Dug into each before or while writing formal tests, to separate "our test

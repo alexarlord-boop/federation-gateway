@@ -3,28 +3,24 @@ OIDF Federation 1.0 §8 — subordinate status changes and whether trust chain
 resolution actually honors them.
 
 MESH-TESTING-PROGRESS.md item D3: status can be changed via the admin API
-(and the UI), but nothing previously confirmed that a blocked subordinate's
-chain actually fails to resolve afterward. It does not — see
-docs/KNOWN-ISSUES.md ("`/resolve` returns a valid trust chain for a
-`blocked` subordinate"), filed upstream against go-oidfed/lighthouse.
+(and the UI), and (as of LightHouse 0.22.3, verified 2026-08-26) a blocked
+subordinate's chain now correctly fails to resolve — see
+docs/KNOWN-ISSUES.md Bug 5 for the full history (filed upstream against
+go-oidfed/lighthouse, fixed in `/fetch`'s status check).
 
-test_blocked_subordinate_excluded_from_list documents the one part of this
-that *does* work today (status is honored by `/list`) so a future fix to
-`/resolve` doesn't silently also break the working half.
+test_blocked_subordinate_excluded_from_list documents the other half of
+this (status honored by `/list`) that was already working before the fix.
 
-test_blocked_subordinate_still_resolves_TODO_LIGHTHOUSE_BUG asserts
-*today's actual* (wrong) behavior, not the spec-correct behavior — so this
-suite is green until the upstream fix ships, rather than permanently red.
-The moment `/resolve` correctly rejects a blocked subordinate, this test's
-`assert resp.status_code == 200` starts failing — that failure is the
-signal to flip it to asserting the spec-correct (4xx) behavior and close
-out the KNOWN-ISSUES.md entry.
+test_blocked_subordinate_no_longer_resolves used to assert the pre-fix
+(wrong) HTTP 200 behavior — this repo's pinned image was still the buggy
+one until Bug 5 was verified fixed and this pin was updated. Flipped to
+assert the spec-correct rejection now that it's real.
 """
 from __future__ import annotations
 
 import pytest
 
-from _lighthouse_client import LightHouseAdmin, decode_jwt_payload
+from _lighthouse_client import LightHouseAdmin
 
 MESH_TA_EID = "http://mesh-ta:8080"
 MESH_LEAF_RP_EID = "http://mesh-leaf-rp:8080"
@@ -64,14 +60,12 @@ def test_blocked_subordinate_excluded_from_list(
     assert MESH_LEAF_RP_EID not in mesh_ia.list_subordinates_public()
 
 
-def test_blocked_subordinate_still_resolves_TODO_LIGHTHOUSE_BUG(
+def test_blocked_subordinate_no_longer_resolves(
     mesh_ia: LightHouseAdmin, blocked_leaf_rp
 ) -> None:
     resp = mesh_ia.resolve(MESH_LEAF_RP_EID, MESH_TA_EID)
-    assert resp.status_code == 200, (
-        "if this starts failing, LightHouse's /resolve now honors "
-        "subordinate status — flip this test to expect an error and close "
-        "the docs/KNOWN-ISSUES.md entry"
+    assert resp.status_code == 404, (
+        "LightHouse 0.22.3's /fetch now checks subordinate status "
+        "(docs/KNOWN-ISSUES.md Bug 5) — a blocked subordinate's chain "
+        "should fail to resolve, not return 200 with a valid trust_chain"
     )
-    resolved = decode_jwt_payload(resp.text)
-    assert "trust_chain" in resolved
