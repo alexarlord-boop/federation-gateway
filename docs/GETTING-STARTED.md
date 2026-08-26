@@ -11,12 +11,19 @@ for the first time. Two parts: **run it**, then **use it**.
 ```sh
 python3 scripts/generate-secrets.py   # one-time — writes a gitignored .env
 docker compose up --build
+python3 scripts/migrate-lighthouse-config.py   # one-time per LightHouse image
 ```
 
 The first command generates real local values for the admin credentials
 and signing keys `docker compose up` now requires (`docker-compose.yml`
 fails closed with no defaults — see `PRODUCTION-READINESS.md` #5). Only
 needed once; it skips itself on a second run if `.env` already exists.
+
+The third command seeds each LightHouse container's own database with its
+federation endpoint config — LightHouse 0.22.x+ reads that from a database
+rather than live from `config.yaml`, so every public endpoint (`/fetch`,
+`/list`, `/resolve`, ...) 404s until this runs once. Idempotent, safe to
+re-run.
 
 This starts the **UI** (nginx, port `8080`), the **backend** gateway/BFF
 (FastAPI, port `8765`), two standalone **LightHouse** federation nodes

@@ -71,7 +71,7 @@ services:
       retries: 10
       start_period: 5s
   lighthouse:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -95,7 +95,7 @@ services:
 
   # Second LightHouse instance — serves as a second federation Trust Anchor on port 8082.
   lighthouse2:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -127,7 +127,7 @@ services:
   # configurations when walking a chain. See scripts/seed-mesh.py to wire
   # subordinate/authority-hint/trust-mark relationships between them.
   mesh-ta:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -148,7 +148,7 @@ services:
       start_period: 10s
 
   mesh-ia:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -169,7 +169,7 @@ services:
       start_period: 10s
 
   mesh-leaf-op:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -190,7 +190,7 @@ services:
       start_period: 10s
 
   mesh-leaf-rp:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -217,7 +217,7 @@ services:
   # scripts/seed-mesh.py for how both subordinate registrations and both
   # authority_hints on mesh-leaf-multi get wired.
   mesh-ia2:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -238,7 +238,7 @@ services:
       start_period: 10s
 
   mesh-leaf-multi:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -273,7 +273,7 @@ services:
   # and don't need a chain; /resolve does). See scripts/seed-mesh2.py and
   # docs/FEDERATION-TOPOLOGY.md.
   mesh2-ta:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -296,7 +296,7 @@ services:
       start_period: 10s
 
   mesh2-ia:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh
@@ -319,7 +319,7 @@ services:
       start_period: 10s
 
   mesh2-leaf-op:
-    image: oidfed/lighthouse@sha256:f03d85e86dda38837afec839535a9e1ebbfdab9cd03ec73c53097dbd6aaad223
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
     restart: unless-stopped
     entrypoint:
       - /bin/sh

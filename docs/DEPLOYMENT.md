@@ -73,6 +73,12 @@ instance to that list or just replicate the two-step curl sequence #3
 describes directly: an unauthenticated `POST /api/v1/admin/users/`
 works exactly once, before any user exists on that instance.
 
+If your instance runs the same `oidfed/lighthouse` image this repo pins
+(0.22.x+), it also needs the one-time `lhmigrate config2db` step —
+`scripts/migrate-lighthouse-config.py` automates it for the bundled demo
+instances; see `CLAUDE.md` hard constraint #13 and `docs/KNOWN-ISSUES.md`
+for why. Doesn't apply if your instance predates 0.22 or isn't LightHouse.
+
 ## 4. Secrets
 
 Copy `.env.example` to `.env` and set real values for everything your

@@ -235,23 +235,26 @@ else first.
 ## Tracked, not actionable here (handover)
 
 - **LightHouse's `/resolve` doesn't honor a subordinate's `blocked`
-  status** (`docs/KNOWN-ISSUES.md` Bugs 5-8) — **fixed upstream and
-  verified live (2026-08-26)** against `oidfed/lighthouse:0.22.3`
-  (`sha256:828cafdf...`, released 2026-08-24): all four filed bugs
-  (blocked-subordinate resolution, trust mark owner `entity_id` reuse,
+  status** (`docs/KNOWN-ISSUES.md` Bugs 5-8) — **fixed upstream, verified
+  live, and adopted (2026-08-26)** as `oidfed/lighthouse:0.22.3`
+  (`sha256:828cafdf...`, released 2026-08-24), now this repo's pinned
+  image in `docker-compose.yml`. All four filed bugs (blocked-subordinate
+  resolution, trust mark owner `entity_id` reuse,
   expired-mark-reported-as-invalid, constraints-freezing-metadata-policy)
-  confirmed fixed by re-running `mesh-tests` against the new image in an
-  isolated worktree — not just taking the upstream report at face value.
-  **This repo's own pinned image is not yet updated.** Verifying the fix
-  surfaced a real, undocumented prerequisite: LightHouse 0.22.x moved
-  federation endpoint config (and several other sections) from
-  live-read-from-`config.yaml` to database-seeded via a new `lhmigrate
-  config2db` step — without it, every public federation endpoint 404s on
-  a fresh 0.22.x container even with an already-valid config file. See
-  `docs/KNOWN-ISSUES.md`'s "Upgrading to 0.22.x is not a drop-in image
-  swap" note for the full finding. Adopting the new pin needs that
-  migration step built into this repo's setup tooling first (a
-  `bootstrap-lighthouse-admin-users.py`-shaped gap) — not done yet.
+  confirmed fixed by re-running `mesh-tests` (25/25) and the full e2e
+  suite (26 `@bff` + 90 `@proxy`) against the new image in an isolated
+  worktree before adopting it — not just taking the upstream report at
+  face value. Verifying the fix surfaced a real, undocumented
+  prerequisite: LightHouse 0.22.x moved federation endpoint config (and
+  several other sections) from live-read-from-`config.yaml` to
+  database-seeded via a new `lhmigrate config2db` step — without it,
+  every public federation endpoint 404s on a fresh 0.22.x container even
+  with an already-valid config file. **Built:** `scripts/migrate-
+  lighthouse-config.py` (new), a `bootstrap-lighthouse-admin-users.py`-
+  shaped one-time setup step, wired into the documented setup sequence
+  (`CLAUDE.md` hard constraint #13). See `docs/KNOWN-ISSUES.md`'s
+  "Upgrading to 0.22.x is not a drop-in image swap" note for the full
+  finding.
 
 ---
 

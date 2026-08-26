@@ -60,6 +60,10 @@ give a new instance its own pair if it needs separate credentials.
    `scripts/bootstrap-lighthouse-admin-users.py`, then re-run
    `python3 scripts/bootstrap-lighthouse-admin-users.py` (idempotent —
    only touches instances that haven't been bootstrapped yet).
+6. Add it to `scripts/migrate-lighthouse-config.py`'s `INSTANCES` list too,
+   then re-run `python3 scripts/migrate-lighthouse-config.py` — LightHouse
+   0.22.x+ won't serve its public endpoints otherwise (see `CLAUDE.md`
+   hard constraint #13).
 
 **`entity_id` matters more than it looks.** If this new instance ever needs
 to be reachable *from another LightHouse container* (not just from your own
@@ -100,6 +104,7 @@ configurations.
 ```bash
 docker compose up -d mesh-ta mesh-ia mesh-ia2 mesh-leaf-op mesh-leaf-rp mesh-leaf-multi
 python3 scripts/bootstrap-lighthouse-admin-users.py   # one-time — idempotent, safe to re-run
+python3 scripts/migrate-lighthouse-config.py   # one-time per image — idempotent, safe to re-run
 python3 scripts/seed-mesh.py   # idempotent — safe to re-run
 ```
 
@@ -176,6 +181,7 @@ infrastructure.
 ```bash
 docker compose up -d mesh2-ta mesh2-ia mesh2-leaf-op
 python3 scripts/bootstrap-lighthouse-admin-users.py   # if you haven't already — covers mesh2 too
+python3 scripts/migrate-lighthouse-config.py   # if you haven't already — covers mesh2 too
 python3 scripts/seed-mesh.py    # if you haven't already — mesh2's seed script reads its issuer
 python3 scripts/seed-mesh2.py   # idempotent — safe to re-run
 ```

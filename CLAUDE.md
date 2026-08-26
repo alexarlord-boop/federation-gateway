@@ -16,6 +16,7 @@ plug in in place of the reference FastAPI backend.
 ```sh
 python3 scripts/generate-secrets.py   # one-time — see hard constraint 12
 docker compose up -d --build
+python3 scripts/migrate-lighthouse-config.py   # one-time per LightHouse image — see hard constraint 13
 ```
 
 Opens at http://localhost:8080. Login: `admin@oidfed.org` / `admin123`
@@ -74,6 +75,13 @@ for multi-hop and multi-parent testing, and a second, fully independent
     `.env`) before the first `docker compose up`. Unlike the others,
     `ADMIN_BOOTSTRAP_PASSWORD` stays `admin123` in `.env.example` and is
     never randomized — it's a human-typed login, not a machine secret.
+13. **LightHouse 0.22.x+ reads federation endpoint config from its own
+    database, not live from `config.yaml`.** A freshly-`up`'d container
+    404s on every public endpoint (`/fetch`, `/list`, `/resolve`, etc.)
+    until `python3 scripts/migrate-lighthouse-config.py` runs once per
+    instance (admin API is unaffected — still read live from the file).
+    Undocumented upstream; see `docs/KNOWN-ISSUES.md`. Idempotent, safe
+    to re-run after any config.yaml change or image upgrade.
 
 ## Verification (run before calling anything done)
 
