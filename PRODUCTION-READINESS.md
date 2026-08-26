@@ -235,13 +235,23 @@ else first.
 ## Tracked, not actionable here (handover)
 
 - **LightHouse's `/resolve` doesn't honor a subordinate's `blocked`
-  status** (`docs/KNOWN-ISSUES.md`, filed upstream against
-  `go-oidfed/lighthouse`). Real trust/security implication for anyone
-  relying on blocking as an actual control — worth surfacing to whoever
-  picks this deployment up, but it's an upstream LightHouse bug, not
-  something buildable in this repo. Re-check `docs/KNOWN-ISSUES.md` for
-  fix status before considering this deployment-ready regardless of where
-  the other items stand.
+  status** (`docs/KNOWN-ISSUES.md` Bugs 5-8) — **fixed upstream and
+  verified live (2026-08-26)** against `oidfed/lighthouse:0.22.3`
+  (`sha256:828cafdf...`, released 2026-08-24): all four filed bugs
+  (blocked-subordinate resolution, trust mark owner `entity_id` reuse,
+  expired-mark-reported-as-invalid, constraints-freezing-metadata-policy)
+  confirmed fixed by re-running `mesh-tests` against the new image in an
+  isolated worktree — not just taking the upstream report at face value.
+  **This repo's own pinned image is not yet updated.** Verifying the fix
+  surfaced a real, undocumented prerequisite: LightHouse 0.22.x moved
+  federation endpoint config (and several other sections) from
+  live-read-from-`config.yaml` to database-seeded via a new `lhmigrate
+  config2db` step — without it, every public federation endpoint 404s on
+  a fresh 0.22.x container even with an already-valid config file. See
+  `docs/KNOWN-ISSUES.md`'s "Upgrading to 0.22.x is not a drop-in image
+  swap" note for the full finding. Adopting the new pin needs that
+  migration step built into this repo's setup tooling first (a
+  `bootstrap-lighthouse-admin-users.py`-shaped gap) — not done yet.
 
 ---
 
