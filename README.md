@@ -145,6 +145,35 @@ LIGHTHOUSE_PUBLIC_PORT=8081 \
 docker compose up -d --build
 ```
 
+### Minimal setup (3 containers, single trust anchor)
+
+The full stack is 13 containers — two standalone trust anchors plus two
+demo meshes, mainly there to exercise multi-hop chain resolution and
+interfederation. If that's more than your machine wants to run, only
+`ui` + `backend` + one LightHouse instance are structurally required
+(`backend`'s only hard `depends_on` in `docker-compose.yml`):
+
+```sh
+python3 scripts/generate-secrets.py
+docker compose up -d --build ui backend lighthouse
+python3 scripts/migrate-lighthouse-config.py --single-instance
+python3 scripts/bootstrap-lighthouse-admin-users.py --single-instance
+python3 scripts/seed-demo.py --single-instance
+```
+
+Same login, same UI at `http://localhost:8080` — you just get one trust
+anchor (`ta-1`/"LightHouse") with a couple of seeded subordinates and a
+trust mark instead of the full two-federation demo. Good enough for
+kicking the tires on entity/subordinate/trust-mark CRUD; not enough for
+chain-resolution or interfederation scenarios, which need the mesh.
+
+`--single-instance` isn't just "ignore the rest" — `bootstrap-lighthouse-
+admin-users.py` and `seed-demo.py` only ever *talk* to the instance(s)
+you tell them to, so nothing times out waiting on a container that was
+never started. Every other configured instance (`ta-2`, the mesh nodes)
+just shows up in the UI as unreachable if you ever select it — the app
+doesn't require them to be up.
+
 ### Rebuild a single service (after source changes)
 
 ```sh

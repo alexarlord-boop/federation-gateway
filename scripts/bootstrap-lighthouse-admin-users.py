@@ -22,9 +22,16 @@ scripts/seed-mesh.py, or scripts/seed-mesh2.py (they now need real auth
 too — see docs/FEDERATION-TOPOLOGY.md).
 
 Run:  python3 scripts/bootstrap-lighthouse-admin-users.py
+      python3 scripts/bootstrap-lighthouse-admin-users.py --single-instance
+      # ^ minimal footprint: only bootstraps `lighthouse` — pair with
+      # `docker compose up -d --build ui backend lighthouse` and
+      # `scripts/seed-demo.py --single-instance` (see README.md's
+      # "Minimal setup" section). Everything else is skipped, not just
+      # tolerated-if-missing.
 Requires only the Python standard library.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -71,6 +78,9 @@ def bootstrap(name, admin_base, username, password):
         else:
             print(f"  !! {name}: unexpected {e.code} probing {users_url}")
             return False
+    except urllib.error.URLError as e:
+        print(f"  !! {name}: unreachable ({e.reason}) — is its container running?")
+        return False
 
     if already_done:
         print(f"  .. {name}: already bootstrapped, skipping")
@@ -96,9 +106,19 @@ def bootstrap(name, admin_base, username, password):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--single-instance",
+        action="store_true",
+        help="Only bootstrap `lighthouse` — for the minimal ui+backend+lighthouse footprint (see README.md).",
+    )
+    args = parser.parse_args()
+
+    instances = INSTANCES[:1] if args.single_instance else INSTANCES
+
     print("Bootstrapping LightHouse admin API users...")
     ok = True
-    for name, admin_base, username, password in INSTANCES:
+    for name, admin_base, username, password in instances:
         ok = bootstrap(name, admin_base, username, password) and ok
     if not ok:
         print("One or more instances failed to bootstrap — see above.")

@@ -28,7 +28,10 @@ anchors (`lighthouse`, `lighthouse2`), a 6-node LightHouse mesh
 (`mesh-ta`/`mesh-ia`/`mesh-ia2`/`mesh-leaf-op`/`mesh-leaf-rp`/`mesh-leaf-multi`)
 for multi-hop and multi-parent testing, and a second, fully independent
 3-node mesh (`mesh2-*`) for interfederation testing. Full tour:
-`docs/GETTING-STARTED.md`.
+`docs/GETTING-STARTED.md`. Too heavy for the machine? `README.md`'s
+"Minimal setup" runs just `ui`+`backend`+`lighthouse` (3 containers,
+single trust anchor, no mesh) via a `--single-instance` flag on the
+scripts above.
 
 ## Hard constraints
 

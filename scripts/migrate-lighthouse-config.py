@@ -30,9 +30,17 @@ Run once after `docker compose up` and
 scripts/bootstrap-lighthouse-admin-users.py, before any seed script.
 
 Run:  python3 scripts/migrate-lighthouse-config.py
+      python3 scripts/migrate-lighthouse-config.py --single-instance
+      # ^ minimal footprint: only migrates `lighthouse` (see README.md's
+      # "Minimal setup" section). Skipping this flag when other instances
+      # aren't running is harmless too — this script works directly
+      # against each instance's bind-mounted data dir via a throwaway
+      # container, not the running service, so it doesn't actually need
+      # those containers up. The flag just avoids the pointless work.
 Requires: the `docker` CLI. Otherwise Python standard library only.
 """
 
+import argparse
 import re
 import subprocess
 import sys
@@ -88,11 +96,21 @@ def migrate(instance: str, image: str) -> bool:
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--single-instance",
+        action="store_true",
+        help="Only migrate `lighthouse` — for the minimal ui+backend+lighthouse footprint (see README.md).",
+    )
+    args = parser.parse_args()
+
+    instances = INSTANCES[:1] if args.single_instance else INSTANCES
+
     image = _lighthouse_image()
     print(f"Migrating LightHouse config to the database model ({image})...")
 
-    migrated = [instance for instance in INSTANCES if migrate(instance, image)]
-    failed = [instance for instance in INSTANCES if instance not in migrated]
+    migrated = [instance for instance in instances if migrate(instance, image)]
+    failed = [instance for instance in instances if instance not in migrated]
 
     if migrated:
         print(f"\nRestarting {len(migrated)} instance(s) to pick up the migrated config...")

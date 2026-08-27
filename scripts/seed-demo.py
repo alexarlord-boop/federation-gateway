@@ -5,9 +5,15 @@ Seed demo data for the two-TA demo:
   ta-2 (http://localhost:8082) = PeerFed TA  → registers a test RP
 
 Run:  python3 scripts/seed-demo.py
+      python3 scripts/seed-demo.py --single-instance
+      # ^ minimal footprint: only seeds ta-1 (lighthouse) — skips ta-2
+      # entirely (no PeerFed entities, no cross-TA authority hint). Pair
+      # with `docker compose up -d --build ui backend lighthouse` (see
+      # README.md's "Minimal setup" section).
 Requires: pip install cryptography requests (or use system Python with these)
 """
 
+import argparse
 import base64
 import json
 import os
@@ -21,6 +27,14 @@ from cryptography.hazmat.backends import default_backend
 from _dotenv import load_dotenv
 
 load_dotenv()
+
+_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+_parser.add_argument(
+    "--single-instance",
+    action="store_true",
+    help="Only seed ta-1 (lighthouse) — skips ta-2 entirely, for the minimal footprint.",
+)
+_args = _parser.parse_args()
 
 TA1 = "http://localhost:8081/api/v1/admin"
 TA2 = "http://localhost:8082/api/v1/admin"
@@ -77,6 +91,9 @@ def api(method, url, body=None):
     except urllib.error.HTTPError as e:
         body_text = e.read().decode()
         print(f"  !! {method} {url} → HTTP {e.code}: {body_text[:200]}")
+        return None
+    except urllib.error.URLError as e:
+        print(f"  !! {method} {url} → unreachable ({e.reason}) — is its container running?")
         return None
 
 
@@ -160,47 +177,51 @@ for e in entities_ta1:
 
 # ── ta-2: PeerFed ─────────────────────────────────────────────────────────
 
-print("\n=== ta-2: PeerFed (http://localhost:8082) ===\n")
-
-entities_ta2 = [
-    {
-        "entity_id": "https://library.leuven.example",
-        "description": "KU Leuven Library Portal — Relying Party",
-        "registered_entity_types": ["openid_relying_party", "federation_entity"],
-        "status": "active",
-        "_kid": "rp-leuven",
-    },
-    {
-        "entity_id": "https://student-portal.swamid.example",
-        "description": "SWAMID Student Portal — Relying Party",
-        "registered_entity_types": ["openid_relying_party"],
-        "status": "active",
-        "_kid": "rp-swamid",
-    },
-    {
-        "entity_id": "https://research.dfn.example",
-        "description": "DFN Research Gateway — Relying Party (awaiting approval)",
-        "registered_entity_types": ["openid_relying_party"],
-        "status": "pending",
-        "_kid": None,
-    },
-]
-
 ta2_rps = []
-for e in entities_ta2:
-    if check_exists(TA2, e["entity_id"]):
-        print(f"  SKIP already exists: {e['entity_id']}")
-        ta2_rps.append(e["entity_id"])
-        continue
-    payload = {k: v for k, v in e.items() if not k.startswith("_")}
-    if e["_kid"]:
-        payload["jwks"] = gen_jwks(e["_kid"])
-    result = api("POST", f"{TA2}/subordinates", payload)
-    if result:
-        print(f"  OK  created: {e['entity_id']}  status={e['status']}")
-        ta2_rps.append(e["entity_id"])
-    else:
-        print(f"  !!  failed:  {e['entity_id']}")
+
+if _args.single_instance:
+    print("\n=== ta-2: PeerFed — skipped (--single-instance) ===\n")
+else:
+    print("\n=== ta-2: PeerFed (http://localhost:8082) ===\n")
+
+    entities_ta2 = [
+        {
+            "entity_id": "https://library.leuven.example",
+            "description": "KU Leuven Library Portal — Relying Party",
+            "registered_entity_types": ["openid_relying_party", "federation_entity"],
+            "status": "active",
+            "_kid": "rp-leuven",
+        },
+        {
+            "entity_id": "https://student-portal.swamid.example",
+            "description": "SWAMID Student Portal — Relying Party",
+            "registered_entity_types": ["openid_relying_party"],
+            "status": "active",
+            "_kid": "rp-swamid",
+        },
+        {
+            "entity_id": "https://research.dfn.example",
+            "description": "DFN Research Gateway — Relying Party (awaiting approval)",
+            "registered_entity_types": ["openid_relying_party"],
+            "status": "pending",
+            "_kid": None,
+        },
+    ]
+
+    for e in entities_ta2:
+        if check_exists(TA2, e["entity_id"]):
+            print(f"  SKIP already exists: {e['entity_id']}")
+            ta2_rps.append(e["entity_id"])
+            continue
+        payload = {k: v for k, v in e.items() if not k.startswith("_")}
+        if e["_kid"]:
+            payload["jwks"] = gen_jwks(e["_kid"])
+        result = api("POST", f"{TA2}/subordinates", payload)
+        if result:
+            print(f"  OK  created: {e['entity_id']}  status={e['status']}")
+            ta2_rps.append(e["entity_id"])
+        else:
+            print(f"  !!  failed:  {e['entity_id']}")
 
 
 # ── ta-1: Trust Marks ────────────────────────────────────────────────────
@@ -281,22 +302,25 @@ if tm_type:
 
 # ── ta-2: Authority Hints → ta-1 ─────────────────────────────────────────
 
-print("\n=== ta-2: Authority Hints → ta-1 ===\n")
-
-existing_hints = api("GET", f"{TA2}/entity-configuration/authority-hints") or []
-existing_hint_ids = [h.get("authority_hint") for h in existing_hints]
-
-if "http://localhost:8081" in existing_hint_ids:
-    print(f"  SKIP authority hint already set: http://localhost:8081")
+if _args.single_instance:
+    print("\n=== ta-2: Authority Hints → ta-1 — skipped (--single-instance) ===\n")
 else:
-    hint = api("POST", f"{TA2}/entity-configuration/authority-hints", {
-        "entity_id": "http://localhost:8081",
-        "description": "HomeFed TA — upstream trust anchor",
-    })
-    if hint:
-        print(f"  OK  ta-2 now has authority hint → http://localhost:8081 (ta-1)")
+    print("\n=== ta-2: Authority Hints → ta-1 ===\n")
+
+    existing_hints = api("GET", f"{TA2}/entity-configuration/authority-hints") or []
+    existing_hint_ids = [h.get("authority_hint") for h in existing_hints]
+
+    if "http://localhost:8081" in existing_hint_ids:
+        print(f"  SKIP authority hint already set: http://localhost:8081")
     else:
-        print(f"  !!  failed to set authority hint")
+        hint = api("POST", f"{TA2}/entity-configuration/authority-hints", {
+            "entity_id": "http://localhost:8081",
+            "description": "HomeFed TA — upstream trust anchor",
+        })
+        if hint:
+            print(f"  OK  ta-2 now has authority hint → http://localhost:8081 (ta-1)")
+        else:
+            print(f"  !!  failed to set authority hint")
 
 
 print("\n=== Done ===\n")
@@ -304,13 +328,17 @@ print("Demo entities registered:")
 print("  ta-1 (HomeFed):")
 for eid in ["https://idp.helsinki.example", "https://idp.amsterdam.example", "https://idp.newcastle.example (pending)"]:
     print(f"    • {eid}")
-print("  ta-2 (PeerFed):")
-for eid in ["https://library.leuven.example", "https://student-portal.swamid.example", "https://research.dfn.example (pending)"]:
-    print(f"    • {eid}")
+if _args.single_instance:
+    print("  ta-2 (PeerFed): skipped (--single-instance)")
+else:
+    print("  ta-2 (PeerFed):")
+    for eid in ["https://library.leuven.example", "https://student-portal.swamid.example", "https://research.dfn.example (pending)"]:
+        print(f"    • {eid}")
 print()
 print("Trust chain fetch (works now):")
 print("  http://localhost:8081/fetch?sub=https://idp.helsinki.example")
-print("  http://localhost:8082/fetch?sub=https://library.leuven.example")
+if not _args.single_instance:
+    print("  http://localhost:8082/fetch?sub=https://library.leuven.example")
 print()
 print("Trust mark endpoint:")
 print("  http://localhost:8081/trust_marks?issuer=http://localhost:8081&sub=https://idp.helsinki.example&type=http://localhost:8081/trustmarks/research-and-education")

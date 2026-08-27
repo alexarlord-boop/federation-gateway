@@ -33,6 +33,12 @@ LightHouse nodes each wired into an actual multi-hop hierarchy — one on its
 own, one to demonstrate interfederation with the first — see
 `docs/FEDERATION-TOPOLOGY.md` if you want to explore that instead.
 
+13 containers is a lot for a laptop with limited headroom. If you just
+want to click around one trust anchor's Entities/Trust Marks pages,
+`README.md`'s "Minimal setup" section runs the same thing with only
+`ui`+`backend`+`lighthouse` (3 containers) — same login, same UI, just no
+mesh and no second trust anchor.
+
 Open **http://localhost:8080** and log in:
 
 | Role | Email | Password |
