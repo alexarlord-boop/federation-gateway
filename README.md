@@ -106,11 +106,29 @@ change it before any real deployment. See `PRODUCTION-READINESS.md` #2.
 ```sh
 python3 scripts/generate-secrets.py   # one-time — writes a gitignored .env
 docker compose up -d --build
+python3 scripts/migrate-lighthouse-config.py       # one-time per LightHouse image
+python3 scripts/bootstrap-lighthouse-admin-users.py # one-time — idempotent
+python3 scripts/seed-demo.py
+python3 scripts/seed-mesh.py
+python3 scripts/seed-mesh2.py
 ```
 
 Opens at **http://localhost:8080**. This brings up all 13 services (ui,
 backend, lighthouse, lighthouse2, and 9 mesh nodes across two independent
-federations). See `docs/GETTING-STARTED.md` for the guided first-run tour.
+federations). Every command above is idempotent — safe to re-run any of
+them if something fails partway. See `docs/GETTING-STARTED.md` for the
+guided first-run tour.
+
+- `migrate-lighthouse-config.py`: LightHouse 0.22.x+ reads federation
+  endpoint config from its own database, not live from `config.yaml` —
+  skip this and every public endpoint (`/fetch`, `/list`, `/resolve`, ...)
+  404s (`CLAUDE.md` hard constraint #13).
+- `bootstrap-lighthouse-admin-users.py`: each LightHouse instance's admin
+  API stays unauthenticated until its first user is created — this
+  creates that one user per instance using the credentials from `.env`.
+- `seed-*.py`: populate the demo federations with subordinates, trust
+  marks, and (for the mesh scripts) real multi-hop hierarchies. Optional
+  if you just want an empty stack to point at your own data.
 
 **Required secrets**: `docker compose up` fails closed —
 `LIGHTHOUSE_ADMIN_USERNAME`/`PASSWORD`, `LIGHTHOUSE2_ADMIN_USERNAME`/
@@ -147,6 +165,9 @@ docker compose up -d --build backend
 docker compose down
 find lighthouse/data -mindepth 1 ! -name '.gitkeep' -delete
 docker compose up -d --build --force-recreate
+python3 scripts/migrate-lighthouse-config.py
+python3 scripts/bootstrap-lighthouse-admin-users.py
+python3 scripts/seed-demo.py
 ```
 
 To keep LightHouse data but reset only the BFF database:
