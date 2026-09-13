@@ -1,5 +1,16 @@
 # Federation Gateway
 
+      |   
+  \  ___  /     
+ _  /   \  _    GÉANT
+    |   |       Trust & Identity
+     \_/        Incubator
+      =
+  _________
+  |  * *  |     Co-Funded by
+  | *   * |     the European
+  |__*_*__|     Union
+
 **Backend-Agnostic UI** for managing OpenID Federation entities, trust anchors, subordinates, and trust marks.
 
 > New here? Start with **[`CLAUDE.md`](CLAUDE.md)** (agent/developer map of this
