@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Shield, Plus, ArrowUpToLine, Server, Globe, Loader2, Trash2, MoreHorizontal } from 'lucide-react';
+import { Shield, Plus, ArrowUpToLine, Server, Globe, Loader2, Trash2, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import { gatewayFetch } from '@/lib/gateway-fetch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -229,27 +229,37 @@ export default function TrustAnchorsPage() {
     | null
   >(null);
 
-  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs } = useTrustAnchors();
+  const { trustAnchors: allAnchors, isLoading: isLoadingMyTAs, error: myTAsError, refetch: refetchMyTAs } = useTrustAnchors();
   const localTAs = allAnchors.filter((ta) => ta.type === 'federation' || ta.type === 'intermediate');
 
   // Live liveness + subordinate count — one parallel query per local instance.
+  // 500/502/503/504 are deliberately NOT soft-failed here (unlike 400/404,
+  // which mean "this route/instance doesn't behave like a subordinates
+  // list" and are permanent): they're exactly the codes the proxy returns
+  // for a transient connect/timeout blip (e.g. a LightHouse container
+  // restart, which takes several real seconds — not just the sub-100ms
+  // reconnect the proxy itself absorbs), so letting them throw lets
+  // react-query's retry bridge that window instead of the card snapping
+  // straight to "offline". retryDelay is capped short (not the default
+  // 30s ceiling) so the retry budget can actually span a several-second
+  // outage, and refetchInterval speeds up to 5s while erroring — instead
+  // of being stuck showing "offline" for up to the normal 60s cadence —
+  // then relaxes back to 60s once healthy again.
   const instanceQueries = useQueries({
     queries: localTAs.map((ta) => ({
       queryKey: ['instance-stats', ta.id],
       queryFn: async () => {
-        try {
-          const result = await gatewayFetch({
-            path: `/api/v1/proxy/${encodeURIComponent(ta.id)}/api/v1/admin/subordinates/`,
-            softFail: [400, 404, 500, 502, 503, 504],
-          });
-          return result as any[] | null;
-        } catch {
-          return null;
-        }
+        const result = await gatewayFetch({
+          path: `/api/v1/proxy/${encodeURIComponent(ta.id)}/api/v1/admin/subordinates/`,
+          softFail: [400, 404],
+        });
+        return result as any[] | null;
       },
-      retry: false,
+      retry: 4,
+      retryDelay: (attempt: number) => Math.min(500 * 2 ** attempt, 3000),
       staleTime: 30_000,
-      refetchInterval: 60_000,
+      refetchInterval: (query) => (query.state.status === 'error' ? 5_000 : 60_000),
+      refetchIntervalInBackground: true,
     })),
   });
 
@@ -311,6 +321,16 @@ export default function TrustAnchorsPage() {
             <span className="text-sm text-muted-foreground">(Deployment-managed configuration)</span>
           </div>
         </div>
+        {myTAsError && localTAs.length === 0 ? (
+          <div className="text-center py-12 border rounded-lg">
+            <AlertTriangle className="w-10 h-10 text-destructive mx-auto mb-3" />
+            <h3 className="text-base font-semibold mb-1">Couldn't load instances</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              The gateway may be temporarily unable to reach its database. Try again in a moment.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchMyTAs()}>Retry</Button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {localTAs.map((ta) => {
              const isActive = activeTrustAnchor?.id === ta.id;
@@ -328,6 +348,7 @@ export default function TrustAnchorsPage() {
              );
           })}
         </div>
+        )}
       </section>
 
       {/* Level 2: Authority Hints - Upstream */}

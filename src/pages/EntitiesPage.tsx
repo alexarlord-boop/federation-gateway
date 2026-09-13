@@ -7,7 +7,8 @@ import {
   Filter,
   ChevronDown,
   ExternalLink,
-  MoreHorizontal
+  MoreHorizontal,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +53,7 @@ export default function EntitiesPage() {
   };
   
   const { activeTrustAnchor } = useTrustAnchor();
-  const { entities, isLoading } = useEntities();
+  const { entities, isLoading, error, refetch } = useEntities();
   const instanceId = activeTrustAnchor?.id;
   const canCreate = useOperationAllowed('subordinates', 'create');
   const canUpdate = useOperationAllowed('subordinates', 'update');
@@ -92,6 +93,19 @@ export default function EntitiesPage() {
         <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">Select an Instance</h3>
         <p className="text-muted-foreground">Choose a federation instance from the sidebar to view subordinates.</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Couldn't load subordinates</h3>
+        <p className="text-muted-foreground mb-4">
+          The instance may be temporarily unreachable. Try again in a moment.
+        </p>
+        <Button variant="outline" onClick={() => refetch()}>Retry</Button>
       </div>
     );
   }

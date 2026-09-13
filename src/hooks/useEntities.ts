@@ -14,7 +14,7 @@ export interface EntityDisplay {
 }
 
 export const useEntities = () => {
-  const { data: subordinates, isLoading, error } = useSubordinates(); // Fetch all
+  const { data: subordinates, isLoading, error, refetch } = useSubordinates(); // Fetch all
 
   const entities: EntityDisplay[] = subordinates
     ?.filter((sub: Subordinate) => (sub.metadata as any)?.federation_entity?.entity_role !== 'intermediate')
@@ -29,5 +29,5 @@ export const useEntities = () => {
       description: sub.description
     })) || [];
 
-  return { entities, isLoading, error };
+  return { entities, isLoading, error, refetch };
 };

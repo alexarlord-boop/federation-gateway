@@ -18,6 +18,7 @@ This keeps the Admin API independent of our auth layer — it only
 receives pre-authenticated requests from the gateway.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -229,32 +230,42 @@ async def proxy(
     upstream_headers = _build_upstream_headers(request, user, instance)
 
     # 5. Forward
+    # One bounded retry on ConnectError only: a connection that never
+    # established sent nothing to the upstream, so retrying is safe
+    # regardless of HTTP method. Covers the brief reconnect window right
+    # after a LightHouse container restart (observed ~50ms in practice)
+    # instead of surfacing it as a hard 502 for every proxied call.
     client = _get_client()
-    try:
-        upstream_response = await client.request(
-            method=request.method,
-            url=upstream_url,
-            headers=upstream_headers,
-            content=body if body else None,
-        )
-    except httpx.ConnectError as exc:
-        logger.error("Proxy connect error for %s: %s", instance["name"], exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Cannot reach Admin API at {instance['base_url']}: connection refused",
-        )
-    except httpx.TimeoutException as exc:
-        logger.error("Proxy timeout for %s: %s", instance["name"], exc)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=f"Admin API at {instance['base_url']} timed out",
-        )
-    except httpx.HTTPError as exc:
-        logger.error("Proxy HTTP error for %s: %s", instance["name"], exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error communicating with Admin API: {exc}",
-        )
+    for attempt in range(2):
+        try:
+            upstream_response = await client.request(
+                method=request.method,
+                url=upstream_url,
+                headers=upstream_headers,
+                content=body if body else None,
+            )
+            break
+        except httpx.ConnectError as exc:
+            if attempt == 0:
+                await asyncio.sleep(0.15)
+                continue
+            logger.error("Proxy connect error for %s: %s", instance["name"], exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Cannot reach Admin API at {instance['base_url']}: connection refused",
+            )
+        except httpx.TimeoutException as exc:
+            logger.error("Proxy timeout for %s: %s", instance["name"], exc)
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail=f"Admin API at {instance['base_url']} timed out",
+            )
+        except httpx.HTTPError as exc:
+            logger.error("Proxy HTTP error for %s: %s", instance["name"], exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Error communicating with Admin API: {exc}",
+            )
 
     # 6. Audit mutating actions that succeeded
     if request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"} and upstream_response.is_success:
