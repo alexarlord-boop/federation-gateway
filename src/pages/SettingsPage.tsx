@@ -270,6 +270,7 @@ function EntityConfigSection() {
 
   const [newClaimKey, setNewClaimKey] = useState('');
   const [newClaimValue, setNewClaimValue] = useState('');
+  const [newClaimCrit, setNewClaimCrit] = useState(false);
   const [lifetimeVal, setLifetimeVal] = useState('');
   const [metaDraft, setMetaDraft] = useState('');
   const [metaEditing, setMetaEditing] = useState(false);
@@ -335,13 +336,23 @@ function EntityConfigSection() {
               {(claims as any[]).length > 0 ? (
                 <Table>
                   <TableHeader>
-                    <TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead><TableHead className="w-12" /></TableRow>
+                    <TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead><TableHead>Crit</TableHead><TableHead className="w-12" /></TableRow>
                   </TableHeader>
                   <TableBody>
                     {(claims as any[]).map((c: any) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-mono text-sm">{c.key ?? c.claim_key}</TableCell>
-                        <TableCell className="text-sm max-w-xs truncate">{JSON.stringify(c.value ?? c.claim_value)}</TableCell>
+                        <TableCell className="font-mono text-sm">{c.claim}</TableCell>
+                        <TableCell className="text-sm max-w-xs truncate">{JSON.stringify(c.value)}</TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={!!c.crit}
+                            disabled={updateClaim.isPending}
+                            onCheckedChange={(checked) =>
+                              updateClaim.mutateAsync({ id: c.id, data: { claim: c.claim, value: c.value, crit: checked } })
+                                .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to update claim' }))
+                            }
+                          />
+                        </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => deleteClaim.mutateAsync(c.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
@@ -354,15 +365,19 @@ function EntityConfigSection() {
               ) : (
                 <p className="text-sm text-muted-foreground">No additional claims</p>
               )}
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Input placeholder="claim key" value={newClaimKey} onChange={e => setNewClaimKey(e.target.value)} className="max-w-[200px]" />
                 <Input placeholder="value (JSON)" value={newClaimValue} onChange={e => setNewClaimValue(e.target.value)} className="flex-1" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Switch id="new-claim-crit" checked={newClaimCrit} onCheckedChange={setNewClaimCrit} />
+                  <Label htmlFor="new-claim-crit" className="text-sm text-muted-foreground">Critical</Label>
+                </div>
                 <Button size="sm" disabled={!newClaimKey || !newClaimValue || addClaim.isPending}
                   onClick={() => {
                     let parsed: any;
                     try { parsed = JSON.parse(newClaimValue); } catch { parsed = newClaimValue; }
-                    addClaim.mutateAsync({ claim_key: newClaimKey, claim_value: parsed } as any)
-                      .then(() => { setNewClaimKey(''); setNewClaimValue(''); toast({ title: 'Claim added' }); })
+                    addClaim.mutateAsync({ claim: newClaimKey, value: parsed, crit: newClaimCrit })
+                      .then(() => { setNewClaimKey(''); setNewClaimValue(''); setNewClaimCrit(false); toast({ title: 'Claim added' }); })
                       .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add claim' }));
                   }}>
                   <Plus className="w-4 h-4 mr-1" /> Add
