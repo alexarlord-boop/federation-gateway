@@ -285,10 +285,13 @@ function EntityConfigSection() {
     { claim: 'federation_trust_mark_endpoint',        label: 'Trust Mark Fetch Endpoint',   hint: 'Optional for Trust Mark Issuers. Returns the trust mark JWT for a subject.' },
   ];
 
+  // Server-derived endpoints live in the signed entity configuration
+  // statement, not the editable metadata-claims store (`metadata` above) —
+  // LightHouse never populates federation_entity endpoints there.
   const currentFedEndpoints: Record<string, string> = Object.fromEntries(
     FEDERATION_ENDPOINT_FIELDS.map(({ claim }) => [
       claim,
-      (metadata as any)?.federation_entity?.[claim] ?? '',
+      (entityConfiguration as any)?.metadata?.federation_entity?.[claim] ?? '',
     ])
   );
 
@@ -391,7 +394,7 @@ function EntityConfigSection() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {metaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+          {configLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
             <>
               {TRUST_MARK_ENDPOINT_FIELDS.map(({ claim, label, hint }) => {
                 const saved = currentTmEndpoints[claim];
