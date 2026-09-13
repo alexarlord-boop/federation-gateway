@@ -7,8 +7,6 @@ instances:
     name: LightHouse
     public_base_url: http://localhost:8081
     admin_base_url: http://lighthouse:8080
-    public_port: 8081
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
@@ -17,8 +15,6 @@ instances:
     name: LightHouse 2
     public_base_url: http://localhost:8082
     admin_base_url: http://lighthouse2:8080
-    public_port: 8082
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
@@ -34,8 +30,6 @@ instances:
     name: Mesh - Trust Anchor
     public_base_url: http://localhost:8090
     admin_base_url: http://mesh-ta:8080
-    public_port: 8090
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
@@ -44,8 +38,6 @@ instances:
     name: Mesh - Intermediate
     public_base_url: http://localhost:8091
     admin_base_url: http://mesh-ia:8080
-    public_port: 8091
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
@@ -54,8 +46,6 @@ instances:
     name: Mesh - Intermediate 2
     public_base_url: http://localhost:8097
     admin_base_url: http://mesh-ia2:8080
-    public_port: 8097
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME
@@ -71,8 +61,6 @@ instances:
     name: Mesh2 - Trust Anchor
     public_base_url: http://localhost:8094
     admin_base_url: http://mesh2-ta:8080
-    public_port: 8094
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE2_ADMIN_USERNAME
@@ -81,8 +69,6 @@ instances:
     name: Mesh2 - Intermediate
     public_base_url: http://localhost:8095
     admin_base_url: http://mesh2-ia:8080
-    public_port: 8095
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE2_ADMIN_USERNAME

@@ -6,8 +6,6 @@ export interface DeploymentInstance {
   name: string;
   public_base_url: string;
   admin_base_url: string;
-  public_port?: number;
-  admin_port?: number;
   deployment_managed: boolean;
   selected_by_default: boolean;
 }

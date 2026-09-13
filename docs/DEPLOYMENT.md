@@ -186,8 +186,6 @@ instances:
     name: My Federation's Trust Anchor
     public_base_url: https://ta.my-federation.example.org
     admin_base_url: https://ta-admin.my-federation.example.org
-    public_port: 443
-    admin_port: 443
     admin_auth:
       type: basic
       username_env: MY_TA_ADMIN_USERNAME
@@ -202,6 +200,14 @@ address; it doesn't have to be publicly reachable at all (see
 env var names per instance (`username_env`/`password_env` — they don't
 have to be `LIGHTHOUSE_ADMIN_*`, that's just what the bundled demo
 instances happen to use) and set real values for them in `.env`.
+
+**There is no separate port field.** If your instance listens on a
+non-default port, put it directly in `public_base_url`/`admin_base_url`
+(`https://ta.example.org:8443`) — the gateway connects to exactly the
+URL you write here, nothing else. (An earlier version of this schema had
+`public_port`/`admin_port` fields that looked like they should combine
+with the base URL but never did anything — removed for exactly the
+confusion that caused.)
 
 ## 3. Your LightHouse instance needs its own admin user
 

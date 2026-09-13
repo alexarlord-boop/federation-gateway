@@ -182,8 +182,6 @@ instances:
     name: LightHouse
     public_base_url: http://localhost:8081
     admin_base_url: http://lighthouse:8080
-    public_port: 8081
-    admin_port: 8080
     admin_auth:
       type: basic
       username_env: LIGHTHOUSE_ADMIN_USERNAME

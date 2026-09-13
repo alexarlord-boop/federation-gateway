@@ -39,8 +39,6 @@ class InstanceConfig(BaseModel):
     name: str
     public_base_url: HttpUrl
     admin_base_url: HttpUrl
-    public_port: Optional[int] = None
-    admin_port: Optional[int] = None
     admin_auth: Optional[BasicAuthConfig] = None
 
 

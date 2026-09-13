@@ -26,8 +26,6 @@ def list_instances(request: Request):
             name=item.name,
             public_base_url=str(item.public_base_url),
             admin_base_url=str(item.admin_base_url),
-            public_port=item.public_port,
-            admin_port=item.admin_port,
             deployment_managed=True,
             selected_by_default=False,
         )

@@ -55,8 +55,6 @@ def seed_data(instance_config: Optional[DeploymentConfig] = None):
                 {
                     "public_base_url": str(item.public_base_url),
                     "admin_api_base_url": str(item.admin_base_url),
-                    "public_port": item.public_port,
-                    "admin_port": item.admin_port,
                 }
             )
             if anchor is None:

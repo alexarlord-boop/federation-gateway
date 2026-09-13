@@ -46,8 +46,6 @@ give a new instance its own pair if it needs separate credentials.
        name: LightHouse 3
        public_base_url: http://localhost:8083
        admin_base_url: http://lighthouse3:8080
-       public_port: 8083
-       admin_port: 8080
        admin_auth:
          type: basic
          username_env: LIGHTHOUSE_ADMIN_USERNAME
