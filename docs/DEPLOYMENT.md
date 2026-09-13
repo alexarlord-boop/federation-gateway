@@ -16,18 +16,162 @@ everything it references was built and verified in #1–#6.
 Only `ui` and `backend` are "this application." Everything else in
 `docker-compose.yml` (`lighthouse`, `lighthouse2`, every `mesh-*`/
 `mesh2-*` service) is demo fixture data for trying the tool out — a real
-deployment doesn't run any of it. Your LightHouse instance(s) are
-whatever you (or your federation) already operate, wherever that is.
+deployment doesn't run any of it.
 
 `ui` and `backend` don't have the entity_id/identity constraints
 LightHouse does (`CLAUDE.md` constraints #2/#11 — that's specifically
 about the mesh) — they're a normal stateful web app (SQLite by default;
 see `docs/ARCHITECTURE.md`'s "not yet built" note if you want Postgres)
 and can run under whatever orchestration you already use: Kubernetes,
-ECS, or `docker-compose.yml` trimmed down to just those two services
-(note `backend`'s `depends_on: lighthouse: condition: service_healthy`
-in the bundled file exists only because the demo assumes the bundled
-mesh — drop it, it doesn't apply to an external instance).
+ECS, or a trimmed-down `docker-compose.yml`. Which trim depends on which
+of these two you're doing:
+
+### Scenario A — you already operate a LightHouse (or compatible) instance elsewhere
+
+Your instance is wherever you (or your federation) already run it —
+this repo's compose file doesn't manage it at all. Run just `ui` +
+`backend`, with no `lighthouse` service and no dependency on one:
+
+```yaml
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      GATEWAY_CONFIG_FILE: /config/gateway.yaml
+      # Names are yours to choose — see step 2 below. These two are just
+      # an example matching this doc's gateway.yaml sample.
+      MY_TA_ADMIN_USERNAME: ${MY_TA_ADMIN_USERNAME:?Set in .env}
+      MY_TA_ADMIN_PASSWORD: ${MY_TA_ADMIN_PASSWORD:?Set in .env}
+      DATABASE_URL: sqlite:////data/backend.db
+      OIDC_ENCRYPTION_KEY: ${OIDC_ENCRYPTION_KEY:?Set in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set in .env}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:?Set in .env}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+    volumes:
+      - ./backend/config:/config:ro
+      - ./backend/data:/data
+    ports:
+      - "${BACKEND_PORT:-8765}:8765"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  ui:
+    build:
+      context: .
+    environment:
+      BACKEND_HOST: ${BACKEND_SERVICE_NAME:-backend}
+      BACKEND_PORT: ${BACKEND_PORT:-8765}
+    ports:
+      - "${UI_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+```
+
+No `depends_on: lighthouse` here (the bundled `docker-compose.yml` only
+has that because the demo assumes the bundled mesh) and no
+`LIGHTHOUSE2_ADMIN_*` (that pair is specific to the demo's second
+federation) — this file only knows about your one real instance, named
+via whatever env vars your own `gateway.yaml` (step 2) references.
+
+### Scenario B — you're standing up a new LightHouse instance specifically for this deployment
+
+Same two services, plus a `lighthouse` service you actually own and
+run going forward (not the shared demo one) — this is the bundled
+`docker-compose.yml`'s `ui`/`backend`/`lighthouse` trio, unchanged, with
+`lighthouse2` and every `mesh-*`/`mesh2-*` service removed:
+
+```yaml
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      GATEWAY_CONFIG_FILE: /config/gateway.yaml
+      MY_TA_ADMIN_USERNAME: ${MY_TA_ADMIN_USERNAME:?Set in .env}
+      MY_TA_ADMIN_PASSWORD: ${MY_TA_ADMIN_PASSWORD:?Set in .env}
+      DATABASE_URL: sqlite:////data/backend.db
+      OIDC_ENCRYPTION_KEY: ${OIDC_ENCRYPTION_KEY:?Set in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set in .env}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:?Set in .env}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+    volumes:
+      - ./backend/config:/config:ro
+      - ./backend/data:/data
+    ports:
+      - "${BACKEND_PORT:-8765}:8765"
+    depends_on:
+      lighthouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  ui:
+    build:
+      context: .
+    environment:
+      BACKEND_HOST: ${BACKEND_SERVICE_NAME:-backend}
+      BACKEND_PORT: ${BACKEND_PORT:-8765}
+    ports:
+      - "${UI_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  lighthouse:
+    image: oidfed/lighthouse@sha256:828cafdf07ecb933e136d735afd69d05010e24da87191e8d25998bc0dbe52889
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /data/keys && chmod 0777 /data /data/keys && exec /entrypoint.sh
+    ports:
+      - "${LIGHTHOUSE_PUBLIC_PORT:-8081}:8080"
+    volumes:
+      - ./lighthouse/config.yaml:/config/config.yaml:ro
+      - ./lighthouse/data:/data
+    environment:
+      LH_CONFIG_FILE: "/config/config.yaml"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /.well-known/openid-federation HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && head -1 <&3 | grep -q 200"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+```
+
+The one thing you cannot copy from the demo: `lighthouse/config.yaml`'s
+`entity_id` is `http://localhost:8081` there, which only resolves inside
+your own machine. Yours needs to be the real, publicly resolvable HTTPS
+URL this instance will be known by — get this wrong on day one and
+you're re-keying and re-establishing every trust relationship later
+(`docs/TLS.md` explains why it can't be fixed retroactively). This
+instance also still needs the one-time `lhmigrate config2db` step
+(step 3 below) and its own admin user before the admin API responds to
+anything.
 
 ## 2. Point `gateway.yaml` at your real instances
 
