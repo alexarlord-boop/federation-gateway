@@ -59,6 +59,12 @@ services:
   ui:
     build:
       context: .
+    environment:
+      # Rendered into nginx's proxy_pass at container start (see
+      # nginx/default.conf.template) — override BACKEND_SERVICE_NAME here
+      # (no rebuild needed) if you rename the `backend` service below.
+      BACKEND_HOST: ${BACKEND_SERVICE_NAME:-backend}
+      BACKEND_PORT: ${BACKEND_PORT:-8765}
     ports:
       - "${UI_PORT:-8080}:80"
     depends_on:

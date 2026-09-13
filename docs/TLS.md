@@ -39,7 +39,9 @@ For a real deployment:
   into the `ui` image's nginx config — a dedicated edge proxy/ingress is
   the standard pattern and keeps cert renewal out of the app image
   entirely.
-- UI→backend (`nginx`'s `proxy_pass http://backend:8765` in `Dockerfile`)
+- UI→backend (`nginx`'s `proxy_pass` in `nginx/default.conf.template`,
+  rendered with `BACKEND_HOST`/`BACKEND_PORT` at container start — see
+  `docker-compose.yml` and `.env.example`)
   can reasonably stay plain HTTP if both containers are on a private,
   trusted network you control (the common case for a single
   docker-compose or single-pod deployment). If backend and UI are ever
