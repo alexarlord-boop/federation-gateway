@@ -254,21 +254,33 @@ Per-hop guidance, and why LightHouse-to-LightHouse specifically needs
 real HTTPS `entity_id`s from your very first seed rather than added
 later: `docs/TLS.md`.
 
-## 6. Real user login, and getting off the bootstrap account
+## 6. Getting real named accounts, and off the shared bootstrap account
 
 1. Log in once as `admin@oidfed.org` with whatever you set
-   `ADMIN_BOOTSTRAP_PASSWORD` to.
-2. Configure at least one real OIDC provider at `/identity-providers`
-   (super_admin-only).
-3. Log in via that provider, then have the bootstrap admin assign your
-   new SSO account the `super_admin` RBAC role from the Users page — new
-   SSO users are deliberately roleless until assigned by hand
-   (`PRODUCTION-READINESS.md` #1, by design, not a bug).
-4. From here, treat `admin@oidfed.org` as a break-glass account, not a
+   `ADMIN_BOOTSTRAP_PASSWORD` to — this account exists to bootstrap the
+   first `super_admin`, not to be everyone's daily login.
+2. Give each real admin their own account. There are two ways to do
+   this, and **you only need one of them** — an external OIDC provider
+   is not a requirement, just an option for deployments that already
+   centralize identity elsewhere:
+   - **Local accounts** — from the bootstrap admin, create a named user
+     per person on the Users page with their own password and role.
+     Nothing external to configure; this alone is a complete answer to
+     "get real people off the shared bootstrap account."
+   - **SSO via an external OIDC provider** — if your org already runs
+     Keycloak, Entra ID, or similar, configure it at
+     `/identity-providers` (super_admin-only), have each person log in
+     through it once, then have the bootstrap admin assign their new
+     account a role from the Users page — SSO users are deliberately
+     roleless until assigned by hand (`PRODUCTION-READINESS.md` #1, by
+     design, not a bug). Worth it once you have more than a handful of
+     people or want centralized deprovisioning; not a prerequisite for
+     anything else in this doc.
+3. From here, treat `admin@oidfed.org` as a break-glass account, not a
    daily driver: nothing in this repo disables it automatically or
    forces its password to rotate. Change its password to something you
-   don't use day-to-day, or stop relying on it entirely once real SSO
-   accounts exist.
+   don't use day-to-day, or stop relying on it entirely once real named
+   accounts exist (local or SSO).
 
 ## 7. Backup/restore
 
@@ -300,8 +312,9 @@ secrets-manager question above.
       `ADMIN_BOOTSTRAP_PASSWORD`), injected via a real secrets manager
       in production rather than a flat file
 - [ ] TLS in place per `docs/TLS.md`'s per-hop breakdown
-- [ ] At least one real OIDC provider configured and tested; a real
-      person, not just the bootstrap account, holds `super_admin`
+- [ ] At least one real, named account (local, or SSO via a configured
+      OIDC provider — either is sufficient) holds `super_admin`, not
+      just the bootstrap account
 - [ ] Backup scheduled somewhere off-host, restore tested at least once
 - [ ] You've read `PRODUCTION-READINESS.md`'s "Tracked, not actionable
       here" section (LightHouse's `/resolve` not honoring `blocked` — an
