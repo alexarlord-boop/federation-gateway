@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTrustAnchor } from '@/contexts/TrustAnchorContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuthorityHints } from '@/hooks/useAuthorityHints';
+import { useTheme, THEME_OPTIONS } from '@/hooks/useTheme';
 import { useEntityConfiguration } from '@/hooks/useEntityConfiguration';
 import { useKeyManagement } from '@/hooks/useKeyManagement';
 import { useHistoricalKeys } from '@/hooks/useHistoricalKeys';
@@ -43,7 +45,8 @@ export default function SettingsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const { toast } = useToast();
   const { isFeatureEnabled, isLoading: capLoading } = useCapabilities();
-  const [theme, setTheme] = useState(() => localStorage.getItem('ui_theme') || 'theme-default');
+  const { theme, applyTheme } = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Capability flags — tabs are hidden when their backend feature is disabled
   const showAuthorityHints = isFeatureEnabled('authority_hints');
@@ -52,13 +55,12 @@ export default function SettingsPage() {
   const showConstraints = isFeatureEnabled('general_constraints');
   const showPolicies = isFeatureEnabled('general_metadata_policies');
 
-  const applyTheme = (value: string) => {
-    const root = document.documentElement;
-    root.classList.remove('theme-default', 'theme-grayscale', 'theme-indigo');
-    root.classList.add(value);
-    localStorage.setItem('ui_theme', value);
-    setTheme(value);
-  };
+  // URL-addressable tab (?tab=constraints etc.) so other pages can deep-link
+  // straight to e.g. the general constraints, same pattern as EntitiesPage's
+  // ?status= and TrustMarksPage's ?tab=.
+  const validTabs = ['general', 'entity-config', 'keys', 'constraints', 'policies'];
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam && validTabs.includes(tabParam) ? tabParam : 'general';
 
   // Show a loading skeleton while capabilities are being fetched
   if (capLoading) {
@@ -86,7 +88,11 @@ export default function SettingsPage() {
         <p className="page-description">Manage your account, federation configuration, and key management</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('tab', v); return next; })}
+        className="space-y-6"
+      >
         <TabsList className="flex-wrap">
           <TabsTrigger value="general">General</TabsTrigger>
           {showEntityConfig && <TabsTrigger value="entity-config">Entity Config</TabsTrigger>}
@@ -164,7 +170,9 @@ function AppearanceSection({ theme, applyTheme }: { theme: string; applyTheme: (
     <Card>
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
-        <CardDescription>Choose the visual theme</CardDescription>
+        <CardDescription>
+          Choose the visual theme — also available from the sidebar for quick access.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2 max-w-sm">
@@ -172,9 +180,9 @@ function AppearanceSection({ theme, applyTheme }: { theme: string; applyTheme: (
           <Select value={theme} onValueChange={applyTheme}>
             <SelectTrigger id="theme"><SelectValue placeholder="Select theme" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="theme-default">Default (Teal/Navy)</SelectItem>
-              <SelectItem value="theme-grayscale">Grayscale</SelectItem>
-              <SelectItem value="theme-indigo">Indigo</SelectItem>
+              {THEME_OPTIONS.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { 
   ArrowLeft, 
   Building2, 
@@ -15,6 +15,7 @@ import {
   Shield,
   FileText,
   Award,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,8 @@ import { useEntityDetail } from '@/hooks/useEntityDetail';
 import { useSubordinateConstraints } from '@/hooks/useSubordinateConstraints';
 import { useSubordinateKeys } from '@/hooks/useSubordinateKeys';
 import { useSubordinateMetadataPolicies } from '@/hooks/useSubordinateMetadataPolicies';
+import { useGeneralConstraints } from '@/hooks/useGeneralConstraints';
+import { useGeneralMetadataPolicies } from '@/hooks/useGeneralMetadataPolicies';
 import { useOperationAllowed } from '@/hooks/useOperationAllowed';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { IssueTrustMarkDialog } from '@/components/trust-marks/IssueTrustMarkDialog';
@@ -55,6 +58,48 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
+
+/**
+ * Read-only reference panel for viewing the federation-wide "general" value
+ * a subordinate's constraints/policies are copied from or fall back to.
+ * "Copy from General" already existed as an action but gave no way to see
+ * what General actually contains without leaving this page — this closes
+ * that gap, plus a direct link to where it's actually edited (Settings,
+ * otherwise easy to not know exists at all).
+ */
+function GeneralReferencePanel({
+  settingsTab,
+  label,
+  isLoading,
+  children,
+}: {
+  settingsTab: 'constraints' | 'policies';
+  label: string;
+  isLoading: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border bg-muted/30 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <CollapsibleTrigger asChild>
+          <button type="button" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <ChevronDown className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} />
+            {label}
+          </button>
+        </CollapsibleTrigger>
+        <Link to={`/settings?tab=${settingsTab}`} className="text-xs text-primary hover:underline shrink-0">
+          Edit in Settings →
+        </Link>
+      </div>
+      <CollapsibleContent className="pt-3">
+        {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 /* ─── Subordinate Constraints Tab ─── */
 function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string }) {
@@ -65,6 +110,7 @@ function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string })
     setMaxPathLength, deleteMaxPathLength,
     addAllowedEntityType, deleteAllowedEntityType,
   } = useSubordinateConstraints(subordinateId);
+  const { constraints: generalConstraints, isLoading: generalLoading } = useGeneralConstraints();
 
   const [newMaxPath, setNewMaxPath] = useState('');
   const [newEntityType, setNewEntityType] = useState('');
@@ -76,8 +122,44 @@ function SubordinateConstraintsTab({ subordinateId }: { subordinateId: string })
   const naming = constraints?.naming_constraints;
   const allowed: string[] = (constraints as any)?.allowed_entity_types ?? [];
 
+  const generalMaxPath = generalConstraints?.max_path_length;
+  const generalNaming = generalConstraints?.naming_constraints;
+  const generalAllowed: string[] = generalConstraints?.allowed_entity_types ?? [];
+  const generalHasAny = generalMaxPath != null || !!generalNaming || generalAllowed.length > 0;
+
   return (
     <div className="space-y-6">
+      <GeneralReferencePanel settingsTab="constraints" label="View General Constraints" isLoading={generalLoading}>
+        {generalHasAny ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Max Path Length</p>
+              <p className="font-mono">{generalMaxPath != null ? generalMaxPath : <span className="text-muted-foreground">Not set</span>}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Naming Constraints</p>
+              {generalNaming ? (
+                <pre className="text-xs font-mono whitespace-pre-wrap">{JSON.stringify(generalNaming, null, 2)}</pre>
+              ) : (
+                <span className="text-muted-foreground">Not configured</span>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Allowed Types</p>
+              {generalAllowed.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {generalAllowed.map(t => <Badge key={t} variant="secondary" className="font-mono text-xs">{t}</Badge>)}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">No restrictions</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No general constraints configured for this federation.</p>
+        )}
+      </GeneralReferencePanel>
+
       {/* Actions */}
       <div className="flex gap-2">
         <Button
@@ -302,6 +384,7 @@ function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: stri
     policies, isLoading, error,
     copyFromGeneral, deleteAll, updateAll,
   } = useSubordinateMetadataPolicies(subordinateId);
+  const { policies: generalPolicies, isLoading: generalLoading } = useGeneralMetadataPolicies();
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -310,6 +393,7 @@ function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: stri
   if (error) return <Card><CardContent className="py-8 text-center text-muted-foreground">Failed to load metadata policies</CardContent></Card>;
 
   const policyEntries = Object.entries(policies as Record<string, any>);
+  const generalPolicyEntries = Object.entries(generalPolicies as Record<string, unknown>);
 
   const startEdit = () => {
     setDraft(JSON.stringify(policies, null, 2));
@@ -329,6 +413,16 @@ function SubordinateMetadataPoliciesTab({ subordinateId }: { subordinateId: stri
 
   return (
     <div className="space-y-6">
+      <GeneralReferencePanel settingsTab="policies" label="View General Metadata Policies" isLoading={generalLoading}>
+        {generalPolicyEntries.length > 0 ? (
+          <ScrollArea className="h-48 rounded-md border p-3 bg-background">
+            <pre className="text-xs font-mono">{JSON.stringify(generalPolicies, null, 2)}</pre>
+          </ScrollArea>
+        ) : (
+          <p className="text-sm text-muted-foreground">No general metadata policies configured for this federation.</p>
+        )}
+      </GeneralReferencePanel>
+
       {/* Actions */}
       <div className="flex gap-2">
         <Button

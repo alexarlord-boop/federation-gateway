@@ -15,11 +15,14 @@ import {
   BarChart3,
   ScrollText,
   Fingerprint,
+  Palette,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCapabilities } from '@/contexts/CapabilityContext';
 import { CapabilityGuard } from '@/components/CapabilityGuard';
 import { cn } from '@/lib/utils';
+import { useTheme, THEME_OPTIONS } from '@/hooks/useTheme';
 import {
   Collapsible,
   CollapsibleContent,
@@ -134,6 +137,63 @@ const sidebarSections: SidebarSection[] = [
   },
 ];
 
+/**
+ * Quick theme switcher — the visual-theme picker used to live only inside
+ * Settings' Appearance card, a page most people wouldn't think to check for
+ * a display preference. Shares state with that card via useTheme().
+ */
+function ThemeSwitcher({ theme, applyTheme, collapsed }: { theme: string; applyTheme: (v: string) => void; collapsed: boolean }) {
+  const menu = (
+    <DropdownMenuContent align="start" side={collapsed ? 'right' : 'top'}>
+      <DropdownMenuLabel>Theme</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {THEME_OPTIONS.map(({ value, label }) => (
+        <DropdownMenuItem key={value} className="cursor-pointer" onClick={() => applyTheme(value)}>
+          <span className="flex-1">{label}</span>
+          {theme === value && <Check className="w-4 h-4 text-primary" />}
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  );
+
+  if (collapsed) {
+    return (
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Theme"
+                className="flex items-center justify-center w-9 h-9 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+              >
+                <Palette className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right">Theme</TooltipContent>
+        </Tooltip>
+        {menu}
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Theme"
+          className="flex items-center justify-center px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <Palette className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      {menu}
+    </DropdownMenu>
+  );
+}
+
 interface AppSidebarProps {
   open?: boolean;
   onToggle?: () => void;
@@ -142,6 +202,7 @@ interface AppSidebarProps {
 export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
   const { user, isAdmin, logout } = useAuth();
   const { isFeatureEnabled, hasOperation } = useCapabilities();
+  const { theme, applyTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   // Sections with children start collapsed so every item keeps the same
@@ -402,6 +463,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
                 <Settings className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap">Settings</span>
               </NavLink>
+              <ThemeSwitcher theme={theme} applyTheme={applyTheme} collapsed={false} />
               <button
                 onClick={logout}
                 aria-label="Log out"
@@ -430,6 +492,7 @@ export function AppSidebar({ open = true, onToggle }: AppSidebarProps) {
               </TooltipTrigger>
               <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>
+            <ThemeSwitcher theme={theme} applyTheme={applyTheme} collapsed={true} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
