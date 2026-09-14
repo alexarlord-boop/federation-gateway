@@ -49,6 +49,21 @@ export function BackendSwitcher({ collapsed = false }: BackendSwitcherProps) {
   // Only real (TA-backed) backends are shown and selectable.
   const taBackends = backends.filter((b) => b.id.startsWith('ta:'));
 
+  // Auto-select the only instance rather than making the user pick from a
+  // dropdown with exactly one option — on first-ever login (or a fresh
+  // browser with nothing in localStorage yet), activeTrustAnchor starts
+  // null and would otherwise sit on "Select instance" until manually
+  // clicked. Only fires when there's genuinely one choice; with several
+  // instances the user still picks, same as today.
+  useEffect(() => {
+    if (activeTrustAnchor || taBackends.length !== 1) return;
+    const only = taBackends[0];
+    const match = trustAnchors.find((ta) => `ta:${ta.id}` === only.id) ?? null;
+    if (!match) return;
+    setSelectedBackend(only.id);
+    setActiveTrustAnchor(match);
+  }, [activeTrustAnchor, taBackends, trustAnchors, setSelectedBackend, setActiveTrustAnchor]);
+
   const selectedLabel = activeTrustAnchor?.name ?? 'Select instance';
 
   const menu = (

@@ -83,7 +83,18 @@ export function clearTokens(): void {
   localStorage.removeItem(accessTokenKey());
   localStorage.removeItem(refreshTokenKey());
   localStorage.removeItem(userKey());
-  OpenAPI.TOKEN = undefined;
+  // Deliberately NOT touching OpenAPI.TOKEN here. It's a lazy resolver
+  // (installed once by initTokenManager) that reads localStorage fresh on
+  // every request, so clearing storage above already makes it correctly
+  // resolve to no token. Hard-resetting it to `undefined` was the actual
+  // bug: AuthProvider's mount effect calls clearTokens() for a genuinely
+  // fresh session (nothing stored yet) *right after* initTokenManager
+  // installs the resolver in that same effect — wiping the resolver itself,
+  // not just the storage it reads. login() never reinstalls it (it doesn't
+  // need to, the resolver is meant to stay live), so every first-ever login
+  // in a fresh browser left OpenAPI.TOKEN permanently undefined and every
+  // generated-client call 403'd with "Not authenticated" until a full page
+  // reload re-ran this effect against now-populated storage.
 }
 
 /** Read the current access token (may be expired). */
