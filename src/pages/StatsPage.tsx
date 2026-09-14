@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3, Activity, Clock, Users, AlertCircle, Loader2, Download,
   Monitor, Network, SlidersHorizontal, Globe, ChevronDown,
@@ -35,6 +36,7 @@ const RANGES: { label: string; value: TimeRange }[] = [
   { label: '24h', value: '24h' },
   { label: '7d', value: '7d' },
   { label: '30d', value: '30d' },
+  { label: '90d', value: '90d' },
 ];
 
 function KpiCard({
@@ -90,6 +92,53 @@ function statusColor(code: string) {
   if (code.startsWith('3')) return 'bg-blue-400';
   if (code.startsWith('4')) return 'bg-yellow-400';
   return 'bg-red-400';
+}
+
+/** Stacked bar + legend of request counts by HTTP status code. Shared by the
+ * instance-wide "Requests by Status" card and the per-endpoint detail view. */
+function StatusBreakdownCard({ title, byStatus }: { title: string; byStatus: [string, number][] }) {
+  const total = byStatus.reduce((a, [, v]) => a + v, 0);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {byStatus.length === 0 ? (
+          <div className="flex items-center justify-center h-16 text-sm text-muted-foreground">
+            No data for this period
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Stacked bar */}
+            <div className="flex h-4 rounded-full overflow-hidden gap-px">
+              {byStatus.map(([code, count]) => (
+                <div
+                  key={code}
+                  className={`${statusColor(code)} transition-all`}
+                  style={{ width: `${(count / total) * 100}%` }}
+                  title={`HTTP ${code}: ${count}`}
+                />
+              ))}
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {byStatus.map(([code, count]) => (
+                <div key={code} className="flex items-center gap-2 text-sm">
+                  <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${statusColor(code)}`} />
+                  <span className="font-mono text-xs text-muted-foreground">HTTP {code}</span>
+                  <span className="font-medium tabular-nums">{fmt(count)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {total > 0 ? `${((count / total) * 100).toFixed(0)}%` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 /** Generic "top N by value/count" table, shared by user agents, clients, and query params. */
@@ -187,8 +236,8 @@ function TimeseriesTooltip({ active, payload, label, interval }: {
   );
 }
 
-function RequestsTimeseriesChart({ instanceId, range }: { instanceId: string | undefined; range: TimeRange }) {
-  const timeseries = useStatsTimeseries(instanceId, range);
+function RequestsTimeseriesChart({ instanceId, range, endpoint }: { instanceId: string | undefined; range: TimeRange; endpoint?: string }) {
+  const timeseries = useStatsTimeseries(instanceId, range, endpoint);
   const points = timeseries.data?.timeseries ?? [];
   const interval = timeseries.data?.interval ?? 'hour';
 
@@ -408,11 +457,114 @@ function DailyBreakdownTable({ instanceId, range }: { instanceId: string | undef
   );
 }
 
+/**
+ * Focused view for one endpoint — request feedback: "a listing combining
+ * endpoints and status, or more general a detail page for different
+ * endpoints, e.g. the request parameters are much more interesting for a
+ * specific endpoint."
+ *
+ * timeseries/latency/top-params all confirmed live to honor `endpoint=`
+ * server-side (unlike summary/top-clients/top-user-agents, which silently
+ * ignore it) — this reuses them scoped, plus the already-fetched `daily`
+ * rows (endpoint + status_code per row) filtered client-side for the status
+ * breakdown, since `daily` itself doesn't honor server-side endpoint
+ * filtering.
+ */
+function EndpointDetailView({
+  instanceId,
+  range,
+  endpoint,
+  onBack,
+}: {
+  instanceId: string | undefined;
+  range: TimeRange;
+  endpoint: string;
+  onBack: () => void;
+}) {
+  const latency = useStatsLatency(instanceId, range, endpoint);
+  const topParams = useStatsTopParams(instanceId, range, 10, endpoint);
+  const daily = useStatsDaily(instanceId, range);
+
+  const rows = (daily.data?.daily ?? []).filter((r) => r.endpoint === endpoint);
+  const totalRequests = rows.reduce((a, r) => a + r.request_count, 0);
+  const totalErrors = rows.reduce((a, r) => a + r.error_count, 0);
+  const errorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
+  const byStatus: [string, number][] = Object.entries(
+    rows.reduce<Record<string, number>>((acc, r) => {
+      const key = String(r.status_code);
+      acc[key] = (acc[key] ?? 0) + r.request_count;
+      return acc;
+    }, {})
+  ).sort((a, b) => a[0].localeCompare(b[0]));
+  const lat = latency.data?.latency;
+
+  return (
+    <div className="space-y-6">
+      <Button variant="ghost" size="sm" className="-ml-2 gap-1.5" onClick={onBack}>
+        <ChevronDown className="w-4 h-4 rotate-90" />
+        All Endpoints
+      </Button>
+
+      <div>
+        <h2 className="text-xl font-bold font-mono break-all">{endpoint}</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Traffic for this endpoint only — daily data only covers completed calendar days.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard label="Total Requests" value={fmt(totalRequests)} icon={Activity} color="text-accent" />
+        <KpiCard
+          label="Error Rate"
+          value={`${(errorRate * 100).toFixed(1)}%`}
+          sub={`${fmt(totalErrors)} errors`}
+          icon={AlertCircle}
+          color={errorRate > 0.05 ? 'text-destructive' : 'text-success'}
+        />
+        <KpiCard
+          label="Avg / P95 Latency"
+          value={lat ? `${fmt(lat.avg_ms, 1)} ms` : '—'}
+          sub={lat ? `p95: ${fmt(lat.p95_ms, 1)} ms` : undefined}
+          icon={Clock}
+          color="text-primary"
+        />
+        <KpiCard
+          label="P99 Latency"
+          value={lat ? `${fmt(lat.p99_ms, 1)} ms` : '—'}
+          sub={lat ? `max: ${fmt(lat.max_ms, 1)} ms` : undefined}
+          icon={Clock}
+          color="text-warning"
+        />
+      </div>
+
+      <RequestsTimeseriesChart instanceId={instanceId} range={range} endpoint={endpoint} />
+
+      {daily.isLoading ? (
+        <div className="flex items-center justify-center h-16">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <StatusBreakdownCard title="Requests by Status (this endpoint)" byStatus={byStatus} />
+      )}
+
+      <TopListCard
+        title="Top Query Parameters (this endpoint)"
+        icon={SlidersHorizontal}
+        items={topParams.data}
+        isLoading={topParams.isLoading}
+        emptyLabel="No query parameter data for this endpoint in this period."
+      />
+    </div>
+  );
+}
+
 export default function StatsPage() {
   const { activeTrustAnchor } = useTrustAnchor();
   const instanceId = activeTrustAnchor?.id;
   const [range, setRange] = useState<TimeRange>('24h');
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedEndpoint = searchParams.get('endpoint');
 
   const summary = useStatsSummary(instanceId, range);
   const topEndpoints = useStatsTopEndpoints(instanceId, range);
@@ -467,7 +619,6 @@ export default function StatsPage() {
 
   const s = summary.data?.summary;
   const byStatus = Object.entries(s?.requests_by_status ?? {}).sort((a, b) => a[0].localeCompare(b[0]));
-  const totalForPct = byStatus.reduce((acc, [, v]) => acc + v, 0);
   const endpoints = topEndpoints.data?.endpoints ?? [];
   const totalEndpointRequests = endpoints.reduce((a, e) => a + e.count, 0);
   const lat = latency.data?.latency;
@@ -512,6 +663,15 @@ export default function StatsPage() {
         </div>
       </div>
 
+      {selectedEndpoint ? (
+        <EndpointDetailView
+          instanceId={instanceId}
+          range={range}
+          endpoint={selectedEndpoint}
+          onBack={() => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('endpoint'); return next; })}
+        />
+      ) : (
+        <>
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard
@@ -579,50 +739,13 @@ export default function StatsPage() {
       </Card>
 
       {/* Status breakdown */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Requests by Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {byStatus.length === 0 ? (
-            <div className="flex items-center justify-center h-16 text-sm text-muted-foreground">
-              No data for this period
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Stacked bar */}
-              <div className="flex h-4 rounded-full overflow-hidden gap-px">
-                {byStatus.map(([code, count]) => (
-                  <div
-                    key={code}
-                    className={`${statusColor(code)} transition-all`}
-                    style={{ width: `${(count / totalForPct) * 100}%` }}
-                    title={`HTTP ${code}: ${count}`}
-                  />
-                ))}
-              </div>
-              {/* Legend */}
-              <div className="flex flex-wrap gap-x-6 gap-y-2">
-                {byStatus.map(([code, count]) => (
-                  <div key={code} className="flex items-center gap-2 text-sm">
-                    <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${statusColor(code)}`} />
-                    <span className="font-mono text-xs text-muted-foreground">HTTP {code}</span>
-                    <span className="font-medium tabular-nums">{fmt(count)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {totalForPct > 0 ? `${((count / totalForPct) * 100).toFixed(0)}%` : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <StatusBreakdownCard title="Requests by Status" byStatus={byStatus} />
 
       {/* Top endpoints */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Top Endpoints</CardTitle>
+          <p className="text-xs text-muted-foreground">Click a row for that endpoint's own status breakdown and query parameters.</p>
         </CardHeader>
         <CardContent className="p-0">
           {endpoints.length === 0 ? (
@@ -640,7 +763,18 @@ export default function StatsPage() {
                 {endpoints.map((ep, i) => {
                   const pct = totalEndpointRequests > 0 ? (ep.count / totalEndpointRequests) * 100 : 0;
                   return (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={i}
+                      tabIndex={0}
+                      onClick={() => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('endpoint', ep.value); return next; })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set('endpoint', ep.value); return next; });
+                        }
+                      }}
+                      className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                    >
                       <td className="py-2.5 px-4 font-mono text-xs">{ep.value}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums">{fmt(ep.count)}</td>
                       <td className="py-2.5 px-4 text-right">
@@ -696,6 +830,8 @@ export default function StatsPage() {
           valueClassName="text-xs"
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

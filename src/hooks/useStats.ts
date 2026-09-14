@@ -88,7 +88,7 @@ export interface StatsDailyResponse {
   daily: DailyStatsRow[];
 }
 
-export type TimeRange = '1h' | '24h' | '7d' | '30d';
+export type TimeRange = '1h' | '24h' | '7d' | '30d' | '90d';
 
 function rangeToFrom(range: TimeRange): string {
   const now = new Date();
@@ -97,12 +97,13 @@ function rangeToFrom(range: TimeRange): string {
     '24h': 24 * 60 * 60 * 1000,
     '7d':  7 * 24 * 60 * 60 * 1000,
     '30d': 30 * 24 * 60 * 60 * 1000,
+    '90d': 90 * 24 * 60 * 60 * 1000,
   };
   return new Date(now.getTime() - offsets[range]).toISOString();
 }
 
 function rangeToInterval(range: TimeRange): string {
-  return { '1h': 'minute', '24h': 'hour', '7d': 'day', '30d': 'day' }[range];
+  return { '1h': 'minute', '24h': 'hour', '7d': 'day', '30d': 'day', '90d': 'day' }[range];
 }
 
 function proxyPath(instanceId: string, subPath: string): string {
@@ -148,14 +149,17 @@ export function useStatsSummary(instanceId: string | undefined, range: TimeRange
   });
 }
 
-export function useStatsTimeseries(instanceId: string | undefined, range: TimeRange) {
+/** `endpoint`, when given, scopes the series to just that endpoint's
+ * requests/errors — verified live that the underlying API honors it
+ * server-side. */
+export function useStatsTimeseries(instanceId: string | undefined, range: TimeRange, endpoint?: string) {
   const from = rangeToFrom(range);
   const interval = rangeToInterval(range);
   return useQuery({
-    queryKey: ['stats', 'timeseries', instanceId, range],
+    queryKey: ['stats', 'timeseries', instanceId, range, endpoint ?? null],
     queryFn: () =>
       gatewayFetch<StatsTimeseriesResponse>({
-        path: `${proxyPath(instanceId!, 'timeseries')}?from=${encodeURIComponent(from)}&interval=${interval}`,
+        path: `${proxyPath(instanceId!, 'timeseries')}?from=${encodeURIComponent(from)}&interval=${interval}${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ''}`,
         softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
@@ -209,13 +213,17 @@ export function useStatsTopCountries(instanceId: string | undefined, range: Time
   return useStatsTopList('top/countries', 'countries', instanceId, range, limit);
 }
 
-export function useStatsTopParams(instanceId: string | undefined, range: TimeRange, limit = 10) {
+/** `endpoint`, when given, scopes to just that endpoint's traffic — verified
+ * live against a real instance that top/params honors it server-side
+ * (unlike top/clients/top/user-agents, which silently ignore it). */
+export function useStatsTopParams(instanceId: string | undefined, range: TimeRange, limit = 10, endpoint?: string) {
   const from = rangeToFrom(range);
   return useQuery({
-    queryKey: ['stats', 'top-params', instanceId, range, limit],
+    queryKey: ['stats', 'top-params', instanceId, range, limit, endpoint ?? null],
     queryFn: async () => {
+      const endpointQs = endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : '';
       const res = await gatewayFetch<{ params: TopItem[] }>({
-        path: `${proxyPath(instanceId!, 'top/params')}?from=${encodeURIComponent(from)}&limit=${limit}`,
+        path: `${proxyPath(instanceId!, 'top/params')}?from=${encodeURIComponent(from)}&limit=${limit}${endpointQs}`,
         softFail: [404, 500, 501],
       });
       return res?.params ?? null;
@@ -226,13 +234,15 @@ export function useStatsTopParams(instanceId: string | undefined, range: TimeRan
   });
 }
 
-export function useStatsLatency(instanceId: string | undefined, range: TimeRange) {
+/** `endpoint`, when given, scopes latency percentiles to just that endpoint
+ * — verified live that the underlying API honors it server-side. */
+export function useStatsLatency(instanceId: string | undefined, range: TimeRange, endpoint?: string) {
   const from = rangeToFrom(range);
   return useQuery({
-    queryKey: ['stats', 'latency', instanceId, range],
+    queryKey: ['stats', 'latency', instanceId, range, endpoint ?? null],
     queryFn: () =>
       gatewayFetch<StatsLatencyResponse>({
-        path: `${proxyPath(instanceId!, 'latency')}?from=${encodeURIComponent(from)}`,
+        path: `${proxyPath(instanceId!, 'latency')}?from=${encodeURIComponent(from)}${endpoint ? `&endpoint=${encodeURIComponent(endpoint)}` : ''}`,
         softFail: [404, 500, 501],
       }),
     enabled: !!instanceId,
