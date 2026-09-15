@@ -37,6 +37,26 @@ npx playwright show-report   # HTML report from last run
 
 Test results and failure screenshots land in `e2e/test-results/`.
 
+## Recording a demo walkthrough
+
+```sh
+cd e2e
+npm run record-demo                    # writes e2e/demo.mp4
+OUT=~/Desktop/demo.mp4 npm run record-demo   # custom output path
+```
+
+Drives the real app in a captured browser and produces an MP4 tour of
+the major feature areas — login, instance switching, subordinates,
+trust marks, chain inspector, stats (including the per-endpoint drill-
+down), settings, and the audit log — with on-screen captions standing
+in for narration, so no human/voiceover is needed. `e2e/record-demo.mjs`
+is the script; re-run it any time after UI changes to get a current
+recording instead of re-doing a manual screen capture. Requires the
+stack already running (`APP_URL`, default `http://localhost:8080`) and
+`ffmpeg` on `PATH` for the final webm→mp4 convert. The output file
+itself isn't committed (`e2e/.gitignore`) — it's a generated artifact,
+not source.
+
 ## Clean up after tests
 
 Playwright file artifacts (screenshots, traces, HTML report):

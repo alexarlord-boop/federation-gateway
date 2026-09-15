@@ -6,7 +6,8 @@
     "test": "playwright test",
     "test:bff": "playwright test --project=bff-only",
     "test:full": "playwright test --project=full-stack",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "record-demo": "node record-demo.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
