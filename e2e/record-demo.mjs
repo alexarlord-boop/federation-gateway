@@ -200,6 +200,16 @@ async function clickCursor(page, locator, { hoverMs = 550, moveOpts } = {}) {
   await locator.click();
 }
 
+/** Click into a text field (slow glide, same as clickCursor) then type real
+ * example text one character at a time — pressSequentially dispatches a
+ * genuine keydown/input per character with a real delay between them, so
+ * the recording shows an actual example being typed, not text appearing
+ * instantly. */
+async function typeCursor(page, locator, text, { hoverMs = 450, charDelayMs = 70 } = {}) {
+  await clickCursor(page, locator, { hoverMs });
+  await locator.pressSequentially(text, { delay: charDelayMs });
+}
+
 /** Sidebar navigation, via a real cursor-driven click on the actual nav
  * link — not page.goto(). This is a client-side React Router route change
  * (the <aside> never unmounts), so the injected cursor/caption survive it
@@ -299,16 +309,29 @@ async function main() {
   await scrollBy(page, -420);
   await page.waitForTimeout(800);
 
-  // 4. Subordinates
+  // 4. Subordinates — search + status filter
   await setCaption(page, 'Subordinates — search, filter, and manage every registered entity');
   await navToSubordinates(page);
-  await page.waitForTimeout(1300);
-  await scrollBy(page, 650);
-  await page.waitForTimeout(1800);
-  await scrollBy(page, -650);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1200);
+  await setCaption(page, 'Search narrows the list as you type — no submit needed');
+  await typeCursor(page, page.getByPlaceholder(/search by subordinate/i), 'Helsinki');
+  await page.waitForTimeout(2000);
+  await page.getByPlaceholder(/search by subordinate/i).fill('');
+  await page.waitForTimeout(700);
+  try {
+    await setCaption(page, 'Filter by status — Active, Inactive, Pending, Blocked');
+    const statusFilter = page.getByRole('combobox').first();
+    await clickCursor(page, statusFilter);
+    await page.waitForTimeout(1100); // hold with the options open
+    await clickCursor(page, page.getByRole('option', { name: 'Active', exact: true }));
+    await page.waitForTimeout(1900);
+    await clickCursor(page, statusFilter);
+    await page.waitForTimeout(700);
+    await clickCursor(page, page.getByRole('option', { name: 'All Status', exact: true }));
+    await page.waitForTimeout(900);
+  } catch { /* filter UI may differ — continue */ }
 
-  // 5. Entity detail — Overview
+  // 5. Entity detail — every tab, not just Constraints
   await setCaption(page, 'Drilling into one entity’s full lifecycle');
   const firstRow = page.locator('table tbody tr').first();
   try {
@@ -318,7 +341,19 @@ async function main() {
   } catch {
     await clickCursor(page, firstRow.getByRole('link').first()).catch(() => {});
   }
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(2000);
+
+  try {
+    await setCaption(page, 'Metadata — the full published claims for this entity');
+    await clickCursor(page, page.getByRole('tab', { name: /^metadata$/i }));
+    await page.waitForTimeout(2200);
+  } catch {}
+
+  try {
+    await setCaption(page, 'JWKS — this entity’s own signing keys');
+    await clickCursor(page, page.getByRole('tab', { name: /^jwks$/i }));
+    await page.waitForTimeout(2200);
+  } catch {}
 
   // 6. Constraints tab — general-policy reference panel
   try {
@@ -326,31 +361,65 @@ async function main() {
     await clickCursor(page, page.getByRole('tab', { name: /constraints/i }));
     await page.waitForTimeout(1300);
     await clickCursor(page, page.getByRole('button', { name: /View General Constraints/i }));
-    await page.waitForTimeout(2800);
+    await page.waitForTimeout(2600);
   } catch { /* entity may not have this tab enabled — continue */ }
 
-  // 7. Trust Marks
+  try {
+    await setCaption(page, 'Metadata Policies — same reference pattern for policies as for constraints');
+    await clickCursor(page, page.getByRole('tab', { name: /metadata policies/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
+
+  // 7. Trust Marks — every role tab
   await hideCaption(page);
   await navClick(page, 'Trust Marks');
-  await setCaption(page, 'Trust Marks — issue, verify, and track trust mark lifecycles');
-  await page.waitForTimeout(1800);
+  await setCaption(page, 'Trust Marks — Owner: define the type federation-wide');
+  await page.waitForTimeout(2000);
   await scrollBy(page, 500);
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(1500);
   await scrollBy(page, -500);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(600);
+  try {
+    await setCaption(page, 'Issuer: issue this trust mark to a subject entity');
+    await clickCursor(page, page.getByRole('tab', { name: /^issuance/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
+  try {
+    await setCaption(page, 'Subject: trust marks this instance itself holds');
+    await clickCursor(page, page.getByRole('tab', { name: /^my trust marks/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
 
-  // 8. Chain Inspector
+  // 8. Chain Inspector — a real inspection against a real external entity
   await navClick(page, 'Chain Inspector');
   await setCaption(page, 'Chain Inspector — verify any entity’s trust chain, even outside your own federation');
-  await page.waitForTimeout(3400);
+  await page.waitForTimeout(2000);
+  try {
+    await clickCursor(page, page.getByRole('button', { name: /SWAMID/i }));
+    await page.waitForTimeout(1000);
+    await setCaption(page, 'A real external federation member — inspecting its live trust chain');
+    await clickCursor(page, page.getByRole('button', { name: 'Inspect', exact: true }));
+    await page.waitForTimeout(3200);
+    await scrollBy(page, 500);
+    await page.waitForTimeout(1800);
+    await scrollBy(page, -500);
+    await page.waitForTimeout(600);
+  } catch { /* live external network call — tolerate failure and move on */ }
 
-  // 9. Stats — 90d range + per-endpoint detail
+  // 9. Stats — 90d range, per-endpoint detail, export options
   await navClick(page, 'Stats');
   await setCaption(page, 'Stats — full traffic visibility, now with 90-day history');
   await page.waitForTimeout(1800);
   try {
     await clickCursor(page, page.getByRole('button', { name: '90d' }));
     await page.waitForTimeout(2200);
+  } catch {}
+  try {
+    await setCaption(page, 'Export the raw data as CSV or JSON');
+    await clickCursor(page, page.getByRole('button', { name: 'Export' }));
+    await page.waitForTimeout(1600); // hold with the export menu open
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
   } catch {}
   await scrollBy(page, 500);
   await page.waitForTimeout(1400);
@@ -365,11 +434,11 @@ async function main() {
     await page.waitForTimeout(1800);
   } catch {}
 
-  // 10. Settings
+  // 10. Settings — every tab
   await hideCaption(page);
   await navClick(page, 'Settings');
   await setCaption(page, 'Settings — entity configuration, keys, constraints, and general metadata policies');
-  await page.waitForTimeout(2600);
+  await page.waitForTimeout(2200);
 
   // 11. Sidebar theme switcher
   await setCaption(page, 'Appearance now lives in the sidebar too — no more hunting through Settings');
@@ -377,22 +446,57 @@ async function main() {
     await clickCursor(page, page.getByRole('button', { name: 'Theme' }));
     await page.waitForTimeout(1400); // show the theme menu open before picking
     await clickCursor(page, page.getByRole('menuitem', { name: 'Indigo' }));
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1800);
     await clickCursor(page, page.getByRole('button', { name: 'Theme' }));
     await page.waitForTimeout(1200);
     await clickCursor(page, page.getByRole('menuitem', { name: /Default/i }));
-    await page.waitForTimeout(1300);
+    await page.waitForTimeout(1000);
   } catch {}
 
-  // 12. Audit Log
+  try {
+    await setCaption(page, 'Entity Config — additional claims, lifetime, and trust marks on your own statement');
+    await clickCursor(page, page.getByRole('tab', { name: /entity config/i }));
+    await page.waitForTimeout(2400);
+    await scrollBy(page, 500);
+    await page.waitForTimeout(1400);
+    await scrollBy(page, -500);
+    await page.waitForTimeout(500);
+  } catch {}
+
+  try {
+    await setCaption(page, 'Keys & KMS — signing keys and rotation');
+    await clickCursor(page, page.getByRole('tab', { name: /keys/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
+
+  try {
+    await setCaption(page, 'General Constraints — the federation-wide defaults every subordinate inherits');
+    await clickCursor(page, page.getByRole('tab', { name: /^constraints$/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
+
+  try {
+    await setCaption(page, 'General Metadata Policies — same idea, for metadata');
+    await clickCursor(page, page.getByRole('tab', { name: /^metadata policies$/i }));
+    await page.waitForTimeout(2400);
+  } catch {}
+
+  // 12. Audit Log — filter by user
   await hideCaption(page);
   await navClick(page, 'Audit Log');
   await setCaption(page, 'Audit Log — every mutating action, who did it, and what changed');
   await page.waitForTimeout(1800);
+  try {
+    await setCaption(page, 'Filter by who made the change');
+    await typeCursor(page, page.getByPlaceholder(/filter by user/i), 'admin@oidfed.org');
+    await page.waitForTimeout(2000);
+    await page.getByPlaceholder(/filter by user/i).fill('');
+    await page.waitForTimeout(700);
+  } catch {}
   await scrollBy(page, 650);
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(1600);
   await scrollBy(page, -650);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(700);
 
   // 13. Closing frame
   await navClick(page, 'Dashboard');
