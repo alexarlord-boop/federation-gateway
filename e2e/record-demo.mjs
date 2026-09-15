@@ -200,9 +200,30 @@ async function clickCursor(page, locator, { hoverMs = 550, moveOpts } = {}) {
   await locator.click();
 }
 
-async function gotoWithCursor(page, url) {
-  await page.goto(url);
-  await ensureCursor(page); // fresh document — re-inject at the last logical position
+/** Sidebar navigation, via a real cursor-driven click on the actual nav
+ * link — not page.goto(). This is a client-side React Router route change
+ * (the <aside> never unmounts), so the injected cursor/caption survive it
+ * without re-injection, and it's what makes a page-to-page "transition"
+ * mean something: the cursor visibly travels to the link and clicks it,
+ * same as every other interaction, instead of teleporting via URL. */
+function sidebar(page) {
+  return page.locator('aside');
+}
+
+async function navClick(page, name) {
+  await clickCursor(page, sidebar(page).getByRole('link', { name, exact: true }));
+  await page.waitForTimeout(500); // let the route's fade-in settle
+}
+
+/** "Subordinates" is the one sidebar item that doesn't navigate on its own
+ * click — it's a Collapsible trigger (a <button>, not a link) that only
+ * expands a submenu. Reaching /entities takes two real clicks: expand,
+ * then the "All Subordinates" child link that appears. */
+async function navToSubordinates(page) {
+  await clickCursor(page, sidebar(page).getByRole('button', { name: /subordinates/i }));
+  await page.waitForTimeout(900); // hold with the submenu visibly open
+  await clickCursor(page, sidebar(page).getByRole('link', { name: 'All Subordinates', exact: true }));
+  await page.waitForTimeout(500);
 }
 
 /** Real, slow mouse-wheel scroll — genuine incremental wheel events spread
@@ -270,16 +291,18 @@ async function main() {
   console.log('Active instance after selection:', JSON.stringify(activeLabel));
 
   // 3. Dashboard
-  await gotoWithCursor(page, `${APP_URL}/dashboard`);
-  await step(page, 'Dashboard — federation health at a glance', null, 2200);
+  await setCaption(page, 'Dashboard — federation health at a glance');
+  await navClick(page, 'Dashboard');
+  await page.waitForTimeout(1700);
   await scrollBy(page, 420);
   await page.waitForTimeout(1600);
   await scrollBy(page, -420);
   await page.waitForTimeout(800);
 
   // 4. Subordinates
-  await gotoWithCursor(page, `${APP_URL}/entities`);
-  await step(page, 'Subordinates — search, filter, and manage every registered entity', null, 1800);
+  await setCaption(page, 'Subordinates — search, filter, and manage every registered entity');
+  await navToSubordinates(page);
+  await page.waitForTimeout(1300);
   await scrollBy(page, 650);
   await page.waitForTimeout(1800);
   await scrollBy(page, -650);
@@ -308,20 +331,23 @@ async function main() {
 
   // 7. Trust Marks
   await hideCaption(page);
-  await gotoWithCursor(page, `${APP_URL}/trust-marks`);
-  await step(page, 'Trust Marks — issue, verify, and track trust mark lifecycles', null, 1800);
+  await navClick(page, 'Trust Marks');
+  await setCaption(page, 'Trust Marks — issue, verify, and track trust mark lifecycles');
+  await page.waitForTimeout(1800);
   await scrollBy(page, 500);
   await page.waitForTimeout(1800);
   await scrollBy(page, -500);
   await page.waitForTimeout(800);
 
   // 8. Chain Inspector
-  await gotoWithCursor(page, `${APP_URL}/chain-inspector`);
-  await step(page, 'Chain Inspector — verify any entity’s trust chain, even outside your own federation', null, 3400);
+  await navClick(page, 'Chain Inspector');
+  await setCaption(page, 'Chain Inspector — verify any entity’s trust chain, even outside your own federation');
+  await page.waitForTimeout(3400);
 
   // 9. Stats — 90d range + per-endpoint detail
-  await gotoWithCursor(page, `${APP_URL}/stats`);
-  await step(page, 'Stats — full traffic visibility, now with 90-day history', null, 1800);
+  await navClick(page, 'Stats');
+  await setCaption(page, 'Stats — full traffic visibility, now with 90-day history');
+  await page.waitForTimeout(1800);
   try {
     await clickCursor(page, page.getByRole('button', { name: '90d' }));
     await page.waitForTimeout(2200);
@@ -341,8 +367,9 @@ async function main() {
 
   // 10. Settings
   await hideCaption(page);
-  await gotoWithCursor(page, `${APP_URL}/settings`);
-  await step(page, 'Settings — entity configuration, keys, constraints, and general metadata policies', null, 2600);
+  await navClick(page, 'Settings');
+  await setCaption(page, 'Settings — entity configuration, keys, constraints, and general metadata policies');
+  await page.waitForTimeout(2600);
 
   // 11. Sidebar theme switcher
   await setCaption(page, 'Appearance now lives in the sidebar too — no more hunting through Settings');
@@ -359,16 +386,18 @@ async function main() {
 
   // 12. Audit Log
   await hideCaption(page);
-  await gotoWithCursor(page, `${APP_URL}/audit-log`);
-  await step(page, 'Audit Log — every mutating action, who did it, and what changed', null, 1800);
+  await navClick(page, 'Audit Log');
+  await setCaption(page, 'Audit Log — every mutating action, who did it, and what changed');
+  await page.waitForTimeout(1800);
   await scrollBy(page, 650);
   await page.waitForTimeout(1800);
   await scrollBy(page, -650);
   await page.waitForTimeout(800);
 
   // 13. Closing frame
-  await gotoWithCursor(page, `${APP_URL}/dashboard`);
-  await step(page, 'Full documentation in docs/ — start with docs/GETTING-STARTED.md', null, 3600);
+  await navClick(page, 'Dashboard');
+  await setCaption(page, 'Full documentation in docs/ — start with docs/GETTING-STARTED.md');
+  await page.waitForTimeout(3600);
   await hideCaption(page);
   await page.waitForTimeout(800);
 
