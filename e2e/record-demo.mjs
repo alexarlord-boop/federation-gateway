@@ -247,6 +247,20 @@ async function scrollBy(page, deltaY, { steps = 26, stepDelayMs = 28 } = {}) {
   }
 }
 
+/** Race `promise` against a hard deadline. Playwright's own action timeouts
+ * (default 30s, retried per actionability check) don't bound a block of
+ * *several* actions chained together — and a real outbound fetch to a
+ * third-party host (see the Chain Inspector step) has, twice now, stalled
+ * the whole script for 20+ minutes with no Playwright-level timeout ever
+ * firing to rescue it. This gives such a block a firm ceiling. */
+function withDeadline(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function step(page, caption, action, dwellMs = 3000) {
   if (caption) await setCaption(page, caption);
   await page.waitForTimeout(750);
@@ -395,16 +409,18 @@ async function main() {
   await setCaption(page, 'Chain Inspector — verify any entity’s trust chain, even outside your own federation');
   await page.waitForTimeout(2000);
   try {
-    await clickCursor(page, page.getByRole('button', { name: /SWAMID/i }));
-    await page.waitForTimeout(1000);
-    await setCaption(page, 'A real external federation member — inspecting its live trust chain');
-    await clickCursor(page, page.getByRole('button', { name: 'Inspect', exact: true }));
-    await page.waitForTimeout(3200);
-    await scrollBy(page, 500);
-    await page.waitForTimeout(1800);
-    await scrollBy(page, -500);
-    await page.waitForTimeout(600);
-  } catch { /* live external network call — tolerate failure and move on */ }
+    await withDeadline((async () => {
+      await clickCursor(page, page.getByRole('button', { name: /SWAMID/i }));
+      await page.waitForTimeout(1000);
+      await setCaption(page, 'A real external federation member — inspecting its live trust chain');
+      await clickCursor(page, page.getByRole('button', { name: 'Inspect', exact: true }));
+      await page.waitForTimeout(3200);
+      await scrollBy(page, 500);
+      await page.waitForTimeout(1800);
+      await scrollBy(page, -500);
+      await page.waitForTimeout(600);
+    })(), 15000, 'Chain Inspector live SWAMID inspection');
+  } catch { /* live external network call — tolerate failure/timeout and move on */ }
 
   // 9. Stats — 90d range, per-endpoint detail, export options
   await navClick(page, 'Stats');
@@ -428,7 +444,19 @@ async function main() {
   await setCaption(page, 'Drill into any endpoint for its own status breakdown and query parameters');
   try {
     const endpointsTable = page.locator('table', { has: page.locator('th', { hasText: 'Share' }) });
-    await clickCursor(page, endpointsTable.locator('tbody tr').first());
+    const row = endpointsTable.locator('tbody tr').first();
+    // A real animated scroll to the row's actual position, computed from its
+    // live offset — not clickCursor's own scrollIntoViewIfNeeded(), which
+    // jumps instantly with no frames in between and made this transition
+    // look like it wasn't driven by the cursor at all.
+    const targetY = await row.evaluate((el) => el.getBoundingClientRect().top + window.scrollY - 220);
+    const currentY = await page.evaluate(() => window.scrollY);
+    const delta = targetY - currentY;
+    if (Math.abs(delta) > 20) {
+      await scrollBy(page, delta, { steps: 34, stepDelayMs: 30 });
+      await page.waitForTimeout(700);
+    }
+    await clickCursor(page, row, { hoverMs: 900 });
     await page.waitForTimeout(1800);
     await scrollBy(page, 500);
     await page.waitForTimeout(1800);
@@ -445,12 +473,18 @@ async function main() {
   try {
     await clickCursor(page, page.getByRole('button', { name: 'Theme' }));
     await page.waitForTimeout(1400); // show the theme menu open before picking
-    await clickCursor(page, page.getByRole('menuitem', { name: 'Indigo' }));
+    await clickCursor(page, page.getByRole('menuitem', { name: 'Grayscale' }));
     await page.waitForTimeout(1800);
-    await clickCursor(page, page.getByRole('button', { name: 'Theme' }));
-    await page.waitForTimeout(1200);
-    await clickCursor(page, page.getByRole('menuitem', { name: /Default/i }));
-    await page.waitForTimeout(1000);
+    // The dropdown can occasionally swallow that click without applying
+    // anything (no exception — the menu just closes on the wrong target).
+    // Verify it actually landed and retry once if not.
+    const applied = await page.evaluate(() => document.documentElement.classList.contains('theme-grayscale'));
+    if (!applied) {
+      await clickCursor(page, page.getByRole('button', { name: 'Theme' }));
+      await page.waitForTimeout(1000);
+      await clickCursor(page, page.getByRole('menuitem', { name: 'Grayscale' }));
+      await page.waitForTimeout(1200);
+    }
   } catch {}
 
   try {
@@ -487,11 +521,18 @@ async function main() {
   await setCaption(page, 'Audit Log — every mutating action, who did it, and what changed');
   await page.waitForTimeout(1800);
   try {
-    await setCaption(page, 'Filter by who made the change');
-    await typeCursor(page, page.getByPlaceholder(/filter by user/i), 'admin@oidfed.org');
-    await page.waitForTimeout(2000);
-    await page.getByPlaceholder(/filter by user/i).fill('');
+    // Every entry here is the same demo admin, so filtering by user wouldn't
+    // narrow anything — filter by Action instead, which has real variety.
+    await setCaption(page, 'Filter by action — narrows the log to just that kind of change');
+    const actionFilter = page.getByRole('combobox').nth(1); // Resource type, then Action
+    await clickCursor(page, actionFilter);
+    await page.waitForTimeout(1100); // hold with the options open
+    await clickCursor(page, page.getByRole('option', { name: /^delete$/i }));
+    await page.waitForTimeout(1900);
+    await clickCursor(page, actionFilter);
     await page.waitForTimeout(700);
+    await clickCursor(page, page.getByRole('option', { name: /all actions/i }));
+    await page.waitForTimeout(900);
   } catch {}
   await scrollBy(page, 650);
   await page.waitForTimeout(1600);
