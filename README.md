@@ -1,5 +1,5 @@
 # Federation Gateway
-
+```
       |   
   \  ___  /     
  _  /   \  _    GÉANT
@@ -10,7 +10,7 @@
   |  * *  |     Co-Funded by
   | *   * |     the European
   |__*_*__|     Union
-
+```
 ## What is this?
 
 A **backend-agnostic admin UI** for OpenID Federation. If you operate a
