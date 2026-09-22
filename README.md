@@ -1,5 +1,6 @@
 # Federation Gateway
-```
+
+```text
       |   
   \  ___  /     
  _  /   \  _    GÉANT
