@@ -18,4 +18,4 @@ COPY backend/config/gateway.yaml /config/gateway.yaml
 
 EXPOSE 8765
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8765"]
+CMD ["uvicorn", "app.main:app", "--host", "::", "--port", "8765"]
